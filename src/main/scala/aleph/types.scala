@@ -24,7 +24,7 @@ object QbitFactory extends QbitFactory {
 
 
 class Qbit(id: Int) {
-  override def toString(): String = f"|$id>"
+  override def toString(): String = f"$id"
 
 }
 
@@ -40,17 +40,14 @@ class Qint_n(size: Int, values: List[Int])(implicit factory: QbitFactory)
 
   val state = values
 
-  override def toString(): String = f"qubits: ${qubits}\nstate:  ${state}"
+  override def toString(): String = f"| qubits: ${qubits} +++ state:  ${state} >"
 }
 
 object Qint {
-  def prepare()(implicit factory: QbitFactory) : Qint = {
-    new Qint_n(4, List.range(0, 16))
-  }
 
-  def prepare(values: List[Int])(implicit factory: QbitFactory) : Qint = {
+  def prepare(values: Int*)(implicit factory: QbitFactory) : Qint = {
     if (values.isEmpty) {
-      prepare()
+      new Qint_n(4, List.range(0, 16))
     } else {
       var i: Int = 1
       val max = values.max
@@ -59,7 +56,7 @@ object Qint {
         i += 1
       }
       
-      new Qint_n(i, values)
+      new Qint_n(i, values.toList)
     }
   }
 }

@@ -11,13 +11,11 @@ object Main extends App {
 
   // Prepares a Qint in full super-position:
   val r1 = Qint.prepare()
-
-  // Prepares a Qint in Bell-State
-  val r2 = Qint.prepare(List(0, 3))
-
   println("* r1:")
   println(r1)
-
+  
+  // Prepares a Qint in Bell-State
+  val r2 = Qint.prepare(0, 3)
   println("* r2:")
   println(r2)
 
