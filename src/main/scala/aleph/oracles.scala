@@ -5,7 +5,7 @@ import aleph.types.Qint
 // An Oracle class. An oracle register a Register of type R,
 // an returns its action on a target of type T
 trait Oracle[T] {
-  def eval(): T
+  val eval: T
 }
 
 // Oracles can be combined using boolean operations: and, or, not.

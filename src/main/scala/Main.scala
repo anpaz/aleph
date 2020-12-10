@@ -1,13 +1,18 @@
 import aleph.types._
-import aleph.implicits._
+
 import aleph.modes._
+import aleph.implicits._
+
 
 object Main extends App {
   println("Hello, aleph! ")
 
-  implicit val mode = eval
+  implicit val mode = print
 
+  // Prepares a Qint in full super-position:
   val r1 = Qint.prepare()
+
+  // Prepares a Qint in Bell-State
   val r2 = Qint.prepare(List(0, 3))
 
   println("* r1:")
@@ -16,18 +21,19 @@ object Main extends App {
   println("* r2:")
   println(r2)
 
+  // Simple oracle, 6 in 
   val o1 = (6 in r1)
-  println(o1.eval())
+  println(f"=== o1:\n${o1.eval}")
 
   val o2 = not (3 in r2)
-  println(o2.eval())
+  println(f"=== o2:\n${o2.eval}")
 
-  // val o3 = o1 or o2
-  // print(o3)
+  val o3 = o1 or o2
+  println(f"=== o3:\n${o3.eval}")
 
-  // val o4 = (6 in r1) or (12 in r1) or not (31 in r2)
-  // print(o4)
+  val o4 = (6 in r1) and (12 in r1) or not (31 in r2)
+  println(f"=== o4:\n${o4.eval}")
 
-  // val o5 = any(List(6, 12, 0), r1)
-  // print(o5)
+  val o5 = not (List(6, 12, 1) any r2)
+  println(f"=== o5:\n${o5.eval}")
 }
