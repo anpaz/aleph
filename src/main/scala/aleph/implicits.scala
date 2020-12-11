@@ -13,11 +13,17 @@ object implicits {
     def const()(implicit o: Operations[T]): Oracle[T] = o.const(a)
   }
 
-  implicit class AnyOracle[T](a: List[Int]) {
+  implicit class ListOracle[T](a: List[Int]) {
     def any(register: Qint)(implicit o: Operations[T]): Oracle[T] =
       a match {
         case head :: next => o.or(o.in(head, register), (next any register))
         case Nil          => o.const(false)
+      }
+
+    def all(register: Qint)(implicit o: Operations[T]): Oracle[T] =
+      a match {
+        case head :: next => o.and(o.in(head, register), (next all register))
+        case Nil          => o.const(true)
       }
   }
 
