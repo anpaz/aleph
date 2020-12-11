@@ -6,7 +6,7 @@ import aleph.implicits._
 object Main extends App {
   println("Hello, aleph! ")
 
-  implicit val mode = print
+  implicit val mode = qsharp
 
   // Prepares a Qint at a specific value
   val r0 = Qint.prepare(6)

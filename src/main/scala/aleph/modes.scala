@@ -53,4 +53,6 @@ object modes {
   }
 
   def json(implicit factory: QbitFactory) = new ProgramOps(JsonProgram)
+
+  def qsharp(implicit factory: QbitFactory) = new ProgramOps(QshaprProgram)
 }
