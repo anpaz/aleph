@@ -32,7 +32,7 @@ object Operations {
 
   def OR(left: Qbit, right: Qbit, target: Qbit): List[Operation] = {
     val toggle: List[Operation] = X(left) ::: X(right)
-    toggle ::: CNOT(left :: (right :: Nil), target) ::: toggle ::: X(target) ::: Nil
+    toggle ++ CNOT(left :: (right :: Nil), target) ++ toggle.reverse ++ X(target)
   }
 
   def AND(left: Qbit, right: Qbit, target: Qbit): List[Operation] =
@@ -48,7 +48,7 @@ object Operations {
       }
     }
 
-    toggle ::: CNOT(register, target) ::: toggle
+    toggle ++ CNOT(register, target) ++ toggle.reverse
   }
 
   def CONST(value: Boolean, target: Qbit): List[Operation] =
@@ -95,9 +95,8 @@ case class QshaprProgram(r: Set[Qint], a: Set[Qbit], t: Qbit, o: List[Operation]
 
     def qbit_var(q: Qbit): String = id_label(q.id)
 
-    def deconstruct_qint(a: (Qint, Int)): String = {
-      val qs = a._1.qubits.map(q => qbit_var(q)).mkString(",")
-      f"        let ($qs) = r_${a._2};"
+    def deconstruct_qint(a: (Qint, Int)): List[String] = {
+      a._1.qubits.zipWithIndex.map(q => f"        let ${qbit_var(q._1)} = r_${a._2}[${q._2}];")
     }
 
     def deconstruct_target(): String =
@@ -126,10 +125,10 @@ case class QshaprProgram(r: Set[Qint], a: Set[Qbit], t: Qbit, o: List[Operation]
     val end_using: String =
       if (a.isEmpty) "" else "        }"
 
-    var indexed_regs = r.zipWithIndex
+    var indexed_regs = r.toList.zipWithIndex
 
-    var parameters   = (indexed_regs.map(t => f"r_${t._2}: Qubit[]") ++ Set("target: Qubit")).mkString(",")
-    var deconstructs = (indexed_regs.map(deconstruct_qint) ++ Set(deconstruct_target)).mkString("\n")
+    var parameters   = (indexed_regs.map(t => f"r_${t._2}:Qubit[]") ++ List("target: Qubit")).mkString(", ")
+    var deconstructs = (indexed_regs.flatMap(deconstruct_qint) ++ List(deconstruct_target)).mkString("\n")
     var instructions = ops.map(generate_instruction).mkString("\n")
 
     f""""

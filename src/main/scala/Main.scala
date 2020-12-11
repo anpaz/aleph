@@ -6,7 +6,7 @@ import aleph.implicits._
 object Main extends App {
   println("Hello, aleph! ")
 
-  implicit val mode = qsharp
+  implicit val mode = print
 
   // Prepares a Qint at a specific value
   val r0 = Qint.prepare(6)
@@ -24,7 +24,7 @@ object Main extends App {
   println(r2)
 
   // Constant oracle
-  var t = true.const
+  var t = true.oracle
   println("=== t:")
   println(t.eval)
 

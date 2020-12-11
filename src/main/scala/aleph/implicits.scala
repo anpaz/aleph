@@ -10,7 +10,7 @@ object implicits {
   }
 
   implicit class ConstOracle[T](a: Boolean)(implicit o: Operations[T]) {
-    def const()(implicit o: Operations[T]): Oracle[T] = o.const(a)
+    def oracle()(implicit o: Operations[T]): Oracle[T] = o.const(a)
   }
 
   implicit class ListOracle[T](a: List[Int]) {
