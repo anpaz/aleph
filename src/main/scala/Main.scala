@@ -23,7 +23,12 @@ object Main extends App {
   println("* r2:")
   println(r2)
 
-  // Simple oracle, 3 in
+  // Constant oracle
+  var t = true.const
+  println("=== t:")
+  println(t.eval)
+
+  // Simple oracle, 3 in r2
   val o1 = (3 in r2)
   println(f"=== o1:\n${o1.eval}")
 
