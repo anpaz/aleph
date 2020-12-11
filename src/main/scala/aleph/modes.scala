@@ -2,6 +2,7 @@ package aleph
 
 import aleph.types._
 import aleph.oracles._
+import aleph.codegen._
 
 object modes {
 
@@ -46,8 +47,10 @@ object modes {
     override def not(a: Oracle[String]): Oracle[String] = new O(f"not (${a.eval})")
 
     override def in(value: Int, register: Qint): Oracle[String] =
-      new O(f"$value in ${register.qubits}")
+      new O(f"$value in ${register.state}")
 
     override def const(value: Boolean): Oracle[String] = new O(value.toString())
   }
+
+  def json(implicit factory: QbitFactory) = new ProgramOps(JsonProgram)
 }

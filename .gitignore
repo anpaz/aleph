@@ -355,5 +355,6 @@ MigrationBackup/
 # Metals
 .metals/
 .bsp/
+.bloop/
 metals.sbt
 

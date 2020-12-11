@@ -23,9 +23,9 @@ object QbitFactory extends QbitFactory {
 }
 
 
-class Qbit(id: Int) {
+class Qbit(i: Int) {
   override def toString(): String = f"$id"
-
+  val id: Int = i
 }
 
 trait Qint {
