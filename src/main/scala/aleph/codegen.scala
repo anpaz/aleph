@@ -112,14 +112,14 @@ case class QshaprProgram(r: Set[Qint], a: Set[Qbit], t: Qbit, b: OracleBody) ext
   val operation = {
     def id_label(id: Int): String = f"q_${id}"
 
-    def qbit_var(q: Qbit): String = id_label(q.id)
+    def qbit_label(q: Qbit): String = id_label(q.id)
 
     def deconstruct_qint(a: (Qint, Int)): List[String] = {
-      a._1.qubits.zipWithIndex.map(q => f"        let ${qbit_var(q._1)} = r_${a._2}[${q._2}];")
+      a._1.qubits.zipWithIndex.map(q => f"        let ${qbit_label(q._1)} = r_${a._2}[${q._2}];")
     }
 
     def deconstruct_target(): String =
-      f"        let ${qbit_var(t)} = target;"
+      f"        let ${qbit_label(t)} = target;"
 
     def generate_instruction(op: Operation): String = {
       val target = id_label(op.targets.head.qId)
@@ -136,7 +136,7 @@ case class QshaprProgram(r: Set[Qint], a: Set[Qbit], t: Qbit, b: OracleBody) ext
       if (a.isEmpty) {
         ""
       } else {
-        var ancillas_vars  = a.map(qbit_var).mkString(",")
+        var ancillas_vars  = a.map(qbit_label).mkString(",")
         var ancilla_qubits = a.toList.map(q => "Qubit()").mkString(",")
         f"        using(($ancillas_vars) = ($ancilla_qubits)) {"
       }
@@ -204,7 +204,7 @@ class ProgramOps(pFactory: (Set[Qint], Set[Qbit], Qbit, OracleBody) => Program)(
 
   override def not(a: Oracle[Program]): Oracle[Program] = {
     val l       = a.eval
-    var program = pFactory(l.registers, l.ancillas, l.target, OracleBody(l.body.pre ++ l.body.main, X(l.target) :: Nil, l.body.post))
+    var program = pFactory(l.registers, l.ancillas, l.target, OracleBody(l.body.pre, l.body.main ::: X(l.target) :: Nil, l.body.post))
 
     new O(program)
   }
