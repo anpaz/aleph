@@ -358,3 +358,4 @@ MigrationBackup/
 .bloop/
 metals.sbt
 
+.ipynb_checkpoints/Untitled-checkpoint.ipynb
