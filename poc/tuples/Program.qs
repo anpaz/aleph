@@ -10,43 +10,29 @@
 
     @EntryPoint()
     operation HelloQ() : Unit {
-        use q2 = Qubit[1];
         use q1 = Qubit[2];
-        use tracker = Qubit();
+        use q2 = Qubit[1];
+        use t1 = Qubit();
 
-        let k1 = ket.Init_1([1, 3, 4], tracker, q1);
-        ket.Print(k1);
-
+        let k1 = ket.Init_1([0, 1, 2], t1, q1);
+        //ket.Print(k1);
 
         let tuples = [
-            (0,1),
+            (0,0),
             (1,0),
             (2,0),
-            //(2,1),
+            (2,1),
             (3,0)
         ];
-        ResetAll(q1 + q2 + [tracker]);
-        let k2 = ket.Init_2(tuples, tracker, (q1, q2));
+        let k2 = ket.Init_2(tuples, t1, (q1, q2));
         ket.Print(k2);
 
-        let k3 = ket.Solve(k2);
+        use t2 = Qubit();
+        let k3 = ket.Solve(k2, t2);
         ket.Print(k3);
 
-
-        // let k2 = ket.Solve(k1);
-        // ket.Print(k2);
-
-        // let v = M(tracker);
-        // Message($"Measured: {v}");
-        // if (v == Zero) {
-        //     fail "Invalid measurement";
-        // }
-
-        // let ket = (tracker, q1 + q2);
-        // DumpMachine();
-
         Message("Hello quantum world!");
-        ResetAll(q1 + q2 + [tracker]);
+        ResetAll(q1 + q2 + [t1, t2]);
     }
 }
 
