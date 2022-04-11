@@ -19,8 +19,9 @@ namespace grover {
 
     function GroverIterationsCount(n: Int, answers: Int) : Int {
         let domain = (1 <<< n);
-        let iterations = Floor(PI() * Sqrt(IntAsDouble(domain / answers)) / 4.0);
-        log.Debug($"Grover. iterations:{iterations} (n: {n}, a: {answers})");
+        let k = Max([1, answers]);
+        let iterations = Floor(PI() * Sqrt(IntAsDouble(domain / k)) / 4.0);
+        log.Info($"Grover. iterations:{iterations} (n: {n}, a: {answers})");
         return iterations;
     }
 
@@ -39,10 +40,6 @@ namespace grover {
     is Adj {
         oracle(register);
         GroverOperator(register);
-
-        if (log.DEBUG_ON()) {
-            DumpMachine(());
-        }
     }
     
     operation _toPhaseFlip (oracle : (Qubit[], Qubit) => Unit is Adj, register: Qubit[]) : Unit 
