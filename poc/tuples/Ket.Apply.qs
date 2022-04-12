@@ -26,11 +26,12 @@ namespace ket {
         registers: Range[],
         qubits: Qubit[],
         target: Qubit
-        ): Unit 
+    ): Unit 
     is Adj + Ctl {
-        let x = qubits[registers[0]];
-        let y = qubits[registers[1]];
-        let z = qubits[registers[2]];
+        let r = Length(registers);
+        let x = qubits[registers[r-3]];
+        let y = qubits[registers[r-2]];
+        let z = qubits[registers[r-1]];
         
         use a = Qubit[2];
         use tracker = Qubit[2];

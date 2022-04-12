@@ -27,27 +27,22 @@
         let k2 = ket.Tuple_2(tuples);
         //ket.Print(k2);
 
-        let k3 = ket.Solve(k2);
+        let k3 = ket.Apply(k2, Add);
         //ket.Print(k3);
 
-        let k4 = ket.Apply(k2, Add);
+        let k4 = ket.Solve(k3);
         //ket.Print(k4);
 
-        let k5 = ket.Solve(k4);
-        //ket.Print(k5);
-
-        // let a1 = ket.Sample(k5);
+        // let a1 = ket.Sample(k4);
         // Message($"a: {a1}");
 
-        // let a2 = ket.Sample(k5);
+        // let a2 = ket.Sample(k4);
         // Message($"a: {a2}");
 
-        // let a3 = ket.Sample(k5);
+        // let a3 = ket.Sample(k4);
         // Message($"a: {a3}");
 
-        Message("");
-        Message("=. aleph (poc) .=");
-        Message("");
+        Sign();
     }
 
     operation Add(x: Qubit[], y: Qubit[], answer: Qubit[]) : Unit
@@ -60,6 +55,12 @@
 
         CNOT(x[1], answer[1]);
         CNOT(y[1], answer[1]);
+    }
+
+    function Sign() : Unit {
+        Message("");
+        Message("=. aleph (poc) .=");
+        Message("");
     }
 }
 
