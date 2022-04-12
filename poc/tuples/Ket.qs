@@ -46,7 +46,6 @@ namespace ket {
             log.Info($"  {qubits[r]}");
             set ordered += qubits[r];
         }
-        set ordered += qubits[tracker];
 
         DumpRegister((), ordered);
 

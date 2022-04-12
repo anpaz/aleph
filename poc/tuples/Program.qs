@@ -12,7 +12,7 @@
     @EntryPoint()
     operation HelloQ() : Unit {
         let k1 = ket.Tuple_1([0, 1, 2]);
-        //ket.Print(k1);
+        ket.Print(k1);
 
         let tuples = [
             (0,3),
@@ -34,24 +34,16 @@
         //ket.Print(k4);
 
         let k5 = ket.Solve(k4);
-        ket.Print(k5);
+        //ket.Print(k5);
 
-        let a1 = ket.Sample(k5);
-        Message($"a: {a1}");
+        // let a1 = ket.Sample(k5);
+        // Message($"a: {a1}");
 
-        let a2 = ket.Sample(k5);
-        Message($"a: {a2}");
+        // let a2 = ket.Sample(k5);
+        // Message($"a: {a2}");
 
-        let a3 = ket.Sample(k5);
-        Message($"a: {a3}");
-
-        // use qubits= Qubit[5];
-        // use target = Qubit[1];
-        // ApplyToEach(H, qubits);
-
-        // AreEqual(qubits[0..1], qubits[2..3], target);
-        // DumpMachine();
-        // ResetAll(qubits + target);
+        // let a3 = ket.Sample(k5);
+        // Message($"a: {a3}");
 
         Message("");
         Message("=. aleph (poc) .=");
