@@ -54,6 +54,22 @@ namespace ket {
     }
 
 
+    operation Sample(ket: Ket) : Int[]
+    {
+        let (init, oracle, size,  answers, registers, tracker, _) = ket!;
+        use qubits = Qubit[size];
+        
+        Prepare(ket, qubits);
+
+        mutable result = [];
+        for r in registers {
+            set result += [ResultArrayAsInt(ForEach(M, qubits[r]))];
+        }
+
+        return result;
+    }
+
+
     operation Ask(ket: Ket) : Unit 
     {
         let (init, oracle, size,  answers, registers, tracker, _) = ket!;

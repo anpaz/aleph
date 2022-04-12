@@ -36,6 +36,15 @@
         let k5 = ket.Solve(k4);
         ket.Print(k5);
 
+        let a1 = ket.Sample(k5);
+        Message($"a: {a1}");
+
+        let a2 = ket.Sample(k5);
+        Message($"a: {a2}");
+
+        let a3 = ket.Sample(k5);
+        Message($"a: {a3}");
+
         // use qubits= Qubit[5];
         // use target = Qubit[1];
         // ApplyToEach(H, qubits);
@@ -44,10 +53,11 @@
         // DumpMachine();
         // ResetAll(qubits + target);
 
-        Message("=. aleph poc .=");
+        Message("");
+        Message("=. aleph (poc) .=");
+        Message("");
     }
 
-    
     operation Add(x: Qubit[], y: Qubit[], answer: Qubit[]) : Unit
     is Adj
     {
@@ -58,24 +68,6 @@
 
         CNOT(x[1], answer[1]);
         CNOT(y[1], answer[1]);
-    }
-
-    
-    operation AreEqual(x: Qubit[], y: Qubit[], answer: Qubit[]) : Unit
-    is Adj
-    {
-        let l = Length(x);
-        use a = Qubit[l];
-
-        within {
-            for i in 0..l-1 {
-                CNOT(x[i], a[i]);
-                CNOT(y[i], a[i]);
-                X(a[i]);
-            }
-        } apply {
-            Controlled X (a, answer[0]);
-        }
     }
 }
 
