@@ -13,7 +13,11 @@ namespace grover {
         let iterations = GroverIterationsCount(n, answers);        
 
         for i in 1..iterations {
-            GroverIteration(_toPhaseFlip(oracle, _), register);
+            GroverIteration(_toPhaseOracle(oracle, _), register);
+            if (log.DEBUG_ON()) {
+                Message($"-- Grover iteration {i} --");
+                DumpRegister((), register);
+            }
         }
     }
 
@@ -42,7 +46,7 @@ namespace grover {
         GroverOperator(register);
     }
     
-    operation _toPhaseFlip (oracle : (Qubit[], Qubit) => Unit is Adj, register: Qubit[]) : Unit 
+    operation _toPhaseOracle(oracle : (Qubit[], Qubit) => Unit is Adj, register: Qubit[]) : Unit 
     is Adj {
         use target = Qubit() {
             within {
