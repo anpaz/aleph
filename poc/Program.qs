@@ -15,8 +15,9 @@
         ket.Print(k1);
 
         let tuples = [
+            (0,0),
             (0,3),
-            (0,2),
+            (2,0),
             // (1,3),
             (1,2),
             // (2,3),
@@ -25,27 +26,27 @@
             (2,1)
         ];
         let k2 = ket.Tuple_2(tuples);
-        //ket.Print(k2);
+        ket.Print(k2);
 
-        let k3 = ket.Apply(k2, Add);
-        //ket.Print(k3);
+        let k3 = ket.Apply(k2, Addition);
+        ket.Print(k3);
 
         let k4 = ket.Solve(k3);
-        //ket.Print(k4);
+        ket.Print(k4);
 
-        // let a1 = ket.Sample(k4);
-        // Message($"a: {a1}");
+        let a1 = ket.Sample(k4);
+        Message($"a: {a1}");
 
-        // let a2 = ket.Sample(k4);
-        // Message($"a: {a2}");
+        let a2 = ket.Sample(k4);
+        Message($"a: {a2}");
 
-        // let a3 = ket.Sample(k4);
-        // Message($"a: {a3}");
+        let a3 = ket.Sample(k4);
+        Message($"a: {a3}");
 
         Sign();
     }
 
-    operation Add(x: Qubit[], y: Qubit[], answer: Qubit[]) : Unit
+    operation Addition(x: Qubit[], y: Qubit[], answer: Qubit[]) : Unit
     is Adj
     {
         //TODO: let l = Length(x);

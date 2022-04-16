@@ -20,18 +20,6 @@ namespace ket {
     );
 
 
-    operation Prepare(ket: Ket, qubits: Qubit[]) : Unit 
-    {
-        let (init, oracle, size, answers, _, _, valid) = ket!;
-
-        repeat {
-            ResetAll(qubits);
-            init(qubits);
-            grover.Apply(oracle, qubits, answers);
-        } until (answers == 0 or valid(qubits));
-    }
-
-
     operation Print(ket: Ket) : Unit 
     {
         let (init, oracle, size,  answers, registers, tracker, _) = ket!;
@@ -40,7 +28,7 @@ namespace ket {
         
         Prepare(ket, qubits);
 
-        Message($"Ket: {qubits}");
+        log.Info($"Ket: {qubits}");
         mutable ordered = [];
         for r in registers {
             log.Info($"  {qubits[r]}");
@@ -69,7 +57,7 @@ namespace ket {
     }
 
 
-    operation Ask(ket: Ket) : Unit 
+    operation AskOracle(ket: Ket) : Unit 
     {
         let (init, oracle, size,  answers, registers, tracker, _) = ket!;
 
@@ -94,6 +82,18 @@ namespace ket {
         DumpRegister((), ordered);
 
         ResetAll(all);
+    }
+
+
+    operation Prepare(ket: Ket, qubits: Qubit[]) : Unit 
+    {
+        let (init, oracle, size, answers, _, _, valid) = ket!;
+
+        repeat {
+            ResetAll(qubits);
+            init(qubits);
+            grover.Apply(oracle, qubits, answers);
+        } until (answers == 0 or valid(qubits));
     }
 
 

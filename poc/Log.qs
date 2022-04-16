@@ -11,7 +11,6 @@ namespace log
         return false;
     }
 
-
     function Info(msg: String) : Unit {
         if (INFO_ON()) {
             Message(msg);
