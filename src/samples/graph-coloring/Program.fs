@@ -36,7 +36,7 @@ let main argv =
 
         // // checks if the coloring for the nodes x and y is invalid.
         // // invalid is when the 2 nodes of an edge have the same color.
-        // quantum is_invalid_edge_coloring (edge) nodes_color =>
+        // quantum is_invalid_edge_coloring(edge) nodes_color =>
         //     let x = edge[0]
         //     let y = edge[1]
         //     let color1 = nodes_color[x]
@@ -58,7 +58,7 @@ let main argv =
 
         // // A valid color combination oracle.
         // // Returns true only if the nodes' color combination is valid for all edges.
-        // quantum classify_combination (edges) nodes_color =>
+        // quantum classify_combination(edges) nodes_color =>
         //     for e in edges:
         //        if is_invalid_edge_coloring(e) nodes_color :
         //            false
