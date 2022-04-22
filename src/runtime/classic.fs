@@ -4,6 +4,10 @@ open aleph.compiler.ast
 
 module Classic =
 
+    //----------------------------------
+    // Expression evaluation
+    //----------------------------------
+
     type Literal = 
         | B of bool
         | I of int
@@ -24,11 +28,8 @@ module Classic =
 
     type Context = Map<string, Value>
 
-    let bind input ok  =
-        match input with
-        | Ok v -> Ok (ok v)
-        | _ -> input
-
+    let (==>) (input: Result<'a,'b>) ok  =
+        Result.bind ok input
 
     let rec eval (e: Expression, ctx: Context) : Result<Value * Context, string> =
         match e with
@@ -43,7 +44,6 @@ module Classic =
         | _ -> 
             Error ($"{e} is not implemented")
 
-
     and _eval_tuple (values: Expression list, _ctx: Context) = 
         let as_literal (e, ctx) =
             match eval (e, ctx) with
@@ -57,42 +57,49 @@ module Classic =
                 Error msg
 
         let append (acc: Result<Literal list * Context,string>) (e: Expression) =
-            match acc with
-            | Ok (items, ctx) ->
-                let n = as_literal (e, ctx)
-                match n with
-                | Ok (l, ctx) -> Ok (List.append items l, ctx)
-                | _ -> n
-            | _ -> acc
+            acc 
+            ==> fun (items, ctx) -> 
+                (e, ctx) |> as_literal
+                ==> fun (l, ctx) -> 
+                    ((List.append items l), ctx) |> Ok
 
-        let input = List.fold  append (Ok ([], _ctx)) values
+        List.fold append (Ok ([], _ctx)) values
+        ==> fun (v, ctx) -> 
+            (Value.Tuple(v), ctx) |> Ok
 
-        match input with
-        | Ok (v, ctx) -> (Value.Tuple v, ctx) |> Ok
-        | Error msg -> Error msg
 
     and _eval_id (id, ctx: Context) = 
         match ctx.TryFind id with
         | Some v -> (v, ctx) |> Ok
         | None -> Error $"Unassigned variable: {id}"
 
+
+    //----------------------------------
+    // Statement evaluation
+    //----------------------------------
+
     type StmtResult =
-        | Continue
-        | Result of value: Value
-        | Error of msg: string
+        | Continue of ctx: Context
+        | Result of value: Value * ctx: Context
+        | Error of msg: string * ctx: Context
 
-    let rec run ctx (p: Statement) : StmtResult =
+    let (-->) (r: StmtResult) cont  =
+        match r with
+        | Continue ctx -> (cont ctx)
+        | _ -> r
+
+
+    let rec run (p: Statement, ctx: Context) : StmtResult =
         match p with 
-        | Block stmts -> _run_block ctx stmts
+        | Block stmts -> 
+            _run_block (stmts, ctx)
         | _ ->
-            Error $"{p} is not implemented."
+            Error ($"{p} is not implemented.", ctx)
 
-    and _run_block ctx stmts : StmtResult =
+    and _run_block (stmts, ctx) : StmtResult =
         match stmts with 
         | head :: rest ->
-            let r = (run ctx head)
-            match r with
-            | Continue -> (_run_block ctx rest)
-            | _ -> r
+            run (head, ctx)
+            --> fun ctx -> _run_block (rest, ctx)
         | [] ->
-            Error "Missing Return value."
+            Error ("Missing Return value.", ctx)
