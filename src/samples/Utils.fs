@@ -2,6 +2,6 @@
 module Utils
     let wrapup =
         printfn ""
-        printfn "--> ℵ <aleph>"
+        printfn "-> ℵ:aleph <-"
         0
 
