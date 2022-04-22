@@ -1,7 +1,6 @@
 namespace aleph.runtime
 
 open aleph.compiler.ast
-open aleph.runtime
 
 module Classic =
 
