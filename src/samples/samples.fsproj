@@ -11,7 +11,7 @@
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../compiler/aleph.compiler.fsproj" />
+    <ProjectReference Include="../parser/aleph.parser.fsproj" />
     <ProjectReference Include="../runtime/aleph.runtime.fsproj" />
   </ItemGroup>
 </Project>

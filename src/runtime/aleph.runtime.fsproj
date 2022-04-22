@@ -7,6 +7,6 @@
     <Compile Include="classic.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../compiler/aleph.compiler.fsproj" />
+    <ProjectReference Include="../parser/aleph.parser.fsproj" />
   </ItemGroup>
 </Project>

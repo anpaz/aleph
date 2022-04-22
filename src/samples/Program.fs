@@ -2,12 +2,11 @@ open aleph.runtime.Classic
 
 [<EntryPoint>]
 let main argv =
-
-    let result = (run Map.empty GraphColoring.program)
+    let result = run (GraphColoring.program, Map.empty)
 
     match result with
-    | Continue -> printfn "Missing return statement"
-    | Result v ->  printfn $"result: {v}"
-    | Error msg -> printfn $"\n!! Failed: {msg} !!"
+    | Continue _ -> printfn "Missing return statement"
+    | Result (v, _) ->  printfn $"result: {v}"
+    | Error (msg, _) -> printfn $"\n!! Failed: {msg} !!"
 
     Utils.wrapup
