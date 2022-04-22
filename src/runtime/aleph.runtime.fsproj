@@ -1,16 +1,13 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net6</TargetFramework>
     <WarnOn>3390;$(WarnOn)</WarnOn>
   </PropertyGroup>
-
   <ItemGroup>
     <Compile Include="eval.fs" />
+    <Compile Include="classic.fs" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="../compiler/aleph.compiler.fsproj" />
   </ItemGroup>
-
 </Project>
