@@ -24,16 +24,56 @@ module Classic =
 
     type Context = Map<string, Value>
 
-    let rec eval (ctx: Context) (e: Expression) : Result<Value, string> =
-        match e with
-        | Expression.Int i -> Ok (Value.Int i)
-        | Expression.Bool b -> Ok (Value.Bool b)
-        | Id id -> _eval_id ctx id
-        | _ -> Error ($"{e} is not implemented")
+    let bind input ok  =
+        match input with
+        | Ok v -> Ok (ok v)
+        | _ -> input
 
-    and _eval_id (ctx: Context) id = 
+
+    let rec eval (e: Expression, ctx: Context) : Result<Value * Context, string> =
+        match e with
+        | Expression.Int i -> 
+            (Value.Int i, ctx) |> Ok
+        | Expression.Bool b -> 
+            (Value.Bool b, ctx) |> Ok
+        | Expression.Id id -> 
+            _eval_id (id, ctx)
+        | Expression.Tuple values -> 
+            _eval_tuple (values, ctx)
+        | _ -> 
+            Error ($"{e} is not implemented")
+
+
+    and _eval_tuple (values: Expression list, _ctx: Context) = 
+        let as_literal (e, ctx) =
+            match eval (e, ctx) with
+            | Ok (Bool b, ctx) -> 
+                ([B b], ctx) |> Ok
+            | Ok (Int i, ctx) -> 
+                ([I i], ctx) |> Ok
+            | Ok _ -> 
+                Error $"Invalid value for a tuple element: {e}"
+            | Error msg ->
+                Error msg
+
+        let append (acc: Result<Literal list * Context,string>) (e: Expression) =
+            match acc with
+            | Ok (items, ctx) ->
+                let n = as_literal (e, ctx)
+                match n with
+                | Ok (l, ctx) -> Ok (List.append items l, ctx)
+                | _ -> n
+            | _ -> acc
+
+        let input = List.fold  append (Ok ([], _ctx)) values
+
+        match input with
+        | Ok (v, ctx) -> (Value.Tuple v, ctx) |> Ok
+        | Error msg -> Error msg
+
+    and _eval_id (id, ctx: Context) = 
         match ctx.TryFind id with
-        | Some v -> Ok v
+        | Some v -> (v, ctx) |> Ok
         | None -> Error $"Unassigned variable: {id}"
 
     type StmtResult =
