@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../compiler/ast/aleph.compiler.ast.fsproj" />
+    <ProjectReference Include="../compiler/aleph.compiler.fsproj" />
   </ItemGroup>
 
 </Project>
