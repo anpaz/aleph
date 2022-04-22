@@ -6,11 +6,12 @@
     <WarnOn>3390;$(WarnOn)</WarnOn>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="utils.fs" />
+    <Compile Include="Utils.fs" />
+    <Compile Include="GraphColoring.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../../compiler/aleph.compiler.fsproj" />
-    <ProjectReference Include="../../runtime/aleph.runtime.fsproj" />
+    <ProjectReference Include="../compiler/aleph.compiler.fsproj" />
+    <ProjectReference Include="../runtime/aleph.runtime.fsproj" />
   </ItemGroup>
 </Project>
