@@ -101,6 +101,11 @@ module Classic =
         | Block stmts -> 
             _run_block (stmts, ctx)
 
+        | Let (id, e) ->
+            match eval (e, ctx) with
+            | Result.Ok (v, ctx) -> ctx.Add (id, v) |> Continue
+            | Result.Error msg -> Error (msg, ctx)
+
         | _ ->
             Error ($"{p} is not implemented.", ctx)
 
@@ -110,4 +115,4 @@ module Classic =
             run (head, ctx)
             ==>. fun ctx -> _run_block (rest, ctx)
         | [] ->
-            Error ("Missing Return value.", ctx)
+            Continue ctx
