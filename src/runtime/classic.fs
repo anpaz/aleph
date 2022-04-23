@@ -71,7 +71,7 @@ module Classic =
     and _eval_id (id, ctx: Context) = 
         match ctx.TryFind id with
         | Some v -> (v, ctx) |> Ok
-        | None -> Error $"Unassigned variable: {id}"
+        | None -> Error $"Unknown variable: {id}"
 
 
     //----------------------------------
@@ -83,16 +83,24 @@ module Classic =
         | Result of value: Value * ctx: Context
         | Error of msg: string * ctx: Context
 
-    let (-->) (r: StmtResult) cont  =
+    let (==>.) (r: StmtResult) cont  =
         match r with
         | Continue ctx -> (cont ctx)
         | _ -> r
 
-
     let rec run (p: Statement, ctx: Context) : StmtResult =
-        match p with 
+        match p with
+        | Skip -> 
+            Continue ctx
+
+        | Return expr ->
+            match eval (expr, ctx) with
+            | Result.Ok v -> Result v
+            | Result.Error msg -> Error (msg, ctx)
+
         | Block stmts -> 
             _run_block (stmts, ctx)
+
         | _ ->
             Error ($"{p} is not implemented.", ctx)
 
@@ -100,6 +108,6 @@ module Classic =
         match stmts with 
         | head :: rest ->
             run (head, ctx)
-            --> fun ctx -> _run_block (rest, ctx)
+            ==>. fun ctx -> _run_block (rest, ctx)
         | [] ->
             Error ("Missing Return value.", ctx)

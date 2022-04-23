@@ -11,7 +11,8 @@ type TestClassic () =
     member this.testExpression (e, expected, ?ctx)=
         let ctx = defaultArg ctx Map.empty
         match eval (e, ctx) with
-        | Ok (actual, _) -> Assert.AreEqual(expected, actual)
+        | Ok (actual, _) -> 
+            Assert.AreEqual(expected, actual)
         | Result.Error msg -> 
             Assert.AreEqual("", msg)
             Assert.Fail()
@@ -19,9 +20,10 @@ type TestClassic () =
     member this.testInvalidExpression (e, ?ctx)=
         let ctx = defaultArg ctx Map.empty
         match eval (e, ctx)  with
-        | Result.Error(msg) -> Assert.IsTrue(true)
-        | _ -> Assert.Fail()
-
+        | Result.Error(msg) -> 
+            Assert.IsTrue(true)
+        | _ ->
+            Assert.AreEqual("", $"Expression passed: {e}")
 
     member this.context =
         let i1 = Value.Int(3)
@@ -66,13 +68,58 @@ type TestClassic () =
     member this.eval_tuples() =
         let ctx = this.context
 
-        let positive = [
+        [
+            (ast.Tuple([]), Value.Tuple([]))
             (ast.Tuple([ast.Int(3)]), Value.Tuple([I(3)]))
             (ast.Tuple([ast.Int(3); ast.Int(5)]), Value.Tuple([I(3); I(5)]))
             (ast.Tuple([ast.Bool(false); ast.Id("b1"); ast.Bool(true)]), Value.Tuple([B(false); B(false); B(true)]))
             (ast.Tuple([ast.Id("i1")]), Value.Tuple([I(3)]))
         ]
+        |> List.map (fun (e, v) -> this.testExpression (e, v, ctx))
+        |> ignore
 
-        for t in positive do
-            let e, v = t
-            this.testExpression(e, v, ctx)
+        [
+            ast.Tuple([ast.Tuple([ast.Int(3)])]) // Tuple with tuple inside            
+            ast.Tuple([ast.Id("s1")])            // Tuple with set inside
+            ast.Tuple([ast.Id("foo")])           // Tuple with invalid id
+        ]
+        |> List.map (fun n -> this.testInvalidExpression (n, ctx))
+        |> ignore
+
+
+
+    [<TestMethod>]
+    member this.return_value() =
+        let ctx = this.context
+
+        let testOne (stmt, expected) =
+            match run (stmt, ctx) with
+            | Continue _ -> Assert.AreEqual("", "Statement returned void.")
+            | Error (msg, _) -> Assert.AreEqual("", msg)
+            | Result (actual, _) -> Assert.AreEqual(expected, actual)
+            
+
+        [
+            (ast.Return(ast.Int(7)), Value.Int(7))
+            (ast.Return(ast.Tuple([ast.Int(3); ast.Int(5)])), Value.Tuple([I(3); I(5)]))
+            (ast.Block([ast.Return(ast.Id("b1"))]), Value.Bool(false))
+            (ast.Block([
+                ast.Skip
+                ast.Return(ast.Id("t1"))
+            ]),  Value.Tuple([B(false); I(5)]))
+            (ast.Block([
+                ast.Skip
+                ast.Return(ast.Id("i1"))
+                ast.Return(ast.Id("b1"))
+            ]),  Value.Int(3))
+        ]
+        |> List.map testOne
+        |> ignore
+
+
+        // Make sure errors are correctly reported:
+        let invalid = ast.Return(ast.Id("foo"))
+        match run (invalid, Map.empty) with
+        | Error (msg, _) -> Assert.AreEqual("Unknown variable: foo", msg)
+        | Continue _ -> Assert.AreEqual("", "Statement returned void.")
+        | Result (actual, _) -> Assert.AreEqual("", $"Statement returned {actual}. Expecting error.")

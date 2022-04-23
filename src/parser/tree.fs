@@ -38,13 +38,13 @@ type Expression =
 
 type Statement =
     | Skip
+    | Block of Statement list
+    | Return of Expression
     | Let of id: string * value: Expression
     | DefClassic of id: string * arguments: string list * body: Statement
     | DefQuantum of id: string * arguments: string list * ket : string * body: Statement
-    | Return of Expression
     | If of cond: Expression * t: Statement * f: Statement
     | For of id: string * enumeration: Expression * body : Statement
-    | Block of Statement list
 
     // For debugging:
     | Print of Expression
