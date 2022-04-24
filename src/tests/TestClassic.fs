@@ -8,7 +8,7 @@ open aleph.runtime.Classic
 [<TestClass>]
 type TestClassic () =
 
-    member this.testExpression (e, expected, ?ctx)=
+    member this.TestExpression (e, expected, ?ctx)=
         let ctx = defaultArg ctx Map.empty
         match eval (e, ctx) with
         | Ok (actual, _) -> 
@@ -17,23 +17,23 @@ type TestClassic () =
             Assert.AreEqual("", msg)
             Assert.Fail()
         
-    member this.testInvalidExpression (e, ?ctx)=
+    member this.TestInvalidExpression (e, ?ctx)=
         let ctx = defaultArg ctx Map.empty
         match eval (e, ctx)  with
-        | Result.Error(msg) -> 
+        | Result.Error(_) -> 
             Assert.IsTrue(true)
-        | _ ->
-            Assert.AreEqual("", $"Expression passed: {e}")
+        | Result.Ok (v, _) ->
+            Assert.AreEqual($"ERROR for {e}", $"Expression returned: {v}")
 
-    member this.context =
-        let i1 = Value.Int(3)
-        let b1 = Value.Bool(false)
+    member this.Context =
+        let i1 = Value.Tuple([I 3])
+        let b1 = Value.Tuple([B false])
         let t1 = Value.Tuple([B(false); I(5)])
         let t2 = Value.Tuple([B(true); I(12)])
-        let s1 = Value.Set([
+        let s1 = Value.Set(SET([
             [B(false); I(5)]
             [B(true); I(12)]
-        ])
+        ]))
 
         Map[ 
             ("i1", i1)
@@ -45,28 +45,29 @@ type TestClassic () =
 
 
     [<TestMethod>]
-    member this.literalExpression() =
-        this.testExpression(ast.Int(5), Value.Int(5))
-        this.testExpression(ast.Bool(true), Value.Bool(true))
-        this.testExpression(ast.Bool(false), Value.Bool(false))
+    member this.LiteralExpression() =
+        this.TestExpression(ast.Int(5), Value.Tuple([I 5]))
+        this.TestExpression(ast.Bool(true), Value.Tuple([B true]))
+        this.TestExpression(ast.Bool(false), Value.Tuple([B false]))
 
 
     [<TestMethod>]
-    member this.idExpression() =
-        let ctx = this.context
+    member this.IdExpression() =
+        let ctx = this.Context
 
         for i in ctx.Keys do
-            this.testExpression(ast.Id(i), ctx.[i], ctx)
+            this.TestExpression(ast.Id(i), ctx.[i], ctx)
 
         // Some negative cases too:
-        this.testInvalidExpression(ast.Id("i1"), Map.empty)
+        this.TestInvalidExpression(ast.Id("i1"), Map.empty)
 
         Assert.IsFalse(ctx.ContainsKey "foo")
-        this.testInvalidExpression(ast.Id("foo"), ctx)
+        this.TestInvalidExpression(ast.Id("foo"), ctx)
+
 
     [<TestMethod>]
-    member this.tuplesExpression() =
-        let ctx = this.context
+    member this.TuplesExpression() =
+        let ctx = this.Context
 
         [
             (ast.Tuple([]), Value.Tuple([]))
@@ -74,23 +75,124 @@ type TestClassic () =
             (ast.Tuple([ast.Int(3); ast.Int(5)]), Value.Tuple([I(3); I(5)]))
             (ast.Tuple([ast.Bool(false); ast.Id("b1"); ast.Bool(true)]), Value.Tuple([B(false); B(false); B(true)]))
             (ast.Tuple([ast.Id("i1")]), Value.Tuple([I(3)]))
+            // ((3)) --> (3)
+            (ast.Tuple([ast.Tuple([ast.Int(3)])]), Value.Tuple([I(3)]))
+            // ((0,1)) --> (0,1)
+            (ast.Tuple([ast.Tuple([ast.Int(0); ast.Int(1)])]), Value.Tuple([I(0); I(1)])) // Tuple with tuple inside            
+            // ((0,1), 2, ((3, 4), 5)) --> (0,1,2,3,4,5)
+            (ast.Tuple([
+                    ast.Tuple([ast.Int(0); ast.Int(1)])
+                    ast.Int(2)
+                    ast.Tuple([
+                        ast.Tuple([ast.Int(3); ast.Int(4)])
+                        ast.Int(5)
+                    ])
+                ]), Value.Tuple([I(0); I(1); I(2); I(3); I(4); I(5)])) // Tuple with tuple inside            
         ]
-        |> List.map (fun (e, v) -> this.testExpression (e, v, ctx))
+        |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
         |> ignore
 
         [
-            ast.Tuple([ast.Tuple([ast.Int(3)])]) // Tuple with tuple inside            
             ast.Tuple([ast.Id("s1")])            // Tuple with set inside
             ast.Tuple([ast.Id("foo")])           // Tuple with invalid id
         ]
-        |> List.map (fun n -> this.testInvalidExpression (n, ctx))
+        |> List.map (fun n -> this.TestInvalidExpression (n, ctx))
         |> ignore
 
 
 
     [<TestMethod>]
-    member this.returnStmt() =
-        let ctx = this.context
+    member this.SetExpression() =
+        let ctx = this.Context
+
+        [
+            // []
+            (ast.Set([]), Value.Set(SET([])))
+            
+            // [0]
+            (ast.Set([ast.Int(0)]), Value.Set(SET([
+                [I(0)]
+            ])))
+            
+            // [1, 2]
+            (ast.Set([ast.Int(1); ast.Int(2)]), Value.Set(SET([
+                [I(1)]
+                [I(2)]
+            ])))
+            
+            //[(1,t), (3,f)]
+            (ast.Set([
+                ast.Tuple[ast.Int(1); ast.Bool(true)]
+                ast.Tuple[ast.Int(3); ast.Bool(false)]
+            ]), Value.Set(SET([
+                [I(1); B(true)]
+                [I(3); B(false)]
+            ])))
+            
+            // [ t1 ]
+            (ast.Set([ast.Id("t1")]), Value.Set(SET([
+                [B(false); I(5)]
+            ])))
+
+            // [ t1; t1 ] --> [ t1 ]
+            (ast.Set([ast.Id("t1");ast.Id("t1")]), Value.Set(SET([
+                [B(false); I(5)]
+            ])))
+            
+            // [ t1, (true, 12) ] --> [ (false, 5), (true, 12) ]
+            (ast.Set([
+                ast.Id("t1")
+                ast.Tuple([ast.Bool(true); ast.Int(12)])
+            ]), Value.Set(SET([
+                [B(false); I(5)]
+                [B(true); I(12)]
+            ])))
+            
+            // [ [ 0, 1 ] ] --> [ 0, 1 ]
+            (ast.Set([
+                ast.Set[ast.Int(0); ast.Int(1)]
+            ]), Value.Set(SET([
+                [I(0)]
+                [I(1)]
+            ])))
+
+
+            (ast.Set([ast.Id("s1")]), ctx["s1"])            // Tuple with set inside
+            // (ast.Tuple([ast.Bool(false); ast.Id("b1"); ast.Bool(true)]), Value.Tuple([B(false); B(false); B(true)]))
+            // (ast.Tuple([ast.Id("i1")]), Value.Tuple([I(3)]))
+            // // ((3)) --> (3)
+            // (ast.Tuple([ast.Tuple([ast.Int(3)])]), Value.Tuple([I(3)]))
+            // // ((0,1)) --> (0,1)
+            // (ast.Tuple([ast.Tuple([ast.Int(0); ast.Int(1)])]), Value.Tuple([I(0); I(1)])) // Tuple with tuple inside            
+            // // ((0,1), 2, ((3, 4), 5)) --> (0,1,2,3,4,5)
+            // (ast.Tuple([
+            //         ast.Tuple([ast.Int(0); ast.Int(1)])
+            //         ast.Int(2)
+            //         ast.Tuple([
+            //             ast.Tuple([ast.Int(3); ast.Int(4)])
+            //             ast.Int(5)
+            //         ])
+            //     ]), Value.Tuple([I(0); I(1); I(2); I(3); I(4); I(5)])) // Tuple with tuple inside            
+        ]
+        |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
+        |> ignore
+
+        [
+            //[t,1]
+            ast.Set([ast.Bool(true); ast.Int(1)])
+            //[1, (2, 3)]
+            ast.Set([
+                ast.Int(1)
+                ast.Tuple[ast.Int(2);ast.Int(3)]
+            ])
+        ]
+        |> List.map (fun n -> this.TestInvalidExpression (n, ctx))
+        |> ignore
+
+
+    [<TestMethod>]
+    member this.ReturnStmt() =
+        let ctx = this.Context
 
         let testOne (stmt, expected) =
             match run (stmt, ctx) with
@@ -98,11 +200,10 @@ type TestClassic () =
             | Error (msg, _) -> Assert.AreEqual("", $"Error on stmt '{stmt}': {msg}")
             | Result (actual, _) -> Assert.AreEqual(expected, actual)
             
-
         [
-            (ast.Return(ast.Int(7)), Value.Int(7))
+            (ast.Return(ast.Int(7)), Value.Tuple([I 7]))
             (ast.Return(ast.Tuple([ast.Int(3); ast.Int(5)])), Value.Tuple([I(3); I(5)]))
-            (ast.Block([ast.Return(ast.Id("b1"))]), Value.Bool(false))
+            (ast.Block([ast.Return(ast.Id("b1"))]), Value.Tuple([B false]))
             (ast.Block([
                 ast.Skip
                 ast.Return(ast.Id("t1"))
@@ -111,11 +212,10 @@ type TestClassic () =
                 ast.Skip
                 ast.Return(ast.Id("i1"))
                 ast.Return(ast.Id("b1"))
-            ]),  Value.Int(3))
+            ]),  Value.Tuple([I 3]))
         ]
         |> List.map testOne
         |> ignore
-
 
         // Make sure errors are correctly reported:
         let invalid = ast.Return(ast.Id("foo"))
@@ -126,8 +226,8 @@ type TestClassic () =
 
 
     [<TestMethod>]
-    member this.letStmt() =
-        let ctx = this.context
+    member this.LetStmt() =
+        let ctx = this.Context
 
         let testOne (stmt, (key, expected)) =
             match run (stmt, ctx) with
@@ -138,9 +238,9 @@ type TestClassic () =
                 Assert.AreEqual(expected, actual)
 
         [
-            (ast.Let("a", ast.Int(7)), ("a", Value.Int(7)))
+            (ast.Let("a", ast.Int(7)), ("a", Value.Tuple([I 7])))
             (ast.Let("b", ast.Tuple([ast.Int(3); ast.Int(5)])), ("b", Value.Tuple([I(3); I(5)])))
-            (ast.Block([ast.Let("c", ast.Id("b1"))]), ("c", Value.Bool(false)))
+            (ast.Block([ast.Let("c", ast.Id("b1"))]), ("c", Value.Tuple([B false])))
             (ast.Block([
                 ast.Skip
                 ast.Let("d", ast.Id("t1"))
@@ -149,7 +249,7 @@ type TestClassic () =
                 ast.Skip
                 ast.Let("e", ast.Id("b1"))
                 ast.Let("e", ast.Id("i1"))
-            ]),  ("e", Value.Int(3)))
+            ]),  ("e", Value.Tuple([I 3])))
             (ast.Block([
                 ast.Skip
                 ast.Let("f", ast.Id("t1"))
@@ -160,7 +260,7 @@ type TestClassic () =
                 ast.Let("g1", ast.Id("b1"))
                 ast.Let("g2", ast.Int(23))
                 ast.Let("g3", ast.Id("i1"))
-            ]),  ("g2", Value.Int(23)))
+            ]),  ("g2", Value.Tuple([I 23])))
         ]
         |> List.map testOne
         |> ignore
