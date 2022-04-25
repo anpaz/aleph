@@ -367,6 +367,38 @@ type TestClassic () =
         |> ignore
 
 
+
+    [<TestMethod>]
+    member this.RangeExpressions() =
+        let ctx = this.Context
+
+        [
+            // 0..0 -> []
+            (ast.Range(ast.Int(0), ast.Int(0)), Value.Set(SET []))
+            // 0..3 -> [0, 1, 2]
+            (ast.Range(ast.Int(0), ast.Int(3)), Value.Set (SET [[I 0]; [I 1]; [I 2]]))
+            // i1..4 --> [3]
+            (ast.Range(ast.Id("i1"), ast.Int(4)), Value.Set(SET [[I 3]]))
+            // ( 0..i1 ) -> [0, 1, 2]
+            (ast.Tuple [ast.Range(ast.Int(0), ast.Id("i1"))], Value.Set (SET [[I 0]; [I 1]; [I 2]]))
+            // [ 0..3 ] -> [0, 1, 2]
+            (ast.Set [ast.Range(ast.Int(0), ast.Int(3))], Value.Set (SET [[I 0]; [I 1]; [I 2]]))
+            // | 0..3 > -> |0, 1, 2>
+            (ast.Ket [ast.Range(ast.Int(0), ast.Int(3))], Value.Ket (SET [[I 0]; [I 1]; [I 2]]))
+        ]
+        |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
+        |> ignore
+
+        [
+            // t1 .. 10: Invalid start type
+            ast.Range (ast.Id("t1"), ast.Int(0))
+            // 10 .. t1: Invalid start type
+            ast.Range (ast.Id("t1"), ast.Int(0))
+        ]
+        |> List.map (fun n -> this.TestInvalidExpression (n, ctx))
+        |> ignore
+
+
     [<TestMethod>]
     member this.ReturnStmt() =
         let ctx = this.Context

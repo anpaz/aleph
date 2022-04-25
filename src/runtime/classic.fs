@@ -18,6 +18,7 @@ module Classic =
     type QUANTUM = string * string list * string * Statement
 
     type Value =
+        | Bool      of bool
         | Tuple     of TUPLE
         | Set       of SET
         | Ket       of SET
@@ -35,6 +36,8 @@ module Classic =
                 |> String.concat ", "
 
             match this with
+            | Bool b ->
+                b.ToString()
             | Tuple t when t.Length = 1 ->
                 t.Head |> printLiteral
             | Tuple s ->
@@ -74,6 +77,9 @@ module Classic =
             evalSet (values, ctx)
         | Expression.Ket values ->
             evalKet (values, ctx)
+        | Expression.Range (start, stop) ->
+            evalRange (start, stop, ctx)
+        // TODO: 
         | _ -> 
             Error ($"{e} is not implemented")
 
@@ -147,6 +153,19 @@ module Classic =
                 (Ket items, ctx) |> Ok
             | (v, _) -> 
                 $"Invalid value for a Ket element: {v}" |> Error
+
+    and private evalRange (start : Expression, stop : Expression, ctx: Context) = 
+        eval (start, ctx)
+        ==> fun (start, ctx) ->
+            eval (stop, ctx)
+            ==> fun (stop, ctx) ->
+                match (start, stop) with
+                | (Tuple [(I b)], Tuple [(I e)]) ->
+                    let range = [b..(e - 1)] |> List.map (fun i -> [I i])
+                    (Value.Set (SET range), ctx) |> Ok
+                | _ ->
+                    $"Invalid value for a range start/end: {start}/{stop}" |> Error
+
 
 
     //----------------------------------
