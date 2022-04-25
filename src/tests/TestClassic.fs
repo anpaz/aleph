@@ -26,14 +26,18 @@ type TestClassic () =
             Assert.AreEqual($"ERROR for {e}", $"Expression returned: {v}")
 
     member this.Context =
-        let i1 = Value.Tuple([I 3])
-        let b1 = Value.Tuple([B false])
-        let t1 = Value.Tuple([B(false); I(5)])
-        let t2 = Value.Tuple([B(true); I(12)])
-        let s1 = Value.Set(SET([
-            [B(false); I(5)]
-            [B(true); I(12)]
-        ]))
+        let i1 = Value.Tuple [I 3]
+        let b1 = Value.Tuple [B false]
+        let t1 = Value.Tuple [B false; I 5]
+        let t2 = Value.Tuple [B true; I 12]
+        let s1 = Value.Set(SET [
+            [B false; I 5]
+            [B true; I 12]
+        ])
+        let k1 = Value.Ket( SET [
+            [I  0; I  1; I  3; B false; I  5]
+            [I 10; I 11; I 13; B true;  I 25]
+        ])
 
         Map[ 
             ("i1", i1)
@@ -41,6 +45,7 @@ type TestClassic () =
             ("t1", t1)
             ("t2", t2)
             ("s1", s1)
+            ("k1", k1)
         ]
 
 
@@ -141,6 +146,9 @@ type TestClassic () =
     member this.SetExpressions() =
         let ctx = this.Context
 
+        // ---------------------------------- //
+        // Positive cases
+        // ---------------------------------- //
         [
             // []
             (ast.Set([]), Value.Set(SET([])))
@@ -152,7 +160,7 @@ type TestClassic () =
             ]), Value.Set(SET([])))
 
             
-            // [[], (3, 4) []] -> []
+            // [[], (3, 4) []] -> [(3, 4)]
             (ast.Set([
                 ast.Set([])
                 ast.Tuple([ast.Int(3); ast.Int(4)])
@@ -163,6 +171,16 @@ type TestClassic () =
             (ast.Set([ast.Int(0)]), Value.Set(SET([
                 [I(0)]
             ])))
+
+            // [0, (1)] -> [(0), (1)]
+            (ast.Set [
+                ast.Int(0)
+                ast.Tuple([ast.Int(1)])
+            ], Value.Set(SET [
+                [I(0)]
+                [I(1)]
+            ]))
+            
             
             // [1, 2, 1] --> [(1), (2)]
             (ast.Set([ast.Int(1); ast.Int(2); ast.Int(1)]), Value.Set(SET([
@@ -241,27 +259,109 @@ type TestClassic () =
         |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
         |> ignore
 
+        // ---------------------------------- //
+        // Negative cases
+        // ---------------------------------- //
         [
             //[1, 2, (2,3)]
-            ast.Set([
+            ast.Set [
                 ast.Int(1)
                 ast.Int(2)
                 ast.Tuple([ ast.Int(2); ast.Int(3) ])
-            ])
-            //[1, (2, 3)]
-            ast.Set([
+            ]
+            //[1, (2, 3)] : Uneven lenghts
+            ast.Set [
                 ast.Int(1)
-                ast.Tuple([ast.Int(2);ast.Int(3)]) ])
-            //[ [(0,0), (1,2)], [(2, 3, 4)] ]
-            ast.Set([
-                ast.Set([
+                ast.Tuple([ast.Int(2);ast.Int(3)]) ]
+            //[ [(0,0), (1,2)], [(2, 3, 4)] ] : Uneven embeded lenghts
+            ast.Set [
+                ast.Set [
                     ast.Tuple([ast.Int(0); ast.Int(0)])
                     ast.Tuple([ast.Int(1); ast.Int(2)])
-                ])
-                ast.Set([
+                ]
+                ast.Set[
                     ast.Tuple([ast.Int(2); ast.Int(3); ast.Int(4)])
-                ])
+                ]
+            ]
+            //[ | 1, 2> ] : Set of kets
+            ast.Set [
+                ast.Ket [
+                    ast.Int(1)
+                    ast.Int(2) ]
+            ]
+        ]
+        |> List.map (fun n -> this.TestInvalidExpression (n, ctx))
+        |> ignore
+
+
+    [<TestMethod>]
+    member this.KetExpressions() =
+        let ctx = this.Context
+
+        // ---------------------------------- //
+        // Positive cases
+        // ---------------------------------- //
+        [
+            // |>
+            (ast.Ket([]), Value.Ket(SET []))
+            
+            // |[], []> -> |>
+            (ast.Ket([
+                ast.Set([])
+                ast.Set([])
+            ]), Value.Ket(SET []))
+
+            
+            // |(3, 4)> -> |(3, 4)>
+            (ast.Ket([
+                ast.Tuple([ast.Int(3); ast.Int(4)])
+            ]), Value.Ket(SET [[I 3; I 4]]))
+
+            // |0> -> |0>
+            (ast.Ket([ast.Int(0)]), Value.Ket(SET[
+                [I 0]
+            ]))
+            
+            // |1, 2, 1> --> |(1), (2)>
+            (ast.Ket([ast.Int(1); ast.Int(2); ast.Int(1)]), Value.Ket(SET[
+                [I 1]
+                [I 2]
+            ]))
+            
+            //| [ (1,t), (3,f) ] > --> | (1,t), (3,f) >
+            (ast.Ket [
+                ast.Set [
+                    ast.Tuple[ast.Int(1); ast.Bool(true)]
+                    ast.Tuple[ast.Int(3); ast.Bool(false)]]
+            ], Value.Ket(SET [
+                [I 1 ; B true]
+                [I 3 ; B false]
+            ]))
+
+            // | s1 > --> 
+            (ast.Ket [ ast.Id "s1"]), Value.Ket(SET[
+                [B false; I 5]
+                [B true; I 12]
             ])
+        ]
+        |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
+        |> ignore
+
+
+        // ---------------------------------- //
+        // Negative cases
+        // ---------------------------------- //
+        [
+            //  given k1 = | (F, 5), (T,12) >
+            // | k1 >
+            ast.Ket [ast.Id("k1")]
+
+            //| | 1, 2> >
+            ast.Ket [
+                ast.Ket [
+                    ast.Int(1)
+                    ast.Int(2) ]
+            ]
         ]
         |> List.map (fun n -> this.TestInvalidExpression (n, ctx))
         |> ignore

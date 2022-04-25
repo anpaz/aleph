@@ -18,7 +18,7 @@ This is because ((,),) is a special case of the join operation:
 * ((1,2),3) = (1,(2,3)) = (1,2,3)
 * ((1,2),(3,4)) = (1,2,3,4)
 
-when doing sets, join creates the cross-product:
+when applied to sets, join creates the cross-product:
 * ([a, b], c) -> [(a,c), (b,c)]
 * (a, [b, c]) -> [(a,b), (a,c)]
 * ([a,b], [c,d]) -> [(a,c,d), (b,c,d)]
@@ -26,10 +26,10 @@ when doing sets, join creates the cross-product:
 
 ## Expressions:
 
-// TODO: this is just syntactic sugar as they can all be classics. Do we need to include them??
 * Project:  (1,2,3,4).0 = 1
             (1,2,3,4).[0,2] = (1,3)
-* Add:      (1,2) + (3,4) = (4, 6)
+* Add:       (1,2) + (3,4) = (4, 6)
+* Substract: (1,2) - (3,4) = (-2, -2)
 * Multiply: (1,2) * (3,4) = (3, 8)
 
     > notes: 
@@ -48,12 +48,19 @@ As tuples, Sets are flat lists. Constructing sets from sets flattens them:
 // [ [(0,0) (1,1)], (0,1), (1,1)  ] --> [ (0,0), (0,1), (1,1) ]
 
 All tuples in a set must have the same dimension, trying to create a tuple
-with tuples of different dimension can 
+with tuples of different dimension causes an error
 
 ## Expressions:
 
-* Union:        [(1,2), (3,4)] union [(1,2), (5,6)] = [(1,2), (3,4), (5,6)]
+* Add:          [(1,2), (3,4)] + [(1,2), (5,6)] = [(1,2), (3,4), (5,6)]
+* Substract:    [(1,2), (3,4)] - [(1,2), (5,6)] = [(3,4)]
 * Intersection: [(1,2), (3,4)] intersect [(1,2), (5,6)] = [(1,2)]
-* Project:  [(1,2), (3,4)].0 = [1, 3]
-            [(1,2,3,4), (5,6,7,8)].[0,2] = [(1,5), (3,7)]
+* Project:      [(1,2), (3,4)].0 = [1, 3]
+                [(1,2,3,4), (5,6,7,8)].[0,2] = [(1,5), (3,7)]
 
+# Kets
+
+Kets take the same argument as a set, and builds a quantum variable for it.
+They follow the same constraints.
+
+Ket's can't take other Kets as parameters.

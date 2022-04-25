@@ -7,8 +7,8 @@ type Expression =
     | Int of int
     | Tuple of values: Expression list
     | Set of values: Expression list
+    | Ket of values: Expression list
     | Range of start: Expression * stop: Expression
-    | Ket of Expression
 
     // Bool expressions
     | Equals of Expression * Expression

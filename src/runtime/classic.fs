@@ -14,16 +14,46 @@ module Classic =
         | I of int
     type TUPLE = Literal list
     type SET = Set<TUPLE>
-    type KET = SET list
     type CLASSIC = string * string list * Statement
     type QUANTUM = string * string list * string * Statement
 
     type Value =
         | Tuple     of TUPLE
         | Set       of SET
-        | Ket       of KET
+        | Ket       of SET
         | Classic   of CLASSIC
         | Quantum   of QUANTUM
+
+        override this.ToString() =
+            let printLiteral= function
+                | B b -> b.ToString()
+                | I i -> i.ToString()
+            let printSetBody s = 
+                s
+                |> Set.toList
+                |> List.map (fun e -> (Tuple e).ToString())
+                |> String.concat ", "
+
+            match this with
+            | Tuple t when t.Length = 1 ->
+                t.Head |> printLiteral
+            | Tuple s ->
+                let body = 
+                    s 
+                    |> List.map printLiteral
+                    |> String.concat ", "
+                "(" + body + ")"
+            | Set s ->
+                let body = s |> printSetBody
+                "[" + body + "]"
+            | Ket k ->
+                let body = k |> printSetBody
+                "| " + body + " >"
+            | Classic (name, _, _) ->
+                name + "()"
+            | Quantum (name, _, _, _) ->
+                name + "()"
+            | Tuple(_) -> failwith "Not Implemented"
 
     type Context = Map<string, Value>
 
@@ -42,6 +72,8 @@ module Classic =
             evalTuple (values, ctx)
         | Expression.Set values ->
             evalSet (values, ctx)
+        | Expression.Ket values ->
+            evalKet (values, ctx)
         | _ -> 
             Error ($"{e} is not implemented")
 
@@ -82,7 +114,7 @@ module Classic =
                 ==> fun (right, ctx) ->
                     match (left, right) with
                     | (Set s1, Tuple r) when s1.IsEmpty ->
-                        ([r] |> SET |> Set, ctx) |> Ok
+                        (Set ([r] |> SET), ctx) |> Ok
                     | (Set s1, Set s2) when s1.IsEmpty ->
                         (Set s2, ctx) |> Ok
                     | (Set s1, Set s2) when s2.IsEmpty ->
@@ -96,15 +128,25 @@ module Classic =
                         let r = s2.MinimumElement
                         if l.Length = r.Length then (Set (s1 + s2), ctx) |> Ok
                         else $"All tuples must have the same length. {l} != {r}" |> Error
-                    | (l, r) -> 
-                        "Invalid value for a set element: {r}" |> Error
+                    | (_, r) -> 
+                        $"Invalid value for a set element: {r}" |> Error
                     
         List.fold append (Ok (Value.Set (SET []), ctx)) values
 
     and private evalId (id, ctx: Context) = 
         match ctx.TryFind id with
         | Some v -> (v, ctx) |> Ok
-        | None -> Error $"Unknown variable: {id}"
+        | None -> $"Unknown variable: {id}" |> Error
+
+    and private evalKet (values: Expression list, ctx: Context) = 
+        evalSet (values, ctx)
+        ==> function
+            | (Set items, ctx) -> 
+                (Ket items, ctx) |> Ok
+            | (Ket items, ctx) -> 
+                (Ket items, ctx) |> Ok
+            | (v, _) -> 
+                $"Invalid value for a Ket element: {v}" |> Error
 
 
     //----------------------------------
