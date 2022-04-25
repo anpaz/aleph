@@ -45,48 +45,61 @@ module Classic =
         | _ -> 
             Error ($"{e} is not implemented")
 
-    and private evalTuple (values: Expression list, _ctx: Context) = 
-        let asLiteral (e, ctx) =
-            match eval (e, ctx) with
-            | Ok (Tuple b, ctx) -> 
-                (b, ctx) |> Ok
-            | Ok _ -> 
-                Error $"Invalid value for a tuple element: {e}"
-            | Error msg ->
-                Error msg
+    and private evalTuple (values: Expression list, ctx: Context) = 
+        let cross_product (set1: SET) (set2: SET) =
+            seq {
+                for i in set1 do
+                    for j in set2 ->
+                        i @ j
+            }
+            |> SET |> Value.Set
 
-        let append (acc: Result<Literal list * Context,string>) (e: Expression) =
+        let append (acc: Result<Value * Context,string>) (e: Expression) =
             acc 
-            ==> fun (items, ctx) -> 
-                (e, ctx) |> asLiteral
-                ==> fun (l, ctx) -> 
-                    ((List.append items l), ctx) |> Ok
+            ==> fun (left, ctx) ->
+                eval (e, ctx)
+                ==> fun (right, ctx) ->
+                    match (left, right) with
+                    | (Tuple l, Tuple r) ->
+                        (Tuple (l @ r), ctx) |> Ok
+                    | (Tuple l, Set s2) ->
+                        (cross_product (SET [l]) s2, ctx) |> Ok
+                    | (Set s1, Tuple r) ->
+                        (cross_product s1 (SET [r]), ctx) |> Ok
+                    | (Set s1, Set s2) ->
+                        (cross_product s1 s2, ctx) |> Ok
+                    | _ -> 
+                        acc
 
-        List.fold append (Ok ([], _ctx)) values
-        ==> fun (v, ctx) -> 
-            (Value.Tuple(v), ctx) |> Ok
+        List.fold append (Ok (Value.Tuple [], ctx)) values
 
 
-    and private evalSet (values: Expression list, _ctx: Context) = 
-        let asTuple (e, ctx) : Result<TUPLE * Context, string>=
-            match eval (e, ctx) with
-            | Ok (Tuple b, ctx) -> 
-                (b, ctx) |> Ok
-            | Ok _ -> 
-                Error $"Invalid value for a set element: {e}"
-            | Error msg ->
-                Error msg
-
-        let append (acc: Result<Set<Literal list> * Context,string>) (e: Expression) =
-            acc 
-            ==> fun (items, ctx) -> 
-                (e, ctx) |> asTuple
-                ==> fun (l, ctx) ->
-                    ((Set.add l items), ctx) |> Ok
-
-        List.fold append (Ok (Set.empty, _ctx)) values
-        ==> fun (v, ctx) -> 
-            (Value.Set(v), ctx) |> Ok
+    and private evalSet (values: Expression list, ctx: Context) = 
+        let append (acc: Result<Value * Context,string>) (e: Expression) =
+            acc
+            ==> fun (left, ctx) ->
+                eval (e, ctx)
+                ==> fun (right, ctx) ->
+                    match (left, right) with
+                    | (Set s1, Tuple r) when s1.IsEmpty ->
+                        ([r] |> SET |> Set, ctx) |> Ok
+                    | (Set s1, Set s2) when s1.IsEmpty ->
+                        (Set s2, ctx) |> Ok
+                    | (Set s1, Set s2) when s2.IsEmpty ->
+                        (Set s1, ctx) |> Ok
+                    | (Set s1, Tuple r) ->
+                        let l = s1.MinimumElement
+                        if l.Length = r.Length then (Set (s1.Add r), ctx) |> Ok
+                        else $"All tuples must have the same length. {l} != {r}" |> Error
+                    | (Set s1, Set s2) ->
+                        let l = s1.MinimumElement
+                        let r = s2.MinimumElement
+                        if l.Length = r.Length then (Set (s1 + s2), ctx) |> Ok
+                        else $"All tuples must have the same length. {l} != {r}" |> Error
+                    | (l, r) -> 
+                        "Invalid value for a set element: {r}" |> Error
+                    
+        List.fold append (Ok (Value.Set (SET []), ctx)) values
 
     and private evalId (id, ctx: Context) = 
         match ctx.TryFind id with

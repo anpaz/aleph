@@ -45,14 +45,14 @@ type TestClassic () =
 
 
     [<TestMethod>]
-    member this.LiteralExpression() =
+    member this.LiteralExpressions() =
         this.TestExpression(ast.Int(5), Value.Tuple([I 5]))
         this.TestExpression(ast.Bool(true), Value.Tuple([B true]))
         this.TestExpression(ast.Bool(false), Value.Tuple([B false]))
 
 
     [<TestMethod>]
-    member this.IdExpression() =
+    member this.IdExpressions() =
         let ctx = this.Context
 
         for i in ctx.Keys do
@@ -66,19 +66,29 @@ type TestClassic () =
 
 
     [<TestMethod>]
-    member this.TuplesExpression() =
+    member this.TuplesExpressions() =
         let ctx = this.Context
 
         [
+            // () -> ()
             (ast.Tuple([]), Value.Tuple([]))
+            // (3) -> (3)
             (ast.Tuple([ast.Int(3)]), Value.Tuple([I(3)]))
+            // (3,5) -> (3,5)
             (ast.Tuple([ast.Int(3); ast.Int(5)]), Value.Tuple([I(3); I(5)]))
+            // (f, b1, t) -> (f, f, t)
             (ast.Tuple([ast.Bool(false); ast.Id("b1"); ast.Bool(true)]), Value.Tuple([B(false); B(false); B(true)]))
+            // (i1) -> (3)
             (ast.Tuple([ast.Id("i1")]), Value.Tuple([I(3)]))
             // ((3)) --> (3)
             (ast.Tuple([ast.Tuple([ast.Int(3)])]), Value.Tuple([I(3)]))
             // ((0,1)) --> (0,1)
-            (ast.Tuple([ast.Tuple([ast.Int(0); ast.Int(1)])]), Value.Tuple([I(0); I(1)])) // Tuple with tuple inside            
+            (ast.Tuple([ast.Tuple([ast.Int(0); ast.Int(1)])]), Value.Tuple([I(0); I(1)]))
+            // ((1,2),(3,4)) = (1,2,3,4)
+            (ast.Tuple([
+                    ast.Tuple([ast.Int(1); ast.Int(2)])
+                    ast.Tuple([ast.Int(3); ast.Int(4)])]),
+                Value.Tuple([I(1); I(2); I(3); I(4)]))
             // ((0,1), 2, ((3, 4), 5)) --> (0,1,2,3,4,5)
             (ast.Tuple([
                     ast.Tuple([ast.Int(0); ast.Int(1)])
@@ -86,14 +96,40 @@ type TestClassic () =
                     ast.Tuple([
                         ast.Tuple([ast.Int(3); ast.Int(4)])
                         ast.Int(5)
+                    ])]),
+                Value.Tuple([I(0); I(1); I(2); I(3); I(4); I(5)]))
+            // ([0,1], 2) -> [(0,2), (1,2)]
+            (ast.Tuple([
+                    ast.Set([ast.Int(0); ast.Int(1)])
+                    ast.Int(2)]), 
+                Value.Set(SET [
+                    [I(0); I(2)]
+                    [I(1); I(2)]]))
+            // ( [ (0,1,2), (3,4,5) ], [ (6,F), (7,T) ] ) -> [(0,1,2,6,F), (0,1,2,7,T), (3,4,5,6,F), (3,4,5,7,T)]
+            (ast.Tuple([
+                    ast.Set([
+                        ast.Tuple([ast.Int(0); ast.Int(1); ast.Int(2)])
+                        ast.Tuple([ast.Int(3); ast.Int(4); ast.Int(5)])
                     ])
-                ]), Value.Tuple([I(0); I(1); I(2); I(3); I(4); I(5)])) // Tuple with tuple inside            
+                    ast.Set([
+                        ast.Tuple([ast.Int(6); ast.Bool(false)])
+                        ast.Tuple([ast.Int(7); ast.Bool(true)])])
+                ]), Value.Set(SET [
+                        [I(0); I(1); I(2); I(6); B(false)]
+                        [I(0); I(1); I(2); I(7); B(true)]
+                        [I(3); I(4); I(5); I(6); B(false)]
+                        [I(3); I(4); I(5); I(7); B(true)]
+            ]))
+            // ( s1 ) -> [ (F, 5), (T, 12) ]
+            (ast.Tuple([ast.Id("s1")]), Value.Set(SET([
+                [B(false); I(5)]
+                [B(true); I(12)]
+            ])))
         ]
         |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
         |> ignore
 
         [
-            ast.Tuple([ast.Id("s1")])            // Tuple with set inside
             ast.Tuple([ast.Id("foo")])           // Tuple with invalid id
         ]
         |> List.map (fun n -> this.TestInvalidExpression (n, ctx))
@@ -102,25 +138,39 @@ type TestClassic () =
 
 
     [<TestMethod>]
-    member this.SetExpression() =
+    member this.SetExpressions() =
         let ctx = this.Context
 
         [
             // []
             (ast.Set([]), Value.Set(SET([])))
             
-            // [0]
+            // [[], []] -> []
+            (ast.Set([
+                ast.Set([])
+                ast.Set([])
+            ]), Value.Set(SET([])))
+
+            
+            // [[], (3, 4) []] -> []
+            (ast.Set([
+                ast.Set([])
+                ast.Tuple([ast.Int(3); ast.Int(4)])
+                ast.Set([])
+            ]), Value.Set(SET([[I 3; I 4]])))
+
+            // [0] -> [(0)]
             (ast.Set([ast.Int(0)]), Value.Set(SET([
                 [I(0)]
             ])))
             
-            // [1, 2]
-            (ast.Set([ast.Int(1); ast.Int(2)]), Value.Set(SET([
+            // [1, 2, 1] --> [(1), (2)]
+            (ast.Set([ast.Int(1); ast.Int(2); ast.Int(1)]), Value.Set(SET([
                 [I(1)]
                 [I(2)]
             ])))
             
-            //[(1,t), (3,f)]
+            //[(1,t), (3,f)] --> [(1,t), (3,f)]
             (ast.Set([
                 ast.Tuple[ast.Int(1); ast.Bool(true)]
                 ast.Tuple[ast.Int(3); ast.Bool(false)]
@@ -129,17 +179,19 @@ type TestClassic () =
                 [I(3); B(false)]
             ])))
             
-            // [ t1 ]
+            // given t1 = (f, 5)
+            // [ t1 ] --> [ (f, 5) ]  
             (ast.Set([ast.Id("t1")]), Value.Set(SET([
                 [B(false); I(5)]
             ])))
 
-            // [ t1; t1 ] --> [ t1 ]
+            // given t1 = (f, 5)
+            // [ t1; t1 ] --> [ (f, 5) ]
             (ast.Set([ast.Id("t1");ast.Id("t1")]), Value.Set(SET([
                 [B(false); I(5)]
             ])))
             
-            // [ t1, (true, 12) ] --> [ (false, 5), (true, 12) ]
+            // [ t1, (T, 12) ] --> [ (f, 5), (T, 12) ]
             (ast.Set([
                 ast.Id("t1")
                 ast.Tuple([ast.Bool(true); ast.Int(12)])
@@ -148,42 +200,67 @@ type TestClassic () =
                 [B(true); I(12)]
             ])))
             
-            // [ [ 0, 1 ] ] --> [ 0, 1 ]
+            //  given s1 = [ (F, 5), (T,12) ]
+            // [ s1 ] -> [ (F, 5), (T,12) ]
+            (ast.Set([ast.Id("s1")]), ctx["s1"])            // Tuple with set inside
+
+            //  given s1 = [ (F, 5), (T,12) ]
+            // [ s1, s1 ] -> [ (F, 5), (T,12) ]
+            (ast.Set([ast.Id("s1");ast.Id("s1")]), ctx["s1"])            // Tuple with set inside
+
+            // [ [ (0,0), (1,1) ], (0,1), (1,1)  ] --> [ (0,0), (0,1), (1,1) ] ]
             (ast.Set([
-                ast.Set[ast.Int(0); ast.Int(1)]
+                ast.Set([
+                    ast.Tuple([ast.Int(0); ast.Int(0)])
+                    ast.Tuple([ast.Int(1); ast.Int(1)])
+                ])
+                ast.Tuple([ast.Int(0); ast.Int(1)])
+                ast.Tuple([ast.Int(1); ast.Int(1)])
             ]), Value.Set(SET([
-                [I(0)]
-                [I(1)]
+                [I(0); I(0)]
+                [I(0); I(1)]
+                [I(1); I(1)]
             ])))
 
-
-            (ast.Set([ast.Id("s1")]), ctx["s1"])            // Tuple with set inside
-            // (ast.Tuple([ast.Bool(false); ast.Id("b1"); ast.Bool(true)]), Value.Tuple([B(false); B(false); B(true)]))
-            // (ast.Tuple([ast.Id("i1")]), Value.Tuple([I(3)]))
-            // // ((3)) --> (3)
-            // (ast.Tuple([ast.Tuple([ast.Int(3)])]), Value.Tuple([I(3)]))
-            // // ((0,1)) --> (0,1)
-            // (ast.Tuple([ast.Tuple([ast.Int(0); ast.Int(1)])]), Value.Tuple([I(0); I(1)])) // Tuple with tuple inside            
-            // // ((0,1), 2, ((3, 4), 5)) --> (0,1,2,3,4,5)
-            // (ast.Tuple([
-            //         ast.Tuple([ast.Int(0); ast.Int(1)])
-            //         ast.Int(2)
-            //         ast.Tuple([
-            //             ast.Tuple([ast.Int(3); ast.Int(4)])
-            //             ast.Int(5)
-            //         ])
-            //     ]), Value.Tuple([I(0); I(1); I(2); I(3); I(4); I(5)])) // Tuple with tuple inside            
+            // [ [ (0,0,0), (1,1,1) ], [(0,1,0), (1,1,1)]  ] --> [ (0,0), (0,1), (1,1) ] ]
+            (ast.Set([
+                ast.Set([
+                    ast.Tuple([ast.Int(0); ast.Int(0); ast.Int(0)])
+                    ast.Tuple([ast.Int(1); ast.Int(1); ast.Int(1)])
+                ])
+                ast.Set([
+                    ast.Tuple([ast.Int(0); ast.Int(1); ast.Int(0)])
+                    ast.Tuple([ast.Int(1); ast.Int(1); ast.Int(1)])
+                ])
+            ]), Value.Set(SET([
+                [I(0); I(0); I(0)]
+                [I(0); I(1); I(0)]
+                [I(1); I(1); I(1)]
+            ])))
         ]
         |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
         |> ignore
 
         [
-            //[t,1]
-            ast.Set([ast.Bool(true); ast.Int(1)])
+            //[1, 2, (2,3)]
+            ast.Set([
+                ast.Int(1)
+                ast.Int(2)
+                ast.Tuple([ ast.Int(2); ast.Int(3) ])
+            ])
             //[1, (2, 3)]
             ast.Set([
                 ast.Int(1)
-                ast.Tuple[ast.Int(2);ast.Int(3)]
+                ast.Tuple([ast.Int(2);ast.Int(3)]) ])
+            //[ [(0,0), (1,2)], [(2, 3, 4)] ]
+            ast.Set([
+                ast.Set([
+                    ast.Tuple([ast.Int(0); ast.Int(0)])
+                    ast.Tuple([ast.Int(1); ast.Int(2)])
+                ])
+                ast.Set([
+                    ast.Tuple([ast.Int(2); ast.Int(3); ast.Int(4)])
+                ])
             ])
         ]
         |> List.map (fun n -> this.TestInvalidExpression (n, ctx))
