@@ -22,7 +22,7 @@ type Expression =
     | Multiply of Expression * Expression
 
     // Tuple expressions
-    | Item of tuple: Expression * index: Expression
+    | Project of tuple: Expression * index: Expression
 
     // Ket expressions
     | All
@@ -41,10 +41,10 @@ type Statement =
     | Block of Statement list
     | Return of Expression
     | Let of id: string * value: Expression
-    | DefClassic of id: string * arguments: string list * body: Statement
-    | DefQuantum of id: string * arguments: string list * ket : string * body: Statement
     | If of cond: Expression * t: Statement * f: Statement
     | For of id: string * enumeration: Expression * body : Statement
+    | DefClassic of id: string * arguments: string list * body: Statement
+    | DefQuantum of id: string * arguments: string list * ket : string * body: Statement
 
     // For debugging:
     | Print of Expression

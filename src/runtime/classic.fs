@@ -314,6 +314,13 @@ module Classic =
             | Result.Ok (v, ctx) -> ctx.Add (id, v) |> Continue
             | Result.Error msg -> Error (msg, ctx)
 
+        | If (cond, t, f) ->
+            match (eval (cond, ctx)) with
+            | Result.Ok (Bool true, ctx) -> run (t, ctx)
+            | Result.Ok (Bool false, ctx) -> run (f, ctx)
+            | Result.Ok (_, ctx) -> ($"Invalid condition: {cond}", ctx) |> Error
+            | Result.Error msg -> (msg,ctx) |> Error
+
         | _ ->
             Error ($"{p} is not implemented.", ctx)
 

@@ -554,3 +554,36 @@ type TestClassic () =
         | Error (msg, _) -> Assert.AreEqual("Unknown variable: foo", msg)
         | Continue _ -> Assert.AreEqual("", "Statement returned void.")
         | Result (actual, _) -> Assert.AreEqual("", $"Statement returned {actual}. Expecting error.")
+
+
+    [<TestMethod>]
+    member this.IfStmt() =
+        let ctx = this.Context
+
+        let testOne (stmt, expected) =
+            match run (stmt, ctx) with
+            | Continue _ -> Assert.AreEqual("", "Statement returned void.")
+            | Error (msg, _) -> Assert.AreEqual("", $"Error on stmt '{stmt}': {msg}")
+            | Result (actual, _) -> Assert.AreEqual(expected, actual)
+            
+        [
+            (ast.If(ast.Bool true,
+                    ast.Return (ast.Int -1),
+                    ast.Return (ast.Int 1)), 
+                Value.Int -1)
+
+            (ast.If(ast.Bool false,
+                    ast.Return (ast.Int -1),
+                    ast.Return (ast.Int 1)), 
+                Value.Int 1)
+        ]
+        |> List.map testOne
+        |> ignore
+
+        // Make sure errors are correctly reported:
+        let invalid = ast.If (ast.Int 4, ast.Return (ast.Int -1),ast.Return (ast.Int 1))
+        match run (invalid, Map.empty) with
+        | Error (msg, _) -> Assert.AreEqual("Invalid condition: Int 4", msg)
+        | Continue _ -> Assert.AreEqual("", "Statement returned void.")
+        | Result (actual, _) -> Assert.AreEqual("", $"Statement returned {actual}. Expecting error.")
+

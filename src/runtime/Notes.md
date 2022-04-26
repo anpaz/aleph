@@ -54,9 +54,11 @@ with tuples of different dimension causes an error
 
 * Add:          [(1,2), (3,4)] + [(1,2), (5,6)] = [(1,2), (3,4), (5,6)]
 * Substract:    [(1,2), (3,4)] - [(1,2), (5,6)] = [(3,4)]
-* Intersection: [(1,2), (3,4)] intersect [(1,2), (5,6)] = [(1,2)]
 * Project:      [(1,2), (3,4)].0 = [1, 3]
                 [(1,2,3,4), (5,6,7,8)].[0,2] = [(1,5), (3,7)]
+
+// TODO
+* Intersection: [(1,2), (3,4)] intersect [(1,2), (5,6)] = [(1,2)]
 
 # Kets
 
