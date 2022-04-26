@@ -419,6 +419,60 @@ type TestClassic () =
         |> ignore
 
 
+
+    [<TestMethod>]
+    member this.BoolExpressions() =
+        let ctx = this.Context
+
+        [
+            // true -> true
+            (ast.Bool(true), Value.Bool(true))
+            // ! true -> false
+            (ast.Not(ast.Bool(true)), Value.Bool(false))
+            
+            // true and true and true -> true
+            (ast.And([ast.Bool true; ast.Bool true; ast.Bool true]), Value.Bool(true))
+            // true and true and false -> false
+            (ast.And([ast.Bool true; ast.Bool true; ast.Bool false]), Value.Bool(false))
+            // false and true and true -> false
+            (ast.And([ast.Bool false; ast.Bool true; ast.Bool true]), Value.Bool(false))
+            // true and false and true -> false
+            (ast.And([ast.Bool true; ast.Bool false; ast.Bool true]), Value.Bool(false))
+
+            // true or true or true -> true
+            (ast.Or([ast.Bool true; ast.Bool true; ast.Bool true]), Value.Bool(true))
+            // true or false or false -> true
+            (ast.Or([ast.Bool true; ast.Bool false; ast.Bool false]), Value.Bool(true))
+            // false or false or true -> true
+            (ast.Or([ast.Bool false; ast.Bool false; ast.Bool true]), Value.Bool(true))
+            // false or false or false -> false
+            (ast.Or([ast.Bool false; ast.Bool false; ast.Bool false]), Value.Bool(false))
+
+            // 7 < 10 -> true
+            (ast.LessThan(ast.Int 7, ast.Int 10), Value.Bool(true))
+            // 7 < 7 -> false
+            (ast.LessThan(ast.Int 7, ast.Int 7), Value.Bool(false))
+            // 7 < 5 -> false
+            (ast.LessThan(ast.Int 7, ast.Int 5), Value.Bool(false))
+
+            // i1 == 3 and ! false and (7) < 10 and (false, 5) == t1 and not ((1,2,3) == t1) -> true
+            (ast.And [
+                ast.Equals (ast.Id("i1"), ast.Int(3))
+                ast.Not (ast.Bool(false))
+                ast.LessThan(ast.Int 7, ast.Int 10)
+                ast.Equals(ast.Tuple [ast.Bool false; ast.Int 5], ast.Id("t1"))
+                ast.Not(ast.Equals(ast.Tuple [ast.Int 1; ast.Int 2; ast.Int 3], ast.Id("t1")))
+            ], Value.Bool(true))
+        ]
+        |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
+        |> ignore
+
+        [
+        ]
+        |> List.map (fun n -> this.TestInvalidExpression (n, ctx))
+        |> ignore
+
+
     [<TestMethod>]
     member this.ReturnStmt() =
         let ctx = this.Context

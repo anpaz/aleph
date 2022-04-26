@@ -84,13 +84,13 @@ let program = (Block [
     );
 
     // // A ket with the color combination for all nodes. Each node is an item of a tuple.
-    // let nodes_colors = | ( colors(), colors(), colors(), colors() ) >
-    Let("nodes_colors", Ket(Set([
+    // let nodes_colors = | colors(), colors(), colors(), colors() >
+    Let("nodes_colors", Ket [
         CallClassic("colors", List.empty);
         CallClassic("colors", List.empty);
         CallClassic("colors", List.empty);
         CallClassic("colors", List.empty);
-    ])));
+    ]);
 
     // // To find a valid coloring, solve the valid_combination oracle and
     // // measure the result

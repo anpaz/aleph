@@ -12,21 +12,21 @@ type Expression =
 
     // Bool expressions
     | Equals of Expression * Expression
-    | LessThan of Expression * Expression
-    | And of Expression * Expression
-    | Or of Expression * Expression
+    | And of Expression list
+    | Or of Expression list
     | Not of Expression 
+    | LessThan of Expression * Expression
 
     // Int expressions
     | Add of Expression * Expression
     | Multiply of Expression * Expression
-    | Measure of ket: Expression
 
     // Tuple expressions
     | Item of tuple: Expression * index: Expression
 
     // Ket expressions
     | All
+    | Measure of ket: Expression
     | Solve of ket: Expression
 
     // Function calls

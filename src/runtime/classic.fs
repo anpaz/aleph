@@ -41,10 +41,10 @@ module Classic =
                 b.ToString()
             | Int i ->
                 i.ToString()
-            | Tuple t when t.Length = 1 ->
-                t.Head |> printLiteral
+            | Tuple [t] ->
+                t |> printLiteral
             | Tuple s ->
-                let body = 
+                let body =
                     s 
                     |> List.map printLiteral
                     |> String.concat ", "
@@ -56,10 +56,9 @@ module Classic =
                 let body = k |> printSetBody
                 "| " + body + " >"
             | Classic (name, _, _) ->
-                name + "()"
+                "[" + name + "()]"
             | Quantum (name, _, _, _) ->
-                name + "()"
-            | Tuple(_) -> failwith "Not Implemented"
+                "|" + name + "()>"
 
     type Context = Map<string, Value>
 
@@ -82,9 +81,19 @@ module Classic =
             evalKet (values, ctx)
         | Expression.Range (start, stop) ->
             evalRange (start, stop, ctx)
+        | Expression.Equals (left, right) ->
+            evalEquals(left, right, ctx)
+        | Expression.Not value ->
+            evalNot(value, ctx)
+        | Expression.And values ->
+            evalAnd(values, ctx)
+        | Expression.Or values ->
+            evalOr(values, ctx)
+        | Expression.LessThan (left, right) ->
+            evalLessthan (left, right, ctx)
+
         // TODO: 
-        | _ -> 
-            Error ($"{e} is not implemented")
+        | _ -> Error ($"{e} is not implemented")
 
     and private evalTuple (values: Expression list, ctx: Context) = 
         let join (left: Value) (right: Value) (T : TUPLE list -> Value) ctx =
@@ -117,16 +126,13 @@ module Classic =
                 eval (e, ctx)
                 ==> fun (right, ctx) ->
                     match (left, right) with
-                    | Ket _, _ ->
-                        join left right (SET >> Ket) ctx
+                    | Ket _, _
                     | _, Ket _ ->
                         join left right (SET >> Ket) ctx
-                    | Set _, _ ->
-                        join left right (SET >> Set) ctx
+                    | Set _, _
                     | _, Set _ ->
                         join left right (SET >> Set) ctx
-                    | Tuple _, _ ->
-                        join left right (List.head >> Tuple) ctx
+                    | Tuple _, _
                     | _, Tuple _ ->
                         join left right (List.head >> Tuple) ctx
                     | _ -> 
@@ -182,8 +188,7 @@ module Classic =
     and private evalKet (values: Expression list, ctx: Context) = 
         evalSet (values, ctx)
         ==> function
-            | (Set items, ctx) -> 
-                (Ket items, ctx) |> Ok
+            | (Set items, ctx)
             | (Ket items, ctx) -> 
                 (Ket items, ctx) |> Ok
             | (v, _) -> 
@@ -198,14 +203,84 @@ module Classic =
             eval (stop, ctx)
             ==> fun (stop, ctx) ->
                 match (start, stop) with
-                | (Int s, Int e) -> createRange s e ctx
-                | (Int s, Tuple [(I e)]) -> createRange s e ctx
-                | (Tuple [(I s)], Int e) -> createRange s e ctx
+                | (Int s, Int e)
+                | (Int s, Tuple [(I e)])
+                | (Tuple [(I s)], Int e)
                 | (Tuple [(I s)], Tuple [(I e)]) -> createRange s e ctx
                 | _ ->
                     $"Invalid value for a range start/end: {start}/{stop}" |> Error
 
 
+    and private evalEquals (left : Expression, right : Expression, ctx: Context) = 
+        eval (left, ctx)
+        ==> fun (left, ctx) ->
+            eval (right, ctx)
+            ==> fun (right, ctx) ->
+                match (left, right) with
+                | (Bool l, Bool r)
+                | (Bool l, Tuple [B r])
+                | (Tuple [B l], Bool r) -> (Value.Bool (l = r), ctx) |> Ok
+                | (Int l, Int r)
+                | (Int l, Tuple [I r])
+                | (Tuple [I l], Int r) -> (Value.Bool (l = r), ctx) |> Ok
+                | (Tuple l, Tuple r) -> (Value.Bool (l = r), ctx) |> Ok
+                | (Set l, Set r) -> (Value.Bool (l = r), ctx) |> Ok
+                | _ -> $"Invalid expression: {left} == {right}" |> Error
+
+    and private evalNot (e, ctx: Context) = 
+        eval (e, ctx)
+        ==> fun (e, ctx) ->
+            match e with
+            | Bool b -> (Value.Bool (not b), ctx) |> Ok
+            | _ -> $"Invalid expression: !{e}" |> Error
+
+
+    and private evalAnd (values, ctx: Context) = 
+        let next (acc: Result<Value * Context,string>) (e: Expression) =
+            acc 
+            ==> fun (left, ctx) ->
+                eval (e, ctx)
+                ==> fun (right, ctx) ->
+                    match (left, right) with
+                    | Bool false, _
+                    | _, Bool false ->
+                        (Bool false, ctx) |> Ok
+                    | Bool _, Bool _ ->
+                        (Bool true, ctx) |> Ok
+                    | _ -> 
+                        $"Invalid expression: {left} and {right}" |> Error
+
+        List.fold next (Ok (Value.Bool true, ctx)) values
+
+
+    and private evalOr (values, ctx: Context) = 
+        let next (acc: Result<Value * Context,string>) (e: Expression) =
+            acc 
+            ==> fun (left, ctx) ->
+                eval (e, ctx)
+                ==> fun (right, ctx) ->
+                    match (left, right) with
+                    | Bool true, _
+                    | _, Bool true ->
+                        (Bool true, ctx) |> Ok
+                    | Bool _, Bool _ ->
+                        (Bool false, ctx) |> Ok
+                    | _ -> 
+                        $"Invalid expression: {left} or {right}" |> Error
+
+        List.fold next (Ok (Value.Bool false, ctx)) values
+
+
+    and private evalLessthan (left : Expression, right : Expression, ctx: Context) = 
+        eval (left, ctx)
+        ==> fun (left, ctx) ->
+            eval (right, ctx)
+            ==> fun (right, ctx) ->
+                match (left, right) with
+                | (Int l, Int r)
+                | (Int l, Tuple [I r])
+                | (Tuple [I l], Int r) -> (Value.Bool (l < r), ctx) |> Ok
+                | _ -> $"Invalid expression: {left} < {right}" |> Error
 
     //----------------------------------
     // Statement evaluation
