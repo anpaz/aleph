@@ -51,9 +51,9 @@ type TestClassic () =
 
     [<TestMethod>]
     member this.LiteralExpressions() =
-        this.TestExpression(ast.Int(5), Value.Tuple([I 5]))
-        this.TestExpression(ast.Bool(true), Value.Tuple([B true]))
-        this.TestExpression(ast.Bool(false), Value.Tuple([B false]))
+        this.TestExpression(ast.Int(5), Value.Int 5)
+        this.TestExpression(ast.Bool(true), Value.Bool true)
+        this.TestExpression(ast.Bool(false), Value.Bool false)
 
 
     [<TestMethod>]
@@ -135,7 +135,10 @@ type TestClassic () =
         |> ignore
 
         [
-            ast.Tuple([ast.Id("foo")])           // Tuple with invalid id
+            // TODO: this should fail: ( [1,2,3] )
+            //ast.Tuple [ ast.Set [ast.Int 1; ast.Int 2; ast.Int 3] ]
+            // Tuple with invalid id
+            ast.Tuple [ ast.Id("foo") ]
         ]
         |> List.map (fun n -> this.TestInvalidExpression (n, ctx))
         |> ignore
@@ -240,7 +243,7 @@ type TestClassic () =
                 [I(1); I(1)]
             ])))
 
-            // [ [ (0,0,0), (1,1,1) ], [(0,1,0), (1,1,1)]  ] --> [ (0,0), (0,1), (1,1) ] ]
+            // [ [ (0,0,0), (1,1,1) ], [(0,1,0), (1,1,1)]  ] --> [ (0,0,0), (0,1,0), (1,1,1) ]
             (ast.Set([
                 ast.Set([
                     ast.Tuple([ast.Int(0); ast.Int(0); ast.Int(0)])
@@ -338,11 +341,28 @@ type TestClassic () =
                 [I 3 ; B false]
             ]))
 
-            // | s1 > --> 
+            // | s1 > --> | (5, 12) >
             (ast.Ket [ ast.Id "s1"]), Value.Ket(SET[
                 [B false; I 5]
                 [B true; I 12]
             ])
+
+            // ( | (0,0,0), (1,1,1) >, | (0,1,0), (1,1,1) >  ) --> | (0,0,0,0,1,0), (0,0,0,0,1,0), (1,1,1,0,1,0), (1,1,1,1,1,1) >
+            (ast.Tuple([
+                ast.Ket([
+                    ast.Tuple([ast.Int(0); ast.Int(0); ast.Int(0)])
+                    ast.Tuple([ast.Int(1); ast.Int(1); ast.Int(1)])
+                ])
+                ast.Ket([
+                    ast.Tuple([ast.Int(0); ast.Int(1); ast.Int(0)])
+                    ast.Tuple([ast.Int(1); ast.Int(1); ast.Int(1)])
+                ])
+            ]), Value.Ket(SET([
+                [I(0); I(0); I(0); I(0); I(1); I(0)]
+                [I(0); I(0); I(0); I(1); I(1); I(1)]
+                [I(1); I(1); I(1); I(0); I(1); I(0)]
+                [I(1); I(1); I(1); I(1); I(1); I(1)]
+            ])))
         ]
         |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
         |> ignore
@@ -379,7 +399,7 @@ type TestClassic () =
             (ast.Range(ast.Int(0), ast.Int(3)), Value.Set (SET [[I 0]; [I 1]; [I 2]]))
             // i1..4 --> [3]
             (ast.Range(ast.Id("i1"), ast.Int(4)), Value.Set(SET [[I 3]]))
-            // ( 0..i1 ) -> [0, 1, 2]
+            // TODO: this feels wrong: ( 0..i1 ) -> [0, 1, 2]
             (ast.Tuple [ast.Range(ast.Int(0), ast.Id("i1"))], Value.Set (SET [[I 0]; [I 1]; [I 2]]))
             // [ 0..3 ] -> [0, 1, 2]
             (ast.Set [ast.Range(ast.Int(0), ast.Int(3))], Value.Set (SET [[I 0]; [I 1]; [I 2]]))
@@ -410,7 +430,7 @@ type TestClassic () =
             | Result (actual, _) -> Assert.AreEqual(expected, actual)
             
         [
-            (ast.Return(ast.Int(7)), Value.Tuple([I 7]))
+            (ast.Return(ast.Int(7)), Value.Int 7)
             (ast.Return(ast.Tuple([ast.Int(3); ast.Int(5)])), Value.Tuple([I(3); I(5)]))
             (ast.Block([ast.Return(ast.Id("b1"))]), Value.Tuple([B false]))
             (ast.Block([
@@ -447,7 +467,7 @@ type TestClassic () =
                 Assert.AreEqual(expected, actual)
 
         [
-            (ast.Let("a", ast.Int(7)), ("a", Value.Tuple([I 7])))
+            (ast.Let("a", ast.Int(7)), ("a", Value.Int 7))
             (ast.Let("b", ast.Tuple([ast.Int(3); ast.Int(5)])), ("b", Value.Tuple([I(3); I(5)])))
             (ast.Block([ast.Let("c", ast.Id("b1"))]), ("c", Value.Tuple([B false])))
             (ast.Block([
@@ -469,7 +489,7 @@ type TestClassic () =
                 ast.Let("g1", ast.Id("b1"))
                 ast.Let("g2", ast.Int(23))
                 ast.Let("g3", ast.Id("i1"))
-            ]),  ("g2", Value.Tuple([I 23])))
+            ]),  ("g2", Value.Int 23))
         ]
         |> List.map testOne
         |> ignore

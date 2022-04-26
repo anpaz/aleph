@@ -3,11 +3,8 @@ module Program
 open aleph.compiler
 open aleph.runtime.Classic
 
-
-
 [<EntryPoint>]
 let main _ =
-
     let printValue acc e = 
         let v = eval(e, Map.empty)
 

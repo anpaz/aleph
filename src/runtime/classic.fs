@@ -19,6 +19,7 @@ module Classic =
 
     type Value =
         | Bool      of bool
+        | Int       of int
         | Tuple     of TUPLE
         | Set       of SET
         | Ket       of SET
@@ -38,6 +39,8 @@ module Classic =
             match this with
             | Bool b ->
                 b.ToString()
+            | Int i ->
+                i.ToString()
             | Tuple t when t.Length = 1 ->
                 t.Head |> printLiteral
             | Tuple s ->
@@ -66,9 +69,9 @@ module Classic =
     let rec eval (e: Expression, ctx: Context) : Result<Value * Context, string> =
         match e with
         | Expression.Int i -> 
-            (Value.Tuple [I i], ctx) |> Ok
+            (Value.Int i, ctx) |> Ok
         | Expression.Bool b -> 
-            (Value.Tuple [B b], ctx) |> Ok
+            (Value.Bool b, ctx) |> Ok
         | Expression.Id id -> 
             evalId (id, ctx)
         | Expression.Tuple values ->
@@ -84,13 +87,29 @@ module Classic =
             Error ($"{e} is not implemented")
 
     and private evalTuple (values: Expression list, ctx: Context) = 
-        let cross_product (set1: SET) (set2: SET) =
-            seq {
-                for i in set1 do
-                    for j in set2 ->
-                        i @ j
-            }
-            |> SET |> Value.Set
+        let join (left: Value) (right: Value) (T : TUPLE list -> Value) ctx =
+            let getSet = function
+                | Bool b -> SET [[B b]] |> Some
+                | Int i -> SET [[I i]] |> Some
+                | Tuple r -> SET [r] |> Some
+                | Set s2 -> s2 |> Some
+                | Ket k2 -> k2 |> Some
+                | _ -> None
+            let set1 = getSet left
+            let set2 = getSet right
+            match (set1, set2) with
+            | (Some set1, Some set2) ->
+                let result = 
+                    seq {
+                        for i in set1 do
+                            for j in set2 ->
+                                i @ j
+                    }
+                    |> Seq.toList
+                    |> T
+                (result, ctx) |> Ok
+            | _ ->
+                $"Not a valid join expression: ({left} , {right})" |> Error
 
         let append (acc: Result<Value * Context,string>) (e: Expression) =
             acc 
@@ -98,16 +117,20 @@ module Classic =
                 eval (e, ctx)
                 ==> fun (right, ctx) ->
                     match (left, right) with
-                    | (Tuple l, Tuple r) ->
-                        (Tuple (l @ r), ctx) |> Ok
-                    | (Tuple l, Set s2) ->
-                        (cross_product (SET [l]) s2, ctx) |> Ok
-                    | (Set s1, Tuple r) ->
-                        (cross_product s1 (SET [r]), ctx) |> Ok
-                    | (Set s1, Set s2) ->
-                        (cross_product s1 s2, ctx) |> Ok
+                    | Ket _, _ ->
+                        join left right (SET >> Ket) ctx
+                    | _, Ket _ ->
+                        join left right (SET >> Ket) ctx
+                    | Set _, _ ->
+                        join left right (SET >> Set) ctx
+                    | _, Set _ ->
+                        join left right (SET >> Set) ctx
+                    | Tuple _, _ ->
+                        join left right (List.head >> Tuple) ctx
+                    | _, Tuple _ ->
+                        join left right (List.head >> Tuple) ctx
                     | _ -> 
-                        acc
+                        $"Cannot join elements: {left} - {right}" |> Error
 
         List.fold append (Ok (Value.Tuple [], ctx)) values
 
@@ -119,16 +142,28 @@ module Classic =
                 eval (e, ctx)
                 ==> fun (right, ctx) ->
                     match (left, right) with
+                    | (Set s1, Bool b) when s1.IsEmpty ->
+                        (Set ([[B b]] |> SET), ctx) |> Ok
+                    | (Set s1, Int i) when s1.IsEmpty ->
+                        (Set ([[I i]] |> SET), ctx) |> Ok
                     | (Set s1, Tuple r) when s1.IsEmpty ->
                         (Set ([r] |> SET), ctx) |> Ok
                     | (Set s1, Set s2) when s1.IsEmpty ->
                         (Set s2, ctx) |> Ok
-                    | (Set s1, Set s2) when s2.IsEmpty ->
-                        (Set s1, ctx) |> Ok
+                    | (Set s1, Bool b) ->
+                        let l = s1.MinimumElement
+                        if l.Length = 1 then (Set (s1.Add [B b]), ctx) |> Ok
+                        else $"All tuples must have the same length. {l} != {b}" |> Error
+                    | (Set s1, Int i) ->
+                        let l = s1.MinimumElement
+                        if l.Length = 1 then (Set (s1.Add [I i]), ctx) |> Ok
+                        else $"All tuples must have the same length. {l} != {i}" |> Error
                     | (Set s1, Tuple r) ->
                         let l = s1.MinimumElement
                         if l.Length = r.Length then (Set (s1.Add r), ctx) |> Ok
                         else $"All tuples must have the same length. {l} != {r}" |> Error
+                    | (Set s1, Set s2) when s2.IsEmpty ->
+                        (Set s1, ctx) |> Ok
                     | (Set s1, Set s2) ->
                         let l = s1.MinimumElement
                         let r = s2.MinimumElement
@@ -155,14 +190,18 @@ module Classic =
                 $"Invalid value for a Ket element: {v}" |> Error
 
     and private evalRange (start : Expression, stop : Expression, ctx: Context) = 
+        let createRange s e ctx =
+            let range = [s..(e - 1)] |> List.map (fun i -> [I i])
+            (Value.Set (SET range), ctx) |> Ok
         eval (start, ctx)
         ==> fun (start, ctx) ->
             eval (stop, ctx)
             ==> fun (stop, ctx) ->
                 match (start, stop) with
-                | (Tuple [(I b)], Tuple [(I e)]) ->
-                    let range = [b..(e - 1)] |> List.map (fun i -> [I i])
-                    (Value.Set (SET range), ctx) |> Ok
+                | (Int s, Int e) -> createRange s e ctx
+                | (Int s, Tuple [(I e)]) -> createRange s e ctx
+                | (Tuple [(I s)], Int e) -> createRange s e ctx
+                | (Tuple [(I s)], Tuple [(I e)]) -> createRange s e ctx
                 | _ ->
                     $"Invalid value for a range start/end: {start}/{stop}" |> Error
 
