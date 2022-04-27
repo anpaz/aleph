@@ -616,6 +616,49 @@ type TestClassic () =
         ]
         |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
 
+
+    [<TestMethod>]
+    member this.SolveExpressions() =
+        let ctx = this.Context
+
+        [
+            // Solve |(3, true), (4, false), (5, false))> -> |3>
+            (ast.Solve(ast.Ket [
+                ast.Tuple [ast.Int 3; ast.Bool true]
+                ast.Tuple [ast.Int 4; ast.Bool false]
+                ast.Tuple [ast.Int 5; ast.Bool false]
+            ]), Value.Ket (SET [ [I 3] ]))
+            // Solve |(3, true), (4, true), (5, true))> -> |3, 4, 5>
+            (ast.Solve(ast.Ket [
+                ast.Tuple [ast.Int 3; ast.Bool true]
+                ast.Tuple [ast.Int 4; ast.Bool true]
+                ast.Tuple [ast.Int 5; ast.Bool true]
+            ]), Value.Ket (SET [ [I 3]; [I 4]; [I 5] ]))
+            // Solve |(1, 1, true), (2, 4, false), (3, 5, true))> -> |(1, 1), (1, 5)>
+            (ast.Solve (ast.Ket [
+                ast.Tuple [ast.Int 1; ast.Int 1; ast.Bool true]
+                ast.Tuple [ast.Int 2; ast.Int 4; ast.Bool false]
+                ast.Tuple [ast.Int 3; ast.Int 5; ast.Bool true]
+            ]), Value.Ket (SET [ [I 1; I 1]; [I 3; I 5] ]))
+            // Solve |(1, 1, 13, 0) (2, 4, 24, -1), (3, 5, 35, 1))> -> |(2, 4, 24)>
+            (ast.Solve (ast.Ket [
+                ast.Tuple [ast.Int 1; ast.Int 1; ast.Int 13; ast.Int 0]
+                ast.Tuple [ast.Int 2; ast.Int 4; ast.Int 24; ast.Int -1]
+                ast.Tuple [ast.Int 3; ast.Int 5; ast.Int 35; ast.Int 10]
+                ast.Tuple [ast.Int 3; ast.Int 5; ast.Int 35; ast.Int 12]
+                ast.Tuple [ast.Int 2; ast.Int 4; ast.Int 24; ast.Int -1]
+                ast.Tuple [ast.Int 3; ast.Int 5; ast.Int 12; ast.Int 0]
+                ast.Tuple [ast.Int 3; ast.Int 5; ast.Int 25; ast.Int -1]
+            ]), Value.Ket (SET [ [I 2; I 4; I 24]; [I 3; I 5; I 25] ]))
+        ]
+        |> List.iter (fun (e, v) -> this.TestExpression (e, v, ctx))
+
+        [
+            // Solve 1
+            (ast.Solve(ast.Int 1), "Solve not available for 1")
+        ]
+        |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
+
     [<TestMethod>]
     member this.ReturnStmt() =
         let ctx = this.Context

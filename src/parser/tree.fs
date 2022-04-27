@@ -33,9 +33,6 @@ type Expression =
     | CallClassic of id: string * arguments: Expression list
     | CallQuantum of id: string * arguments: Expression list * ket: Expression
 
-    // For debug
-    | Message of string
-
 type Statement =
     | Skip
     | Block of Statement list
@@ -47,5 +44,5 @@ type Statement =
     | DefQuantum of id: string * arguments: string list * ket : string * body: Statement
 
     // For debugging:
-    | Print of Expression
+    | Print of string * Expression list
 

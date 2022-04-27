@@ -103,6 +103,8 @@ module Classic =
             evalProject (values, indices, ctx)
         | Expression.Measure ket ->
             evalMeasure (ket, ctx)
+        | Expression.Solve ket ->
+            evalSolve (ket, ctx)
 
         // TODO: 
         | _ -> Error ($"{e} is not implemented")
@@ -397,6 +399,21 @@ module Classic =
             | [I i] -> (Int i, ctx) |> Ok
             | s -> (Tuple s, ctx) |> Ok
         | v, _ -> $"Measure not available for {v}" |> Error
+
+
+    and private evalSolve (value: Expression, ctx: Context) =
+        eval (value, ctx)
+        ==> function
+        | Ket items, ctx ->
+            let filter (t: TUPLE) =
+                match t.[t.Length - 1] with
+                | B b -> b
+                | I i -> i = -1
+            let trim (t: TUPLE) =
+                t |> List.rev |> List.tail |> List.rev
+            let selected = items |> Set.filter filter |> Set.map trim
+            (Ket selected, ctx) |> Ok
+        | v, _ -> $"Solve not available for {v}" |> Error
 
     //----------------------------------
     // Statement evaluation
