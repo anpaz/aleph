@@ -271,12 +271,12 @@ type TestClassic () =
                 ast.Int(1)
                 ast.Int(2)
                 ast.Tuple([ ast.Int(2); ast.Int(3) ])
-            ], "All tuples must have the same length. [I 1] != [I 2; I 3]")
+            ], "All tuples must have the same length. [1] != [2; 3]")
             //[1, (2, 3)] : Uneven lenghts
             (ast.Set [
                 ast.Int(1)
                 ast.Tuple([ast.Int(2);ast.Int(3)]) 
-            ], "All tuples must have the same length. [I 1] != [I 2; I 3]")
+            ], "All tuples must have the same length. [1] != [2; 3]")
             //[ [(0,0), (1,2)], [(2, 3, 4)] ] : Uneven embeded lenghts
             (ast.Set [
                 ast.Set [
@@ -286,7 +286,7 @@ type TestClassic () =
                 ast.Set[
                     ast.Tuple([ast.Int(2); ast.Int(3); ast.Int(4)])
                 ]
-            ], "All tuples must have the same length. [I 0; I 0] != [I 2; I 3; I 4]")
+            ], "All tuples must have the same length. [0; 0] != [2; 3; 4]")
             //[ | 1, 2> ] : Set of kets
             (ast.Set [
                 ast.Ket [
@@ -472,12 +472,12 @@ type TestClassic () =
             (ast.Add [
                 ast.Tuple [ast.Bool true; ast.Int 1]
                 ast.Tuple [ast.Bool true; ast.Bool false]
-            ], "Cannot evaluate: tuple elements must have be of the same type: I 1 != B false")
+            ], "Cannot evaluate: tuple elements must have be of the same type: 1 != False")
             // (true, 1) + (2, 4)
             (ast.Add [
                 ast.Tuple [ast.Bool true; ast.Int 1]
                 ast.Tuple [ast.Int 2; ast.Int 4]
-            ], "Cannot evaluate: tuple elements must have be of the same type: B true != I 2")
+            ], "Cannot evaluate: tuple elements must have be of the same type: True != 2")
             // (1, 1, 3) + (2, 4)
             (ast.Add [
                 ast.Tuple [ast.Int 1; ast.Int 1; ast.Int 3]

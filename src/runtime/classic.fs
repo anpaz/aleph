@@ -12,6 +12,11 @@ module Classic =
     type Literal = 
         | B of bool
         | I of int
+        override this.ToString() =
+            match this with
+            | B b -> b.ToString()
+            | I i -> i.ToString()
+
     type TUPLE = Literal list
     type SET = Set<TUPLE>
     type CLASSIC = string * string list * Statement
@@ -27,9 +32,6 @@ module Classic =
         | Quantum   of QUANTUM
 
         override this.ToString() =
-            let printLiteral= function
-                | B b -> b.ToString()
-                | I i -> i.ToString()
             let printSetBody s = 
                 s
                 |> Set.toList
@@ -42,11 +44,11 @@ module Classic =
             | Int i ->
                 i.ToString()
             | Tuple [t] ->
-                t |> printLiteral
+                t.ToString()
             | Tuple s ->
                 let body =
                     s 
-                    |> List.map printLiteral
+                    |> List.map (fun s -> s.ToString())
                     |> String.concat ", "
                 "(" + body + ")"
             | Set s ->
@@ -346,7 +348,6 @@ module Classic =
             | I l, I r -> I (l * r) |> Ok
             | _ -> $"tuple elements must have be of the same type: {l} != {r}" |> Error
         evalArithmetic (values, ctx) multiply
-
 
     and private evalProject (value: Expression, index: Expression list, ctx: Context) =
         let indices (previous: Result<int list * Context, string>) (next: Expression) =

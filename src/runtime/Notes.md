@@ -1,8 +1,7 @@
 
 
 # Tuples:
-Tuples are the basic data-type. Every literal is a 1-item tuple.
-1 == (1)
+(1) == 1
 
 Tuples are always flat list of literals. Constructing Tuples from other other tuples flattens them.
 // ((3)) --> (3)
@@ -21,7 +20,8 @@ This is because ((,),) is a special case of the join operation:
 when applied to sets, join creates the cross-product:
 * ([a, b], c) -> [(a,c), (b,c)]
 * (a, [b, c]) -> [(a,b), (a,c)]
-* ([a,b], [c,d]) -> [(a,c,d), (b,c,d)]
+* ([a,b], [c,d]) -> [(a,c), (a,d), (b,c), (b,d)]
+* ([a,b], (c,d)) -> ([a,b], [(c,d)]) -> [(a,(c,d)), (b,(c,d))] [(a,c,d), (b,c,d)]
 
 
 ## Expressions:
