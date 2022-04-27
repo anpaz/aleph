@@ -656,6 +656,9 @@ type TestClassic () =
         [
             // Solve 1
             (ast.Solve(ast.Int 1), "Solve not available for 1")
+            // Solve |-1,4,5>
+            // TODO: (ast.Solve(ast.Ket [ast.Int -1; ast.Int 4; ast.Int 5]), "Solve expects kets of size > 2. Ket size: 1")
+
         ]
         |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
 
