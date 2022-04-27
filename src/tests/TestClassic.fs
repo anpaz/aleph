@@ -388,7 +388,6 @@ type TestClassic () =
         |> ignore
 
 
-
     [<TestMethod>]
     member this.RangeExpressions() =
         let ctx = this.Context
@@ -579,6 +578,57 @@ type TestClassic () =
         |> List.map (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
         |> ignore
 
+
+    [<TestMethod>]
+    member this.ProjectExpressions() =
+        let ctx = this.Context
+
+        [
+            // (3,4,5).0 -> 3
+            (ast.Project(ast.Tuple [ast.Int(3); ast.Int(4); ast.Int 5], [ast.Int 0]), Value.Int 3)
+            // (3,4,5).1 -> 4
+            (ast.Project(ast.Tuple [ast.Int(3); ast.Int(4); ast.Int 5], [ast.Int 1]), Value.Int 4)
+            // (3,4,5).2 -> 5
+            (ast.Project(ast.Tuple [ast.Int(3); ast.Int(4); ast.Int 5], [ast.Int 1]), Value.Int 4)
+            // (3,4,5).[0,1] -> (3,4)
+            (ast.Project(ast.Tuple [ast.Int(3); ast.Int(4); ast.Int 5], [ast.Int 0;ast.Int 1]), Value.Tuple[I 3; I 4])
+            // (3,4,5).[0,1,2] -> (3,4,5)
+            (ast.Project(ast.Tuple [ast.Int(3); ast.Int(4); ast.Int 5], [ast.Int 0;ast.Int 1; ast.Int 2]), Value.Tuple[I 3; I 4; I 5])
+            // (3,4,5).[1,1] -> (4,4)
+            (ast.Project(ast.Tuple [ast.Int(3); ast.Int(4); ast.Int 5], [ast.Int 1;ast.Int 1]), Value.Tuple[I 4; I 4])
+            // (2,1).[0,0,0] -> (2,2,2)
+            (ast.Project(ast.Tuple [ast.Int 2;ast.Int 1], [ast.Int 0; ast.Int 0; ast.Int 0]), Value.Tuple[I 2;I 2; I 2])
+
+            // [(3,4,5)].0 -> [3]
+            (ast.Project(ast.Set [ast.Tuple [ast.Int(3); ast.Int(4); ast.Int 5]], [ast.Int 0]),Value.Set (SET [[I 3]]))
+            // [3,4,5].0 -> [3,4,5]
+            (ast.Project(ast.Set [ast.Int(3); ast.Int(4); ast.Int 5], [ast.Int 0]),Value.Set (SET [[I 3];[I 4];[I 5]]))
+            // [(1,2), (3,4), (5,6)).1 -> [2,4,6]
+            (ast.Project(ast.Set [
+                ast.Tuple [ast.Int 1; ast.Int 2]
+                ast.Tuple [ast.Int(3); ast.Int(4)]
+                ast.Tuple [ast.Int 5; ast.Int 6]
+            ], [ast.Int 1]), Value.Set (SET [[I 2];[I 4];[I 6]]))
+            // [(1,2,10), (3,4,11), (5,6,12)).[0,2] -> [(1,10),(3,11),(5,12)]
+            (ast.Project(ast.Set [
+                ast.Tuple [ast.Int 1; ast.Int 2; ast.Int 10]
+                ast.Tuple [ast.Int(3); ast.Int(4); ast.Int 11]
+                ast.Tuple [ast.Int 5; ast.Int 6; ast.Int 12]
+            ], [ast.Int 0; ast.Int 2]), Value.Set (SET [[I 1;I 10];[I 3;I 11];[I 5;I 12]]))
+        ]
+        |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
+        |> ignore
+
+        [
+            // 1.0
+            (ast.Project(ast.Int 1, [ast.Int 0]), "Unable to project from Int 1")
+            // (2,1).3
+            (ast.Project(ast.Tuple [ast.Int 2;ast.Int 1], [ast.Int 3]), "Index in project outside of range")
+            // (2,1).[0,3]
+            (ast.Project(ast.Tuple [ast.Int 2;ast.Int 1], [ast.Int 0; ast.Int 3]), "Index in project outside of range")
+        ]
+        |> List.map (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
+        |> ignore
 
     [<TestMethod>]
     member this.ReturnStmt() =

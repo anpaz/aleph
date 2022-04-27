@@ -95,6 +95,8 @@ module Classic =
             evalAdd(values, ctx)
         | Expression.Multiply values ->
             evalMultiply(values, ctx)
+        | Expression.Project (values, indices) ->
+            evalProject (values, indices, ctx)
 
         // TODO: 
         | _ -> Error ($"{e} is not implemented")
@@ -124,10 +126,10 @@ module Classic =
             | _ ->
                 $"Not a valid join expression: ({left} , {right})" |> Error
 
-        let append (acc: Result<Value * Context,string>) (e: Expression) =
-            acc 
+        let append (previous: Result<Value * Context,string>) (next: Expression) =
+            previous 
             ==> fun (left, ctx) ->
-                eval (e, ctx)
+                eval (next, ctx)
                 ==> fun (right, ctx) ->
                     match (left, right) with
                     | Ket _, _
@@ -146,10 +148,10 @@ module Classic =
 
 
     and private evalSet (values: Expression list, ctx: Context) = 
-        let append (acc: Result<Value * Context,string>) (e: Expression) =
-            acc
+        let append (previous: Result<Value * Context,string>) (next: Expression) =
+            previous
             ==> fun (left, ctx) ->
-                eval (e, ctx)
+                eval (next, ctx)
                 ==> fun (right, ctx) ->
                     match (left, right) with
                     | (Set s1, Bool b) when s1.IsEmpty ->
@@ -240,10 +242,10 @@ module Classic =
 
 
     and private evalAnd (values, ctx: Context) = 
-        let next (acc: Result<Value * Context,string>) (e: Expression) =
-            acc 
+        let apply (previous: Result<Value * Context,string>) (next: Expression) =
+            previous 
             ==> fun (left, ctx) ->
-                eval (e, ctx)
+                eval (next, ctx)
                 ==> fun (right, ctx) ->
                     match (left, right) with
                     | Bool false, _
@@ -254,14 +256,14 @@ module Classic =
                     | _ -> 
                         $"Invalid expression: {left} and {right}" |> Error
 
-        List.fold next (eval (values.Head, ctx)) values.Tail
+        List.fold apply (eval (values.Head, ctx)) values.Tail
 
 
     and private evalOr (values, ctx: Context) = 
-        let next (acc: Result<Value * Context,string>) (e: Expression) =
-            acc 
+        let apply (previous: Result<Value * Context,string>) (next: Expression) =
+            previous 
             ==> fun (left, ctx) ->
-                eval (e, ctx)
+                eval (next, ctx)
                 ==> fun (right, ctx) ->
                     match (left, right) with
                     | Bool true, _
@@ -272,7 +274,19 @@ module Classic =
                     | _ -> 
                         $"Invalid expression: {left} or {right}" |> Error
 
-        List.fold next (eval (values.Head, ctx)) values.Tail
+        List.fold apply (eval (values.Head, ctx)) values.Tail
+
+
+    and private evalLessthan (left : Expression, right : Expression, ctx: Context) = 
+        eval (left, ctx)
+        ==> fun (left, ctx) ->
+            eval (right, ctx)
+            ==> fun (right, ctx) ->
+                match (left, right) with
+                | (Int l, Int r)
+                | (Int l, Tuple [I r])
+                | (Tuple [I l], Int r) -> (Value.Bool (l < r), ctx) |> Ok
+                | _ -> $"Invalid expression: {left} < {right}" |> Error
 
 
     and private evalArithmetic (values: Expression list, ctx: Context) (op : Literal -> Literal -> Result<Literal, string>) = 
@@ -286,10 +300,10 @@ module Classic =
             | [], [] ->
                 [] |> Ok
             | _ -> Error "tuples must have the same size"
-        let next (acc: Result<Value * Context,string>) (e: Expression) =
-            acc 
+        let apply (previous: Result<Value * Context,string>) (next: Expression) =
+            previous 
             ==> fun (left, ctx) ->
-                eval (e, ctx)
+                eval (next, ctx)
                 ==> fun (right, ctx) ->
                     match (left, right) with
                     | Bool l, Bool r ->
@@ -312,7 +326,7 @@ module Classic =
         if values.Length < 2 then
             $"Need at least two operands, received: {values.Length}" |> Error
         else
-            List.fold next (eval (values.Head, ctx)) values.Tail
+            List.fold apply (eval (values.Head, ctx)) values.Tail
 
 
     and private evalAdd (values: Expression list, ctx: Context) =
@@ -333,16 +347,38 @@ module Classic =
             | _ -> $"tuple elements must have be of the same type: {l} != {r}" |> Error
         evalArithmetic (values, ctx) multiply
 
-    and private evalLessthan (left : Expression, right : Expression, ctx: Context) = 
-        eval (left, ctx)
-        ==> fun (left, ctx) ->
-            eval (right, ctx)
-            ==> fun (right, ctx) ->
-                match (left, right) with
-                | (Int l, Int r)
-                | (Int l, Tuple [I r])
-                | (Tuple [I l], Int r) -> (Value.Bool (l < r), ctx) |> Ok
-                | _ -> $"Invalid expression: {left} < {right}" |> Error
+
+    and private evalProject (value: Expression, index: Expression list, ctx: Context) =
+        let indices (previous: Result<int list * Context, string>) (next: Expression) =
+            previous
+            |> Result.bind (fun (previous, ctx) ->
+                eval (next, ctx)
+                ==> fun (next, ctx) ->
+                    match next with
+                    | Int next
+                    | Tuple [I next] -> (previous @ [ next ], ctx) |> Ok
+                    | _ -> "all indices must be of type int: {next}" |> Error
+            )
+
+        match List.fold indices (([], ctx) |> Ok) index with
+        | Ok (indices, ctx) ->
+            try
+                match eval (value, ctx) with
+                | Ok (Tuple t, ctx) ->
+                    if indices.Length = 1 then
+                        match t.[indices.[0]] with 
+                        | I i -> (Int i, ctx) |> Ok
+                        | B b -> (Bool b, ctx) |> Ok
+                    else
+                        (Tuple [ for i in indices do yield t.[i] ], ctx) |> Ok
+                | Ok (Set t, ctx) ->
+                    let elems = [ for e in t -> [for i in indices do yield e.[i] ]] |> SET
+                    (Set elems, ctx) |> Ok
+                | Ok _ -> $"Unable to project from {value}" |> Error
+                | Error msg -> $"Unable to project: {msg}" |> Error
+            with
+            | :? System.ArgumentException -> $"Index in project outside of range" |> Error
+        | Error msg -> $"Invalid indices: {msg}" |> Error
 
     //----------------------------------
     // Statement evaluation

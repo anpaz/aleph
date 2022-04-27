@@ -22,7 +22,7 @@ type Expression =
     | Multiply of Expression list
 
     // Tuple/Set expressions
-    | Project of tuple: Expression * index: Expression
+    | Project of tuple: Expression * index: Expression list
 
     // Ket expressions
     | All
