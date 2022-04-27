@@ -21,7 +21,7 @@ let main _ =
         ast.Tuple([ast.Int(1); ast.Int(2); ast.Int(1)])
         ast.Set([ast.Int(1); ast.Int(2); ast.Int(1)])
         ast.Set([ast.Tuple([ast.Int(1); ast.Int(2); ast.Int(1)])])
-        ast.Set([
+        ast.Ket([
             ast.Set([
                 ast.Tuple([ast.Int(0); ast.Int(0)])
                 ast.Tuple([ast.Int(1); ast.Int(1)])

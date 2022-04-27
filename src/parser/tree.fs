@@ -18,10 +18,10 @@ type Expression =
     | LessThan of Expression * Expression
 
     // Int expressions
-    | Add of Expression * Expression
-    | Multiply of Expression * Expression
+    | Add of Expression list
+    | Multiply of Expression list
 
-    // Tuple expressions
+    // Tuple/Set expressions
     | Project of tuple: Expression * index: Expression
 
     // Ket expressions

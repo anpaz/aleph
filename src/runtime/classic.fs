@@ -91,6 +91,10 @@ module Classic =
             evalOr(values, ctx)
         | Expression.LessThan (left, right) ->
             evalLessthan (left, right, ctx)
+        | Expression.Add values ->
+            evalAdd(values, ctx)
+        | Expression.Multiply values ->
+            evalMultiply(values, ctx)
 
         // TODO: 
         | _ -> Error ($"{e} is not implemented")
@@ -250,7 +254,7 @@ module Classic =
                     | _ -> 
                         $"Invalid expression: {left} and {right}" |> Error
 
-        List.fold next (Ok (Value.Bool true, ctx)) values
+        List.fold next (eval (values.Head, ctx)) values.Tail
 
 
     and private evalOr (values, ctx: Context) = 
@@ -268,8 +272,64 @@ module Classic =
                     | _ -> 
                         $"Invalid expression: {left} or {right}" |> Error
 
-        List.fold next (Ok (Value.Bool false, ctx)) values
+        List.fold next (eval (values.Head, ctx)) values.Tail
 
+
+    and private evalArithmetic (values: Expression list, ctx: Context) (op : Literal -> Literal -> Result<Literal, string>) = 
+        let rec evalTuple s1 s2 =
+            match (s1, s2) with
+            | (h1::rest1), (h2::rest2) ->
+                op h1 h2 |> Result.bind (fun h ->
+                    match (evalTuple rest1 rest2) with
+                    | Ok s -> h :: s |> Ok
+                    | Result.Error msg -> Error msg)
+            | [], [] ->
+                [] |> Ok
+            | _ -> Error "Tuples must have the same size"
+        let next (acc: Result<Value * Context,string>) (e: Expression) =
+            acc 
+            ==> fun (left, ctx) ->
+                eval (e, ctx)
+                ==> fun (right, ctx) ->
+                    match (left, right) with
+                    | Bool l, Bool r ->
+                        match (op (B l) (B r)) with
+                        | Ok (B x) -> (Bool x, ctx) |> Ok
+                        | _ ->  $"Cannot evaluate {l} + {r}" |> Error
+                    | Int l, Int r ->
+                        match (op (I l) (I r)) with
+                        | Ok (I x) -> (Int x, ctx) |> Ok
+                        | _ ->  $"Cannot evaluate {l} + {r}" |> Error
+                    | Tuple l, Tuple r ->
+                        match evalTuple l r with
+                        | Ok s -> (Tuple s, ctx) |> Ok
+                        | Error msg -> $"Cannot add tuple {msg}" |> Error
+                    | _ -> 
+                        $"Invalid expression: {left} and {right}" |> Error
+
+        if values.Length < 2 then
+            $"Need at least two operands, received: {values.Length}" |> Error
+        else
+            List.fold next (eval (values.Head, ctx)) values.Tail
+
+
+    and private evalAdd (values: Expression list, ctx: Context) =
+        let add l r =
+            match (l, r) with
+            | B true, B false
+            | B false, B true -> B true |> Ok
+            | B _, B _ -> B false |> Ok
+            | I l, I r -> I (l + r) |> Ok
+            | _ -> $"Tuple elements must have be of the same type: {l} != {r}." |> Error
+        evalArithmetic (values, ctx) add
+
+    and private evalMultiply (values: Expression list, ctx: Context) =
+        let multiply l r =
+            match (l, r) with
+            | B l, B r -> B (l && r) |> Ok
+            | I l, I r -> I (l * r) |> Ok
+            | _ -> $"Tuple elements must have be of the same type: {l} != {r}." |> Error
+        evalArithmetic (values, ctx) multiply
 
     and private evalLessthan (left : Expression, right : Expression, ctx: Context) = 
         eval (left, ctx)

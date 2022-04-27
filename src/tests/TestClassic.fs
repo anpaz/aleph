@@ -14,7 +14,7 @@ type TestClassic () =
         | Ok (actual, _) -> 
             Assert.AreEqual(expected, actual)
         | Result.Error msg -> 
-            Assert.AreEqual("", msg)
+            Assert.AreEqual(expected, msg)
             Assert.Fail()
         
     member this.TestInvalidExpression (e, ?ctx)=
@@ -83,8 +83,8 @@ type TestClassic () =
             (ast.Tuple([ast.Int(3); ast.Int(5)]), Value.Tuple([I(3); I(5)]))
             // (f, b1, t) -> (f, f, t)
             (ast.Tuple([ast.Bool(false); ast.Id("b1"); ast.Bool(true)]), Value.Tuple([B(false); B(false); B(true)]))
-            // (i1) -> (3)
-            (ast.Tuple([ast.Id("i1")]), Value.Tuple([I(3)]))
+            // (i1, i1) -> (3, 3)
+            (ast.Tuple([ast.Id("i1"); ast.Id("i1")]), Value.Tuple([I 3; I 3]))
             // ((3)) --> (3)
             (ast.Tuple([ast.Tuple([ast.Int(3)])]), Value.Tuple([I(3)]))
             // ((0,1)) --> (0,1)
@@ -154,7 +154,7 @@ type TestClassic () =
         // ---------------------------------- //
         [
             // []
-            (ast.Set([]), Value.Set(SET([])))
+            //(ast.Set([]), Value.Set(SET([])))
             
             // [[], []] -> []
             (ast.Set([
@@ -419,6 +419,67 @@ type TestClassic () =
         |> ignore
 
 
+    [<TestMethod>]
+    member this.EvalArithmeticExpressions() =
+        let ctx = this.Context
+
+        [
+            // 0 + 1 -> 1
+            (ast.Add [ast.Int 0; ast.Int 1], Value.Int 1)
+            // 0 + 1 + 2 + 4-> 7
+            (ast.Add [ast.Int 0; ast.Int 1; ast.Int 2; ast.Int 4], Value.Int 7)
+            
+            // Boolean is + mod 2
+            // f + t -> t
+            (ast.Add [ast.Bool false; ast.Bool true], Value.Bool true)
+            // t + f -> t
+            (ast.Add [ast.Bool true; ast.Bool false], Value.Bool true)
+            // f + f -> f
+            (ast.Add [ast.Bool false; ast.Bool false], Value.Bool false)
+            // t + t -> f
+
+            // Adding/multiplying tuples, is item-wise:
+            (ast.Add [ast.Bool true; ast.Bool true], Value.Bool false)
+            // (0, 3, f) + ((1, 2, t) * (3, 3, t))-> (3, 9, t)
+            (ast.Add [
+                ast.Tuple [ast.Int 0; ast.Int 3; ast.Bool false]
+                ast.Multiply [
+                    ast.Tuple [ast.Int 1; ast.Int 2; ast.Bool true]
+                    ast.Tuple [ast.Int 3; ast.Int 3; ast.Bool true]]
+            ], Value.Tuple [I 3; I 9; B true])
+
+            // Adding tuples, is item-wise:
+            // (0, 3, f) + (1, 2, t) (10, 20, f) -> (11, 25, t)
+            (ast.Add [
+                ast.Tuple [ast.Int 0; ast.Int 3; ast.Bool false]
+                ast.Tuple [ast.Int 1; ast.Int 2; ast.Bool true]
+                ast.Tuple [ast.Int 10; ast.Int 20; ast.Bool false]
+            ], Value.Tuple [I 11; I 25; B true])
+        ]
+        |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
+        |> ignore
+
+        [
+            // 0 + 
+            ast.Add [ast.Int 0]
+            // *
+            ast.Multiply []
+            // 0 + false
+            ast.Add [ast.Int 0; ast.Bool false]
+            // true + 1 
+            ast.Add [ast.Bool true; ast.Int 1]
+            // (true, 1) + (true, true)
+            ast.Add [ast.Tuple [ast.Bool true; ast.Int 1]; ast.Tuple [ast.Bool true; ast.Bool false]]
+            // (true, 1) + (2, 4)
+            ast.Add [ast.Tuple [ast.Bool true; ast.Int 1]; ast.Tuple [ast.Int 2; ast.Int 4]]
+            // (1, 1, 3) + (2, 4)
+            ast.Add [ast.Tuple [ast.Int 1; ast.Int 1; ast.Int 3]; ast.Tuple [ast.Int 2; ast.Int 4]]
+
+        ]
+        |> List.map (fun n -> this.TestInvalidExpression (n, ctx))
+        |> ignore
+
+
 
     [<TestMethod>]
     member this.BoolExpressions() =
@@ -455,6 +516,17 @@ type TestClassic () =
             // 7 < 5 -> false
             (ast.LessThan(ast.Int 7, ast.Int 5), Value.Bool(false))
 
+            (ast.Equals(
+                ast.Set [
+                    ast.Tuple [ast.Bool false; ast.Int 3; ast.Int 5]
+                    ast.Tuple [ast.Bool true; ast.Int 13; ast.Int 15]
+                ],
+                ast.Set [
+                    ast.Tuple [ast.Bool true; ast.Int 13; ast.Int 15]
+                    ast.Tuple [ast.Bool false; ast.Int 3; ast.Int 5]
+                ]
+            ), Value.Bool(true))
+
             // i1 == 3 and ! false and (7) < 10 and (false, 5) == t1 and not ((1,2,3) == t1) -> true
             (ast.And [
                 ast.Equals (ast.Id("i1"), ast.Int(3))
@@ -468,6 +540,14 @@ type TestClassic () =
         |> ignore
 
         [
+            ast.Equals(
+                ast.Set [ast.Bool false; ast.Int 3],
+                ast.Ket [ast.Bool false; ast.Int 3]
+            )
+            ast.Equals(
+                ast.Ket [ast.Bool false; ast.Int 3],
+                ast.Ket [ast.Bool false; ast.Int 3]
+            )
         ]
         |> List.map (fun n -> this.TestInvalidExpression (n, ctx))
         |> ignore
