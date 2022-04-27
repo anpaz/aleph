@@ -25,7 +25,7 @@ type Expression =
     | Project of tuple: Expression * index: Expression list
 
     // Ket expressions
-    | All
+    // TODO: | All
     | Measure of ket: Expression
     | Solve of ket: Expression
 

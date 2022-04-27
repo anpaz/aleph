@@ -131,8 +131,7 @@ type TestClassic () =
                 [B(true); I(12)]
             ])))
         ]
-        |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
-        |> ignore
+        |> List.iter (fun (e, v) -> this.TestExpression (e, v, ctx))
 
         [
             // TODO: this should fail: ( [1,2,3] )
@@ -140,8 +139,7 @@ type TestClassic () =
             // Tuple with invalid id
             (ast.Tuple [ ast.Id("foo") ], "Unknown variable: foo")
         ]
-        |> List.map (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
-        |> ignore
+        |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
 
 
 
@@ -259,8 +257,7 @@ type TestClassic () =
                 [I(1); I(1); I(1)]
             ])))
         ]
-        |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
-        |> ignore
+        |> List.iter (fun (e, v) -> this.TestExpression (e, v, ctx))
 
         // ---------------------------------- //
         // Negative cases
@@ -294,8 +291,7 @@ type TestClassic () =
                     ast.Int(2) ]
             ], "Invalid value for a set element: | 1, 2 >")
         ]
-        |> List.map (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
-        |> ignore
+        |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
 
 
     [<TestMethod>]
@@ -365,8 +361,7 @@ type TestClassic () =
                 [I(1); I(1); I(1); I(1); I(1); I(1)]
             ])))
         ]
-        |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
-        |> ignore
+        |> List.iter (fun (e, v) -> this.TestExpression (e, v, ctx))
 
 
         // ---------------------------------- //
@@ -384,8 +379,7 @@ type TestClassic () =
                     ast.Int(2) ]
             ], "Invalid value for a set element: | 1, 2 >")
         ]
-        |> List.map (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
-        |> ignore
+        |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
 
 
     [<TestMethod>]
@@ -406,8 +400,7 @@ type TestClassic () =
             // | 0..3 > -> |0, 1, 2>
             (ast.Ket [ast.Range(ast.Int(0), ast.Int(3))], Value.Ket (SET [[I 0]; [I 1]; [I 2]]))
         ]
-        |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
-        |> ignore
+        |> List.iter (fun (e, v) -> this.TestExpression (e, v, ctx))
 
         [
             // t1 .. 10: Invalid start type
@@ -415,8 +408,7 @@ type TestClassic () =
             // 10 .. t1: Invalid start type
             (ast.Range (ast.Int(10), ast.Id("t1")), "Invalid value for a range start..end: 10..(False, 5)")
         ]
-        |> List.map (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
-        |> ignore
+        |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
 
 
     [<TestMethod>]
@@ -456,8 +448,7 @@ type TestClassic () =
                 ast.Tuple [ast.Int 10; ast.Int 20; ast.Bool false]
             ], Value.Tuple [I 11; I 25; B true])
         ]
-        |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
-        |> ignore
+        |> List.iter (fun (e, v) -> this.TestExpression (e, v, ctx))
 
         [
             // 0 + 
@@ -489,8 +480,7 @@ type TestClassic () =
                 ast.Tuple [ast.Int 1; ast.Int 2]
             ], "Invalid operands: [1, 2] and (1, 2)")
         ]
-        |> List.map (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
-        |> ignore
+        |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
 
 
 
@@ -556,8 +546,7 @@ type TestClassic () =
                 ast.Not(ast.Equals(ast.Tuple [ast.Int 1; ast.Int 2; ast.Int 3], ast.Id("t1")))
             ], Value.Bool(true))
         ]
-        |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
-        |> ignore
+        |> List.iter (fun (e, v) -> this.TestExpression (e, v, ctx))
 
         [
             (ast.Equals(
@@ -575,8 +564,7 @@ type TestClassic () =
                 ast.Int 4
             ], "Invalid expression: True and 4")
         ]
-        |> List.map (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
-        |> ignore
+        |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
 
 
     [<TestMethod>]
@@ -616,8 +604,7 @@ type TestClassic () =
                 ast.Tuple [ast.Int 5; ast.Int 6; ast.Int 12]
             ], [ast.Int 0; ast.Int 2]), Value.Set (SET [[I 1;I 10];[I 3;I 11];[I 5;I 12]]))
         ]
-        |> List.map (fun (e, v) -> this.TestExpression (e, v, ctx))
-        |> ignore
+        |> List.iter (fun (e, v) -> this.TestExpression (e, v, ctx))
 
         [
             // 1.0
@@ -627,8 +614,7 @@ type TestClassic () =
             // (2,1).[0,3]
             (ast.Project(ast.Tuple [ast.Int 2;ast.Int 1], [ast.Int 0; ast.Int 3]), "Index in project outside of range")
         ]
-        |> List.map (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
-        |> ignore
+        |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
 
     [<TestMethod>]
     member this.ReturnStmt() =
@@ -654,8 +640,7 @@ type TestClassic () =
                 ast.Return(ast.Id("b1"))
             ]),  Value.Tuple([I 3]))
         ]
-        |> List.map testOne
-        |> ignore
+        |> List.iter testOne
 
         // Make sure errors are correctly reported:
         let invalid = ast.Return(ast.Id("foo"))
@@ -702,8 +687,7 @@ type TestClassic () =
                 ast.Let("g3", ast.Id("i1"))
             ]),  ("g2", Value.Int 23))
         ]
-        |> List.map testOne
-        |> ignore
+        |> List.iter testOne
 
         // Make sure errors are correctly reported:
         let invalid = ast.Let("foo", ast.Id("foo"))
@@ -734,8 +718,7 @@ type TestClassic () =
                     ast.Return (ast.Int 1)), 
                 Value.Int 1)
         ]
-        |> List.map testOne
-        |> ignore
+        |> List.iter testOne
 
         // Make sure errors are correctly reported:
         let invalid = ast.If (ast.Int 4, ast.Return (ast.Int -1),ast.Return (ast.Int 1))

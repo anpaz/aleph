@@ -5,6 +5,8 @@ open aleph.compiler.ast
 
 module Classic =
 
+    let random = System.Random()
+
     //----------------------------------
     // Expression evaluation
     //----------------------------------
@@ -99,6 +101,8 @@ module Classic =
             evalMultiply(values, ctx)
         | Expression.Project (values, indices) ->
             evalProject (values, indices, ctx)
+        | Expression.Measure ket ->
+            evalMeasure (ket, ctx)
 
         // TODO: 
         | _ -> Error ($"{e} is not implemented")
@@ -380,6 +384,19 @@ module Classic =
             with
             | :? System.ArgumentException -> $"Index in project outside of range" |> Error
         | Error msg -> $"Invalid indices: {msg}" |> Error
+
+
+    and private evalMeasure (value: Expression, ctx: Context) =
+        eval (value, ctx)
+        ==> function
+        | Ket items, ctx ->
+            let i = int (random.NextDouble() * (double (items.Count)))
+            let s = (items |> Set.toSeq |> Seq.item i)
+            match s with
+            | [B b] -> (Bool b, ctx) |> Ok
+            | [I i] -> (Int i, ctx) |> Ok
+            | s -> (Tuple s, ctx) |> Ok
+        | v, _ -> $"Measure not available for {v}" |> Error
 
     //----------------------------------
     // Statement evaluation
