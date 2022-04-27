@@ -212,7 +212,7 @@ module Classic =
                 | (Tuple [(I s)], Int e)
                 | (Tuple [(I s)], Tuple [(I e)]) -> createRange s e ctx
                 | _ ->
-                    $"Invalid value for a range start/end: {start}/{stop}" |> Error
+                    $"Invalid value for a range start..end: {start}..{stop}" |> Error
 
 
     and private evalEquals (left : Expression, right : Expression, ctx: Context) = 
@@ -285,7 +285,7 @@ module Classic =
                     | Result.Error msg -> Error msg)
             | [], [] ->
                 [] |> Ok
-            | _ -> Error "Tuples must have the same size"
+            | _ -> Error "tuples must have the same size"
         let next (acc: Result<Value * Context,string>) (e: Expression) =
             acc 
             ==> fun (left, ctx) ->
@@ -295,17 +295,19 @@ module Classic =
                     | Bool l, Bool r ->
                         match (op (B l) (B r)) with
                         | Ok (B x) -> (Bool x, ctx) |> Ok
-                        | _ ->  $"Cannot evaluate {l} + {r}" |> Error
+                        | Ok (I x) -> (Int x, ctx) |> Ok
+                        | Error msg -> $"Cannot evaluate: {msg}" |> Error
                     | Int l, Int r ->
                         match (op (I l) (I r)) with
+                        | Ok (B x) -> (Bool x, ctx) |> Ok
                         | Ok (I x) -> (Int x, ctx) |> Ok
-                        | _ ->  $"Cannot evaluate {l} + {r}" |> Error
+                        | Error msg -> $"Cannot evaluate: {msg}" |> Error
                     | Tuple l, Tuple r ->
                         match evalTuple l r with
                         | Ok s -> (Tuple s, ctx) |> Ok
-                        | Error msg -> $"Cannot add tuple {msg}" |> Error
+                        | Error msg -> $"Cannot evaluate: {msg}" |> Error
                     | _ -> 
-                        $"Invalid expression: {left} and {right}" |> Error
+                        $"Invalid operands: {left} and {right}" |> Error
 
         if values.Length < 2 then
             $"Need at least two operands, received: {values.Length}" |> Error
@@ -320,7 +322,7 @@ module Classic =
             | B false, B true -> B true |> Ok
             | B _, B _ -> B false |> Ok
             | I l, I r -> I (l + r) |> Ok
-            | _ -> $"Tuple elements must have be of the same type: {l} != {r}." |> Error
+            | _ -> $"tuple elements must have be of the same type: {l} != {r}" |> Error
         evalArithmetic (values, ctx) add
 
     and private evalMultiply (values: Expression list, ctx: Context) =
@@ -328,7 +330,7 @@ module Classic =
             match (l, r) with
             | B l, B r -> B (l && r) |> Ok
             | I l, I r -> I (l * r) |> Ok
-            | _ -> $"Tuple elements must have be of the same type: {l} != {r}." |> Error
+            | _ -> $"tuple elements must have be of the same type: {l} != {r}" |> Error
         evalArithmetic (values, ctx) multiply
 
     and private evalLessthan (left : Expression, right : Expression, ctx: Context) = 

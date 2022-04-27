@@ -17,11 +17,11 @@ type TestClassic () =
             Assert.AreEqual(expected, msg)
             Assert.Fail()
         
-    member this.TestInvalidExpression (e, ?ctx)=
+    member this.TestInvalidExpression (e, expected, ?ctx)=
         let ctx = defaultArg ctx Map.empty
         match eval (e, ctx)  with
-        | Result.Error(_) -> 
-            Assert.IsTrue(true)
+        | Result.Error actual -> 
+            Assert.AreEqual(expected, actual)
         | Result.Ok (v, _) ->
             Assert.AreEqual($"ERROR for {e}", $"Expression returned: {v}")
 
@@ -64,10 +64,10 @@ type TestClassic () =
             this.TestExpression(ast.Id(i), ctx.[i], ctx)
 
         // Some negative cases too:
-        this.TestInvalidExpression(ast.Id("i1"), Map.empty)
+        this.TestInvalidExpression(ast.Id("i1"), "Unknown variable: i1", Map.empty)
 
         Assert.IsFalse(ctx.ContainsKey "foo")
-        this.TestInvalidExpression(ast.Id("foo"), ctx)
+        this.TestInvalidExpression(ast.Id("foo"), "Unknown variable: foo", ctx)
 
 
     [<TestMethod>]
@@ -138,9 +138,9 @@ type TestClassic () =
             // TODO: this should fail: ( [1,2,3] )
             //ast.Tuple [ ast.Set [ast.Int 1; ast.Int 2; ast.Int 3] ]
             // Tuple with invalid id
-            ast.Tuple [ ast.Id("foo") ]
+            (ast.Tuple [ ast.Id("foo") ], "Unknown variable: foo")
         ]
-        |> List.map (fun n -> this.TestInvalidExpression (n, ctx))
+        |> List.map (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
         |> ignore
 
 
@@ -267,17 +267,18 @@ type TestClassic () =
         // ---------------------------------- //
         [
             //[1, 2, (2,3)]
-            ast.Set [
+            (ast.Set [
                 ast.Int(1)
                 ast.Int(2)
                 ast.Tuple([ ast.Int(2); ast.Int(3) ])
-            ]
+            ], "All tuples must have the same length. [I 1] != [I 2; I 3]")
             //[1, (2, 3)] : Uneven lenghts
-            ast.Set [
+            (ast.Set [
                 ast.Int(1)
-                ast.Tuple([ast.Int(2);ast.Int(3)]) ]
+                ast.Tuple([ast.Int(2);ast.Int(3)]) 
+            ], "All tuples must have the same length. [I 1] != [I 2; I 3]")
             //[ [(0,0), (1,2)], [(2, 3, 4)] ] : Uneven embeded lenghts
-            ast.Set [
+            (ast.Set [
                 ast.Set [
                     ast.Tuple([ast.Int(0); ast.Int(0)])
                     ast.Tuple([ast.Int(1); ast.Int(2)])
@@ -285,15 +286,15 @@ type TestClassic () =
                 ast.Set[
                     ast.Tuple([ast.Int(2); ast.Int(3); ast.Int(4)])
                 ]
-            ]
+            ], "All tuples must have the same length. [I 0; I 0] != [I 2; I 3; I 4]")
             //[ | 1, 2> ] : Set of kets
-            ast.Set [
+            (ast.Set [
                 ast.Ket [
                     ast.Int(1)
                     ast.Int(2) ]
-            ]
+            ], "Invalid value for a set element: | 1, 2 >")
         ]
-        |> List.map (fun n -> this.TestInvalidExpression (n, ctx))
+        |> List.map (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
         |> ignore
 
 
@@ -374,16 +375,16 @@ type TestClassic () =
         [
             //  given k1 = | (F, 5), (T,12) >
             // | k1 >
-            ast.Ket [ast.Id("k1")]
+            (ast.Ket [ast.Id("k1")], "Invalid value for a set element: | (0, 1, 3, False, 5), (10, 11, 13, True, 25) >")
 
             //| | 1, 2> >
-            ast.Ket [
+            (ast.Ket [
                 ast.Ket [
                     ast.Int(1)
                     ast.Int(2) ]
-            ]
+            ], "Invalid value for a set element: | 1, 2 >")
         ]
-        |> List.map (fun n -> this.TestInvalidExpression (n, ctx))
+        |> List.map (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
         |> ignore
 
 
@@ -411,11 +412,11 @@ type TestClassic () =
 
         [
             // t1 .. 10: Invalid start type
-            ast.Range (ast.Id("t1"), ast.Int(0))
+            (ast.Range (ast.Id("t1"), ast.Int(0)), "Invalid value for a range start..end: (False, 5)..0")
             // 10 .. t1: Invalid start type
-            ast.Range (ast.Id("t1"), ast.Int(0))
+            (ast.Range (ast.Int(10), ast.Id("t1")), "Invalid value for a range start..end: 10..(False, 5)")
         ]
-        |> List.map (fun n -> this.TestInvalidExpression (n, ctx))
+        |> List.map (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
         |> ignore
 
 
@@ -461,22 +462,35 @@ type TestClassic () =
 
         [
             // 0 + 
-            ast.Add [ast.Int 0]
+            (ast.Add [ast.Int 0], "Need at least two operands, received: 1")
             // *
-            ast.Multiply []
+            (ast.Multiply [], "Need at least two operands, received: 0")
             // 0 + false
-            ast.Add [ast.Int 0; ast.Bool false]
+            (ast.Add [ast.Int 0; ast.Bool false], "Invalid operands: 0 and False")
             // true + 1 
-            ast.Add [ast.Bool true; ast.Int 1]
+            (ast.Add [ast.Bool true; ast.Int 1], "Invalid operands: True and 1")
             // (true, 1) + (true, true)
-            ast.Add [ast.Tuple [ast.Bool true; ast.Int 1]; ast.Tuple [ast.Bool true; ast.Bool false]]
+            (ast.Add [
+                ast.Tuple [ast.Bool true; ast.Int 1]
+                ast.Tuple [ast.Bool true; ast.Bool false]
+            ], "Cannot evaluate: tuple elements must have be of the same type: I 1 != B false")
             // (true, 1) + (2, 4)
-            ast.Add [ast.Tuple [ast.Bool true; ast.Int 1]; ast.Tuple [ast.Int 2; ast.Int 4]]
+            (ast.Add [
+                ast.Tuple [ast.Bool true; ast.Int 1]
+                ast.Tuple [ast.Int 2; ast.Int 4]
+            ], "Cannot evaluate: tuple elements must have be of the same type: B true != I 2")
             // (1, 1, 3) + (2, 4)
-            ast.Add [ast.Tuple [ast.Int 1; ast.Int 1; ast.Int 3]; ast.Tuple [ast.Int 2; ast.Int 4]]
-
+            (ast.Add [
+                ast.Tuple [ast.Int 1; ast.Int 1; ast.Int 3]
+                ast.Tuple [ast.Int 2; ast.Int 4]
+            ], "Cannot evaluate: tuples must have the same size")
+            // [1, 2] + (1, 2)
+            (ast.Add [
+                ast.Set [ast.Int 1; ast.Int 2]
+                ast.Tuple [ast.Int 1; ast.Int 2]
+            ], "Invalid operands: [1, 2] and (1, 2)")
         ]
-        |> List.map (fun n -> this.TestInvalidExpression (n, ctx))
+        |> List.map (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
         |> ignore
 
 
@@ -527,6 +541,13 @@ type TestClassic () =
                 ]
             ), Value.Bool(true))
 
+            // true and false and 4
+            (ast.And [
+                ast.Bool true
+                ast.Bool false
+                ast.Int 4
+            ], Value.Bool false)
+
             // i1 == 3 and ! false and (7) < 10 and (false, 5) == t1 and not ((1,2,3) == t1) -> true
             (ast.And [
                 ast.Equals (ast.Id("i1"), ast.Int(3))
@@ -540,16 +561,22 @@ type TestClassic () =
         |> ignore
 
         [
-            ast.Equals(
+            (ast.Equals(
                 ast.Set [ast.Bool false; ast.Int 3],
                 ast.Ket [ast.Bool false; ast.Int 3]
-            )
-            ast.Equals(
-                ast.Ket [ast.Bool false; ast.Int 3],
+            ), "Invalid expression: [False, 3] == | False, 3 >")
+            (ast.Or [
                 ast.Ket [ast.Bool false; ast.Int 3]
-            )
+                ast.Ket [ast.Bool false; ast.Int 3]
+            ], "Invalid expression: | False, 3 > or | False, 3 >")
+            (ast.Not (ast.Int 4), "Invalid expression: !4")
+            (ast.And [
+                ast.Bool true
+                ast.Bool true
+                ast.Int 4
+            ], "Invalid expression: True and 4")
         ]
-        |> List.map (fun n -> this.TestInvalidExpression (n, ctx))
+        |> List.map (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
         |> ignore
 
 
