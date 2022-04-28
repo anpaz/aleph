@@ -40,8 +40,8 @@ type Statement =
     | Let of id: string * value: Expression
     | If of cond: Expression * t: Statement * f: Statement
     | For of id: string * enumeration: Expression * body : Statement
-    | DefClassic of id: string * arguments: string * body: Statement
-    | DefQuantum of id: string * arguments: string * ket : string * body: Statement
+    | DefClassic of id: string * arguments: string list * body: Statement
+    | DefQuantum of id: string * arguments: string list * ket : string * body: Statement
 
     // For debugging:
     | Print of string * Expression list

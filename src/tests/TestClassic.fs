@@ -822,3 +822,18 @@ type TestClassic () =
         | Continue _ -> Assert.AreEqual("", "Statement returned void.")
         | Result (actual, _) -> Assert.AreEqual("", $"Statement returned {actual}. Expecting error.")
 
+
+    [<TestMethod>]
+    member this.ClassicStmt() =
+        let ctx = this.Context
+
+        let program = ast.Block [
+            ast.DefClassic ("echo", ["v1"], (ast.Return (ast.Id "v1")))
+            ast.Return (ast.CallClassic ("echo", [ast.Int 5]))
+        ]
+        
+        match run (program,Map.empty) with
+        | Continue _ -> Assert.AreEqual("", "Statement returned void.")
+        | Fail (msg, _) -> Assert.AreEqual("", $"Error on stmt 'echo': {msg}")
+        | Result (actual, _) -> Assert.AreEqual(Value.Int 5, actual)
+            

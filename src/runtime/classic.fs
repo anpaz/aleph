@@ -481,6 +481,12 @@ module Classic =
             | Result.Ok (v, ctx) -> ctx.Add (id, v) |> Continue
             | Result.Error msg -> (msg, ctx) |> Fail
 
+        | DefClassic (name, args, body) ->
+            ctx.Add (name, Classic (args, body)) |> Continue
+
+        | DefQuantum (name, args, ket, body) ->
+            ctx.Add (name, Quantum (args, ket, body)) |> Continue
+
         | If (cond, t, f) ->
             match (eval (cond, ctx)) with
             | Result.Ok (Bool true, ctx) -> run (t, ctx)
