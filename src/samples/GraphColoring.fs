@@ -48,10 +48,10 @@ let program = (Block [
         arguments=["edge"],
         ket="nodes_color",
         body= Block [
-            Let ("x", Item(Id("edge"), Int(0)));
-            Let ("y", Item(Id("edge"), Int(1)));
-            Let ("color1", Item(Id("nodes_color"), Id("x")));
-            Let ("color2", Item(Id("nodes_color"), Id("y")));
+            Let ("x", Project(Id("edge"), [Int(0)]));
+            Let ("y", Project(Id("edge"), [Int(1)]));
+            Let ("color1", Project(Id("nodes_color"), [Id("x")]));
+            Let ("color2", Project(Id("nodes_color"), [Id("y")]));
             Return (Equals(Id("color1"), Id("color2")))
         ]
     );
@@ -64,7 +64,7 @@ let program = (Block [
     //            false
     //     true
     DefQuantum (
-        id= "classify_combination", 
+        id= "classify_combinations", 
         arguments=["edges"],
         ket="nodes_color",
         body= Block [

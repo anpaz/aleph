@@ -7,6 +7,6 @@ let main argv =
     match result with
     | Continue _ -> printfn "Missing return statement"
     | Result (v, _) ->  printfn $"result: {v}"
-    | Error (msg, _) -> printfn $"\n!! Failed: {msg} !!"
+    | Fail (msg, _) -> printfn $"\n!! Failed: {msg} !!"
 
     Utils.wrapup

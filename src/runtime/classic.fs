@@ -117,35 +117,36 @@ module Classic =
             evalSolve (ket, ctx)
         | Expression.CallClassic (name, args) ->
             evalCallClassic (name, args, ctx)
+        | Expression.CallQuantum (name, args, ket) ->
+            evalCallQuantum (name, args, ket, ctx)
 
         // TODO: 
         | _ -> Error ($"{e} is not implemented")
 
+    and private join (left: Value) (right: Value) T ctx =
+        let getSet = function
+            | Bool b -> SET [[B b]] |> Some
+            | Int i -> SET [[I i]] |> Some
+            | Tuple r -> SET [r] |> Some
+            | Set s2 -> s2 |> Some
+            | Ket k2 -> k2 |> Some
+            | _ -> None
+        let set1 = getSet left
+        let set2 = getSet right
+        match (set1, set2) with
+        | (Some set1, Some set2) ->
+            let result = 
+                seq {
+                    for i in set1 do
+                        for j in set2 ->
+                            i @ j
+                }
+                |> Seq.toList
+                |> T
+            (result, ctx) |> Ok
+        | _ ->
+            $"Not a valid join expression: ({left} , {right})" |> Error
     and private evalTuple (values: Expression list, ctx: Context) = 
-        let join (left: Value) (right: Value) (T : TUPLE list -> Value) ctx =
-            let getSet = function
-                | Bool b -> SET [[B b]] |> Some
-                | Int i -> SET [[I i]] |> Some
-                | Tuple r -> SET [r] |> Some
-                | Set s2 -> s2 |> Some
-                | Ket k2 -> k2 |> Some
-                | _ -> None
-            let set1 = getSet left
-            let set2 = getSet right
-            match (set1, set2) with
-            | (Some set1, Some set2) ->
-                let result = 
-                    seq {
-                        for i in set1 do
-                            for j in set2 ->
-                                i @ j
-                    }
-                    |> Seq.toList
-                    |> T
-                (result, ctx) |> Ok
-            | _ ->
-                $"Not a valid join expression: ({left} , {right})" |> Error
-
         let append (previous: Result<Value * Context,string>) (next: Expression) =
             previous 
             ==> fun (left, ctx) ->
@@ -439,29 +440,76 @@ module Classic =
             | Error msg -> msg |> Error
         | v, _ -> $"Solve not available for {v}" |> Error
 
+    and private addArgsToContext (argNames: string list) (args: Expression list) (ctx:Context) =
+        let one (previous: Result<Value list * Context, string>)  arg =
+            previous 
+            ==> (fun (previous, ctx) ->
+                eval (arg, ctx)
+                ==> (fun (arg, ctx) -> (previous @ [arg], ctx) |> Ok))
+
+        if argNames.Length = args.Length then
+            List.fold one (([], ctx) |> Ok) args
+            ==> (fun (args, ctx) ->
+                let args = List.zip argNames args |> Map
+                let ctx =  Map.fold (fun acc key value -> Map.add key value acc) ctx args
+                ctx |> Ok)
+        else
+            $"Invalid arguments: expects {argNames.Length}, got {args.Length}" |> Error
+
+    and private evalBody (body : Statement, ctx) =
+        match run (body, ctx) with
+        | Result (v, ctx) -> (v, ctx) |> Ok
+        | Continue ctx -> (Value.Tuple [], ctx) |> Ok
+        | Fail (msg, ctx) -> msg |> Error
+
     and private evalCallClassic (name: string, args: Expression list, ctx: Context) =
-        let evalArgs (previous: Result<Value list * Context, string>)  e =
-            previous |> Result.bind (fun (previous, ctx) ->
-                match eval (e, ctx) with
-                | Ok (value, ctx) -> (previous @ [value], ctx) |> Ok
-                | Error msg -> msg |> Error
-            )
-             
-        match (ctx.TryFind name) with
+        match ctx.TryFind name with
         | Some (Classic (argNames, body)) ->
-            if argNames.Length = args.Length then
-                List.fold evalArgs (([],ctx) |> Ok) args
-                |> Result.bind (fun (args, ctx) ->
-                    let args = List.zip argNames args |> Map
-                    let ctx =  Map.fold (fun acc key value -> Map.add key value acc) ctx args
-                    match run (body, ctx) with
-                    | Result (v, ctx) -> (v, ctx) |> Ok
-                    | Continue ctx -> (Value.Tuple [], ctx) |> Ok
-                    | Fail (msg, ctx) -> msg |> Error)
-            else
-                $"Classic {name} expects {argNames.Length} arguments" |> Error
-        | Some _ -> $"Invalid classic name: {name}" |> Error
+            addArgsToContext argNames args ctx
+            ==> (fun ctx -> evalBody (body, ctx))
+        | Some _ -> $"Undefined classic: {name}" |> Error
         | None ->  $"Undefined classic: {name}" |> Error
+
+
+    and private evalCallQuantum (name: string, args: Expression list, ket: Expression, ctx: Context) =
+        match ctx.TryFind name with
+        | Some (Quantum (argNames, ketName, body)) ->
+            // First, add arguments to variable context:
+            addArgsToContext argNames args ctx
+            ==> (fun ctx ->
+                // If success,
+                // check that the ket argumetn is valid and that it maps to a Ket:
+                eval (ket, ctx)
+                ==> function
+                    | Ket ket, ctx ->
+                        // Evaluates a single tuple on a Ket.
+                        // It evaluates successfully, it adds it to the resulting Set:
+                        let one (set:Result<SET,string>) (k: TUPLE) =
+                            // First check if there have been errors so far:
+                            set
+                            ==> (fun set -> 
+                                // Map the input to an actual Value, and add it to the context with
+                                // the ket argument name:
+                                let x = Tuple k
+                                let ctx' = ctx.Add (ketName, x)
+                                // Eval Body
+                                evalBody (body, ctx')
+                                ==> (fun (y, ctx') ->
+                                    // If successful, create the resulting Tuple
+                                    // by joining the input ket (x) with the ouput (y):
+                                    join x y id ctx'
+                                    ==> (fun (items, _) ->
+                                        // If join successful, add all items to the set
+                                        // (needs to use List.fold for this)
+                                        // Finally return Ok
+                                        List.fold (fun acc value -> Set.add value acc) set items 
+                                        |> Ok)))
+                        Set.fold one (SET [] |> Ok) ket
+                        ==> (fun set -> (Ket set, ctx) |> Ok)
+                    | (v,_) -> $"Expecting ket value, got: {v}" |> Error)
+        | Some _ -> $"Undefined quantum: {name}" |> Error
+        | None ->  $"Undefined quantum: {name}" |> Error
+
 
     and run (p: Statement, ctx: Context) : StmtResult =
         match p with

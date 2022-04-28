@@ -654,14 +654,104 @@ type TestClassic () =
         |> List.iter (fun (e, v) -> this.TestExpression (e, v, ctx))
 
         [
-            // Solve 1
-            (ast.CallClassic("plusone", []), "Classic plusone expects 1 arguments")
-            (ast.CallClassic("plusone", [ast.Int 1; ast.Int 1]), "Classic plusone expects 1 arguments")
+            (ast.CallClassic("plusone", []), "Invalid arguments: expects 1, got 0")
+            (ast.CallClassic("plusone", [ast.Int 1; ast.Int 1]), "Invalid arguments: expects 1, got 2")
             (ast.CallClassic("plusone", [ast.Id "k1"]), "Invalid operands: | (0, 1, 3, False, 5), (10, 11, 13, True, 25) > and 1")
             (ast.CallClassic("plusone", [ast.Tuple [ast.Int 3; ast. Int 10]]), "Invalid operands: (3, 10) and 1")
             (ast.CallClassic("foo", [ast.Id "t1"]), "Undefined classic: foo")
-            (ast.CallClassic("t1", [ast.Id "i1"]), "Invalid classic name: t1")
+            (ast.CallClassic("t1", [ast.Id "i1"]), "Undefined classic: t1")
 
+        ]
+        |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
+
+
+    [<TestMethod>]
+    member this.CallQuantumExpressions() =
+        let ctx = 
+            this.Context
+                .Add("void", Value.Quantum ([], "k", ast.Skip))
+                .Add("colors", Value.Quantum ([], "k", ast.Return (ast.Tuple[ast.Int 1;ast.Int 2; ast.Int 3])))
+                .Add("append", Value.Quantum (["a"], "k", ast.Return (ast.Id "a")))
+                .Add("shadow", Value.Quantum (["i1"], "k1", ast.Return (ast.Add [ast.Id "k1"; ast.Id "i1"])))
+                .Add("qone", Value.Quantum ([], "k1", ast.Return (ast.CallClassic ("plusone", [ast.Project (ast.Id "k1", [ast.Int 0])]))))
+                //TODO: .Add("last", Value.Quantum ([], "k1", ast.Return (ast.Project (ast.Id "k1", [ast.Int -1]))))
+
+        let empty = ast.Ket []
+        let k1 = ast.Ket [ast.Int 0]
+        let k3 = ast.Ket [ast.Int 0; ast.Int 1; ast.Int 2]
+        let tuples = ast.Ket [
+            ast.Tuple [ast.Int 0; ast.Bool true]
+            ast.Tuple [ast.Int 1; ast.Bool false]
+            ast.Tuple [ast.Int 2; ast.Bool true]
+        ]
+        let triples = ast.Ket [
+            ast.Tuple [ast.Int 0; ast.Int 0; ast.Bool true]
+            ast.Tuple [ast.Int 1; ast.Int 1; ast.Bool false]
+            ast.Tuple [ast.Int 2; ast.Int 2; ast.Bool true]
+        ]
+
+        [
+            // void() |> -> ()
+            (ast.CallQuantum("void", [], empty), Value.Ket (SET []))
+            // void() k1 -> |0>
+            (ast.CallQuantum("void", [], k1), Value.Ket (SET [[I 0]]))
+            
+            // colors() empty -> |>
+            (ast.CallQuantum("colors", [], empty), Value.Ket (SET []))
+            // colors() k1 -> |(0, 1, 2, 3)>
+            (ast.CallQuantum("colors", [], k1), Value.Ket (SET [[I 0; I 1; I 2; I 3]]))
+            // colors() k3 -> |(0,1, 2, 3), (1, 1, 2, 3), (2, 1, 2, 3)>
+            (ast.CallQuantum("colors", [], k3), Value.Ket (SET [
+                [I 0; I 1; I 2; I 3]
+                [I 1; I 1; I 2; I 3]
+                [I 2; I 1; I 2; I 3]
+            ]))
+            (ast.CallQuantum("colors", [], tuples), Value.Ket (SET [
+                [I 0; B true;  I 1; I 2; I 3]
+                [I 1; B false; I 1; I 2; I 3]
+                [I 2; B true;  I 1; I 2; I 3]
+            ]))
+
+            
+            // shadow(10) k3 -> | (0,10), (1,11), (2,12) >
+            (ast.CallQuantum("shadow", [ast.Int 10], k3), Value.Ket (SET [[I 0; I 10]; [I 1; I 11]; [I 2; I 12]]))
+
+            // append(true) empty -> |>
+            (ast.CallQuantum("append", [ast.Bool true], empty), Value.Ket (SET []))
+            // append( (false, false) ) k1 -> |(0, false, false)>
+            (ast.CallQuantum("append", [ast.Tuple [ast.Bool false; ast.Bool false]], k1), Value.Ket (SET [
+                [I 0; B false; B false]
+            ]))
+            // append( (false, false) ) k3 -> |(0, false, false), (1, false, false), (2, false, false)>
+            (ast.CallQuantum("append", [ast.Tuple [ast.Bool false; ast.Bool false]], k3), Value.Ket (SET [
+                [I 0; B false; B false]
+                [I 1; B false; B false]
+                [I 2; B false; B false]
+            ]))
+            // append( [false, false, true] ) tuples -> |(0,true,false), (0,true,true), (1,false,false), (1,false, true), (2,true,false) (2,true,true)>
+            (ast.CallQuantum("append", [ast.Set [ast.Bool false; ast.Bool false; ast.Bool true]], tuples), Value.Ket (SET [
+                [I 0; B true; B false]
+                [I 0; B true; B true]
+                [I 1; B false; B false]
+                [I 1; B false; B true]
+                [I 2; B true; B false]
+                [I 2; B true; B true]
+            ]))
+
+            // qone() k3 -> | (0,1), (1,2), (2,3) >
+            (ast.CallQuantum("qone", [], k3), Value.Ket (SET [[I 0; I 1]; [I 1; I 2]; [I 2; I 3]]))
+
+            // qone() tuples -> | (0,true,1), (1,false,2), (2,true,3) >
+            (ast.CallQuantum("qone", [], k3), Value.Ket (SET [[I 0; I 1]; [I 1; I 2]; [I 2; I 3]]))
+        ]
+        |> List.iter (fun (e, v) -> this.TestExpression (e, v, ctx))
+
+        [
+            (ast.CallQuantum("append", [], empty), "Invalid arguments: expects 1, got 0")
+            (ast.CallQuantum("append", [ast.Int 1; ast.Int 1], empty), "Invalid arguments: expects 1, got 2")
+            (ast.CallQuantum("foo", [ast.Id "t1"], empty), "Undefined quantum: foo")
+            (ast.CallQuantum("t1", [ast.Id "i1"], empty), "Undefined quantum: t1")
+            (ast.CallQuantum("append", [ast.Id "i1"], ast.Int 777), "Expecting ket value, got: 777")
         ]
         |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
 
@@ -831,9 +921,35 @@ type TestClassic () =
             ast.DefClassic ("echo", ["v1"], (ast.Return (ast.Id "v1")))
             ast.Return (ast.CallClassic ("echo", [ast.Int 5]))
         ]
-        
+
         match run (program,Map.empty) with
         | Continue _ -> Assert.AreEqual("", "Statement returned void.")
         | Fail (msg, _) -> Assert.AreEqual("", $"Error on stmt 'echo': {msg}")
         | Result (actual, _) -> Assert.AreEqual(Value.Int 5, actual)
+            
+
+    [<TestMethod>]
+    member this.QuantumStmt() =
+        let ctx = this.Context
+
+        let program = ast.Block [
+            // let k1 = |1, 5, 10>
+            ast.Let("k1", ast.Ket [ast.Int 1; ast.Int 5; ast.Int 10])
+            // classic echo (v1) -> v1
+            ast.DefClassic ("echo", ["v1"], (ast.Return (ast.Id "v1")))
+            // quantum qecho (v3) k -> (v3, k)
+            ast.DefQuantum ("qecho", ["v3"], "k", (ast.Return (ast.Tuple [ast.Id "v3"; ast.Id "k"])))
+            // qecho (false) k1 -> | (false, 1), (false, 5), (false, 10) >
+            ast.Return (ast.CallQuantum ("qecho", [ast.Bool false], (ast.Id "k1")))
+        ]
+        let expected = Value.Ket (SET [ 
+            [I 1; B false; I 1]
+            [I 5; B false; I 5]
+            [I 10; B false; I 10]
+        ])
+        
+        match run (program,Map.empty) with
+        | Continue _ -> Assert.AreEqual("", "Statement returned void.")
+        | Fail (msg, _) -> Assert.AreEqual("", $"Error on stmt 'echo': {msg}")
+        | Result (actual, _) -> Assert.AreEqual(expected, actual)
             
