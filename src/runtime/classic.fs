@@ -120,9 +120,6 @@ module Classic =
         | Expression.CallQuantum (name, args, ket) ->
             evalCallQuantum (name, args, ket, ctx)
 
-        // TODO: 
-        | _ -> Error ($"{e} is not implemented")
-
     and private join (left: Value) (right: Value) T ctx =
         let getSet = function
             | Bool b -> SET [[B b]] |> Some
@@ -443,16 +440,16 @@ module Classic =
     and private addArgsToContext (argNames: string list) (args: Expression list) (ctx:Context) =
         let one (previous: Result<Value list * Context, string>)  arg =
             previous 
-            ==> (fun (previous, ctx) ->
+            ==> fun (previous, ctx) ->
                 eval (arg, ctx)
-                ==> (fun (arg, ctx) -> (previous @ [arg], ctx) |> Ok))
+                ==> fun (arg, ctx) -> (previous @ [arg], ctx) |> Ok
 
         if argNames.Length = args.Length then
             List.fold one (([], ctx) |> Ok) args
-            ==> (fun (args, ctx) ->
+            ==> fun (args, ctx) ->
                 let args = List.zip argNames args |> Map
                 let ctx =  Map.fold (fun acc key value -> Map.add key value acc) ctx args
-                ctx |> Ok)
+                ctx |> Ok
         else
             $"Invalid arguments: expects {argNames.Length}, got {args.Length}" |> Error
 
@@ -466,7 +463,7 @@ module Classic =
         match ctx.TryFind name with
         | Some (Classic (argNames, body)) ->
             addArgsToContext argNames args ctx
-            ==> (fun ctx -> evalBody (body, ctx))
+            ==> fun ctx -> evalBody (body, ctx)
         | Some _ -> $"Undefined classic: {name}" |> Error
         | None ->  $"Undefined classic: {name}" |> Error
 
@@ -476,7 +473,7 @@ module Classic =
         | Some (Quantum (argNames, ketName, body)) ->
             // First, add arguments to variable context:
             addArgsToContext argNames args ctx
-            ==> (fun ctx ->
+            ==> fun ctx ->
                 // If success,
                 // check that the ket argumetn is valid and that it maps to a Ket:
                 eval (ket, ctx)
@@ -487,26 +484,26 @@ module Classic =
                         let one (set:Result<SET,string>) (k: TUPLE) =
                             // First check if there have been errors so far:
                             set
-                            ==> (fun set -> 
+                            ==> fun set -> 
                                 // Map the input to an actual Value, and add it to the context with
                                 // the ket argument name:
                                 let x = Tuple k
                                 let ctx' = ctx.Add (ketName, x)
                                 // Eval Body
                                 evalBody (body, ctx')
-                                ==> (fun (y, ctx') ->
+                                ==> fun (y, ctx') ->
                                     // If successful, create the resulting Tuple
                                     // by joining the input ket (x) with the ouput (y):
                                     join x y id ctx'
-                                    ==> (fun (items, _) ->
+                                    ==> fun (items, _) ->
                                         // If join successful, add all items to the set
                                         // (needs to use List.fold for this)
                                         // Finally return Ok
                                         List.fold (fun acc value -> Set.add value acc) set items 
-                                        |> Ok)))
+                                        |> Ok
                         Set.fold one (SET [] |> Ok) ket
-                        ==> (fun set -> (Ket set, ctx) |> Ok)
-                    | (v,_) -> $"Expecting ket value, got: {v}" |> Error)
+                        ==> fun set -> (Ket set, ctx) |> Ok
+                    | (v,_) -> $"Expecting ket value, got: {v}" |> Error
         | Some _ -> $"Undefined quantum: {name}" |> Error
         | None ->  $"Undefined quantum: {name}" |> Error
 
@@ -542,8 +539,11 @@ module Classic =
             | Result.Ok (_, ctx) -> ($"Invalid condition: {cond}", ctx) |> Fail
             | Result.Error msg -> (msg,ctx) |> Fail
 
-        | _ ->
-            Fail ($"{p} is not implemented.", ctx)
+        | For (name, enumeration, body) ->
+            runFor (name, enumeration, body, ctx)
+
+        | Print (msg, values) ->
+            print (msg, values, ctx)
 
     and private runBlock (stmts, ctx) : StmtResult =
         match stmts with 
@@ -552,3 +552,40 @@ module Classic =
             ==>. fun ctx -> runBlock (rest, ctx)
         | [] ->
             Continue ctx
+
+    and private runFor (name, enumeration, body, ctx) =
+        match (eval (enumeration, ctx)) with
+        | Result.Ok (Tuple t, ctx) -> 
+            let iterate result next =
+                result ==>. fun ctx ->
+                    let ctx = 
+                        match next with 
+                        | B b -> ctx.Add (name, (Bool b))
+                        | I i -> ctx.Add (name, (Int i))
+                    run (body, ctx)
+            List.fold iterate (Continue ctx) t
+        | Result.Ok (Set s, ctx) -> 
+            let iterate result next =
+                result ==>. fun ctx ->
+                    let ctx = ctx.Add (name, Tuple next)
+                    run (body, ctx)
+            Set.fold iterate (Continue ctx) s
+        | Result.Ok (_, ctx) -> ($"Invalid enumeration: {enumeration}", ctx) |> Fail
+        | Result.Error msg -> (msg,ctx) |> Fail
+
+    and private print (msg, values, ctx) =
+        let iterate result next =
+            result 
+            ==> fun (result, ctx) ->
+                eval (next, ctx)
+                ==> fun (next, ctx) -> (result @ [ next.ToString() ], ctx) |> Ok
+        match List.fold iterate (([], ctx) |> Ok) values with
+        | Ok (values, ctx) ->
+            ([msg; (values |> String.concat "; ")] |> String.concat ": ")
+            |> printfn "%s" 
+            Continue ctx
+        | Error msg -> 
+            printfn "Error while printing: %s" msg
+            (msg, ctx) |> Fail
+
+    

@@ -33,21 +33,22 @@ let program = (Block [
         Tuple([Int(3); Int(1)]);
         Tuple([Int(2); Int(0)]);
     ]));
+    Print ("edges", [Id "edges"])
 
     // // checks if the coloring for the nodes x and y is invalid.
     // // invalid is when the 2 nodes of an edge have the same color.
-    // quantum is_invalid_edge_coloring(edge) nodes_color =>
-    //     let x = edge[0]
-    //     let y = edge[1]
-    //     let color1 = nodes_color[x]
-    //     let color2 = nodes_color[y]
+    // classic is_invalid_edge_coloring(edge, nodes_color) =>
+    //     let x = edge.0
+    //     let y = edge.1
+    //     let color1 = nodes_color.x
+    //     let color2 = nodes_color.y
     //     color1 == color2
     //
-    DefQuantum (
+    DefClassic (
         id= "is_invalid_edge_coloring", 
-        arguments=["edge"],
-        ket="nodes_color",
+        arguments=["edge"; "nodes_color"],
         body= Block [
+            //Print ("edge, nodes_color", [Id "edge"; Id "nodes_color"])
             Let ("x", Project(Id("edge"), [Int(0)]));
             Let ("y", Project(Id("edge"), [Int(1)]));
             Let ("color1", Project(Id("nodes_color"), [Id("x")]));
@@ -70,11 +71,9 @@ let program = (Block [
         body= Block [
             For ("e", Id("edges"), Block [
                 If (
-                    cond=CallQuantum(
+                    cond=CallClassic(
                         id="is_invalid_edge_coloring", 
-                        arguments=[Id("e")],
-                        ket=Id("nodes_color")
-                    ),
+                        arguments=[Id("e"); Id("nodes_color")]),
                     t=Return(Bool(false)),
                     f=Skip
                 )
@@ -86,11 +85,15 @@ let program = (Block [
     // // A ket with the color combination for all nodes. Each node is an item of a tuple.
     // let nodes_colors = | colors(), colors(), colors(), colors() >
     Let("nodes_colors", Ket [
-        CallClassic("colors", List.empty);
-        CallClassic("colors", List.empty);
-        CallClassic("colors", List.empty);
-        CallClassic("colors", List.empty);
+        Tuple [
+            CallClassic("colors", List.empty)
+            CallClassic("colors", List.empty)
+            CallClassic("colors", List.empty)
+            CallClassic("colors", List.empty)
+        ]
     ]);
+
+    Print ("nodes_colors", [Id "nodes_colors"])
 
     // // To find a valid coloring, solve the valid_combination oracle and
     // // measure the result
@@ -101,9 +104,21 @@ let program = (Block [
         ket=Id("nodes_colors")
     ));
 
-    // let solution = | solve(a) |
-    Let("solution", Measure((Solve(Id("a")))));
+    Print ("a", [Id "a"])
+    Print ("solve", [Solve (Id "a")])
+
+    // let s1 = | solve(a) |
+    Let("s1", Measure((Solve(Id("a")))));
+    Print ("s1", [Id "s1"])
+
+    // let s2 = | solve(a) |
+    Let("s2", Measure((Solve(Id("a")))));
+    Print ("s2", [Id "s2"])
+
+    // let s2 = | solve(a) |
+    Let("s3", Measure((Solve(Id("a")))));
+    Print ("s3", [Id "s3"])
 
     // solution
-    Return(Id("solution"))
+    Return(Id("s3"))
 ])
