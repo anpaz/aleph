@@ -405,14 +405,23 @@ module Classic =
         eval (value, ctx)
         ==> function
         | Ket items, ctx ->
-            let filter (t: TUPLE) =
-                match t.[t.Length - 1] with
-                | B b -> b
-                | I i -> i = -1
-            let trim (t: TUPLE) =
-                t |> List.rev |> List.tail |> List.rev
-            let selected = items |> Set.filter filter |> Set.map trim
-            (Ket selected, ctx) |> Ok
+            if items.Count > 0 then
+                let length = items.MinimumElement.Length
+                if (length < 2) then
+                    $"Solve expects kets of size > 2. Ket size: {length}" |> Error
+                else
+                    let filter (t: TUPLE) =
+                        match t.[t.Length - 1] with
+                        | B b -> b
+                        | I i -> i = -1
+                    let trim (t: TUPLE) =
+                        t |> List.rev |> List.tail |> List.rev
+                    items |> Set.filter filter |> Set.map trim |> Ok
+            else
+                Set.empty |> Ok
+            |> function
+            | Ok selected  -> (Ket selected, ctx) |> Ok
+            | Error msg -> msg |> Error
         | v, _ -> $"Solve not available for {v}" |> Error
 
     //----------------------------------
