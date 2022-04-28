@@ -38,6 +38,8 @@ type TestClassic () =
             [I  0; I  1; I  3; B false; I  5]
             [I 10; I 11; I 13; B true;  I 25]
         ])
+        // classic = plusone (a) -> a + 1
+        let plusone = Value.Classic (["a"], ast.Return (ast.Add([ast.Id "a"; ast.Int 1])))
 
         Map[ 
             ("i1", i1)
@@ -46,6 +48,7 @@ type TestClassic () =
             ("t2", t2)
             ("s1", s1)
             ("k1", k1)
+            ("plusone", plusone)
         ]
 
 
@@ -418,8 +421,8 @@ type TestClassic () =
         [
             // 0 + 1 -> 1
             (ast.Add [ast.Int 0; ast.Int 1], Value.Int 1)
-            // 0 + 1 + 2 + 4-> 7
-            (ast.Add [ast.Int 0; ast.Int 1; ast.Int 2; ast.Int 4], Value.Int 7)
+            // 0 + (1) + 2 + 4-> 7
+            (ast.Add [ast.Int 0; ast.Tuple[ast.Int 1]; ast.Int 2; ast.Int 4], Value.Int 7)
             
             // Boolean is + mod 2
             // f + t -> t
@@ -617,6 +620,52 @@ type TestClassic () =
         |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
 
 
+
+    [<TestMethod>]
+    member this.CallClassicExpressions() =
+        let ctx = 
+            this.Context
+                .Add("void", Value.Classic ([], ast.Skip))
+                .Add("colors", Value.Classic ([], ast.Return (ast.Tuple[ast.Int 1;ast.Int 2; ast.Int 3])))
+                .Add("toTuple", Value.Classic (["a"; "b"; "c"], ast.Return (ast.Tuple[ast.Id "a";ast.Id "b"; ast.Id "c"])))
+                .Add("shadow", Value.Classic (["i1"], ast.Return (ast.Id "i1")))
+
+        [
+            // void() -> ()
+            (ast.CallClassic("void", []), Value.Tuple [])
+            // colors() -> (1, 2, 3)
+            (ast.CallClassic("colors", []), Value.Tuple [I 1; I 2; I 3])
+            // shadow(21) -> 21
+            (ast.CallClassic("shadow", [ast.Int 21]), Value.Int 21)
+            // toTuple(10, i1 * 10, 20 == 25) -> (10, 20, true)
+            (ast.CallClassic("toTuple", [
+                ast.Int 10
+                ast.Multiply[ast.Id "i1"; ast.Int 10]
+                ast.Equals (ast.Int 20, ast.Int 25)
+            ]), Value.Tuple [I 10; I 30; B false])
+
+            // given i1 = 3
+            // given classic plusone (i1) -> i1 + 1
+            // plusone(i1 + 7) -> 11
+            (ast.CallClassic("plusone", [ast.Add [ast.Id "i1"; ast.Int 7]]), Value.Int 11)
+            // plusone (10) -> 11
+            (ast.CallClassic("plusone", [ast. Int 10]), Value.Int 11)
+        ]
+        |> List.iter (fun (e, v) -> this.TestExpression (e, v, ctx))
+
+        [
+            // Solve 1
+            (ast.CallClassic("plusone", []), "Classic plusone expects 1 arguments")
+            (ast.CallClassic("plusone", [ast.Int 1; ast.Int 1]), "Classic plusone expects 1 arguments")
+            (ast.CallClassic("plusone", [ast.Id "k1"]), "Invalid operands: | (0, 1, 3, False, 5), (10, 11, 13, True, 25) > and 1")
+            (ast.CallClassic("plusone", [ast.Tuple [ast.Int 3; ast. Int 10]]), "Invalid operands: (3, 10) and 1")
+            (ast.CallClassic("foo", [ast.Id "t1"]), "Undefined classic: foo")
+            (ast.CallClassic("t1", [ast.Id "i1"]), "Invalid classic name: t1")
+
+        ]
+        |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
+
+
     [<TestMethod>]
     member this.SolveExpressions() =
         let ctx = this.Context
@@ -669,7 +718,7 @@ type TestClassic () =
         let testOne (stmt, expected) =
             match run (stmt, ctx) with
             | Continue _ -> Assert.AreEqual("", "Statement returned void.")
-            | Error (msg, _) -> Assert.AreEqual("", $"Error on stmt '{stmt}': {msg}")
+            | Fail (msg, _) -> Assert.AreEqual("", $"Error on stmt '{stmt}': {msg}")
             | Result (actual, _) -> Assert.AreEqual(expected, actual)
             
         [
@@ -691,7 +740,7 @@ type TestClassic () =
         // Make sure errors are correctly reported:
         let invalid = ast.Return(ast.Id("foo"))
         match run (invalid, Map.empty) with
-        | Error (msg, _) -> Assert.AreEqual("Unknown variable: foo", msg)
+        | Fail (msg, _) -> Assert.AreEqual("Unknown variable: foo", msg)
         | Continue _ -> Assert.AreEqual("", "Statement returned void.")
         | Result (actual, _) -> Assert.AreEqual("", $"Statement returned {actual}. Expecting error.")
 
@@ -702,7 +751,7 @@ type TestClassic () =
 
         let testOne (stmt, (key, expected)) =
             match run (stmt, ctx) with
-            | Error (msg, _) -> Assert.AreEqual("", $"Error on key '{key}': {msg}")
+            | Fail (msg, _) -> Assert.AreEqual("", $"Error on key '{key}': {msg}")
             | Result (actual, _) -> Assert.AreEqual("", $"Statement return Result: {actual}.")
             | Continue ctx -> 
                 let actual = ctx[key]
@@ -738,7 +787,7 @@ type TestClassic () =
         // Make sure errors are correctly reported:
         let invalid = ast.Let("foo", ast.Id("foo"))
         match run (invalid, Map.empty) with
-        | Error (msg, _) -> Assert.AreEqual("Unknown variable: foo", msg)
+        | Fail (msg, _) -> Assert.AreEqual("Unknown variable: foo", msg)
         | Continue _ -> Assert.AreEqual("", "Statement returned void.")
         | Result (actual, _) -> Assert.AreEqual("", $"Statement returned {actual}. Expecting error.")
 
@@ -750,7 +799,7 @@ type TestClassic () =
         let testOne (stmt, expected) =
             match run (stmt, ctx) with
             | Continue _ -> Assert.AreEqual("", "Statement returned void.")
-            | Error (msg, _) -> Assert.AreEqual("", $"Error on stmt '{stmt}': {msg}")
+            | Fail (msg, _) -> Assert.AreEqual("", $"Error on stmt '{stmt}': {msg}")
             | Result (actual, _) -> Assert.AreEqual(expected, actual)
             
         [
@@ -769,7 +818,7 @@ type TestClassic () =
         // Make sure errors are correctly reported:
         let invalid = ast.If (ast.Int 4, ast.Return (ast.Int -1),ast.Return (ast.Int 1))
         match run (invalid, Map.empty) with
-        | Error (msg, _) -> Assert.AreEqual("Invalid condition: Int 4", msg)
+        | Fail (msg, _) -> Assert.AreEqual("Invalid condition: Int 4", msg)
         | Continue _ -> Assert.AreEqual("", "Statement returned void.")
         | Result (actual, _) -> Assert.AreEqual("", $"Statement returned {actual}. Expecting error.")
 

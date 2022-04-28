@@ -21,8 +21,8 @@ module Classic =
 
     type TUPLE = Literal list
     type SET = Set<TUPLE>
-    type CLASSIC = string * string list * Statement
-    type QUANTUM = string * string list * string * Statement
+    type CLASSIC = string list * Statement
+    type QUANTUM = string list * string * Statement
 
     type Value =
         | Bool      of bool
@@ -59,12 +59,22 @@ module Classic =
             | Ket k ->
                 let body = k |> printSetBody
                 "| " + body + " >"
-            | Classic (name, _, _) ->
-                "[" + name + "()]"
-            | Quantum (name, _, _, _) ->
-                "|" + name + "()>"
+            | Classic (args,  _) ->
+                "classic (" + (args |> String.concat ",") + ")"
+            | Quantum (args, ket, _) ->
+                "quantum (" + (args |> String.concat ",")  + ") " + ket
 
     type Context = Map<string, Value>
+
+    type StmtResult =
+        | Continue of ctx: Context
+        | Result of value: Value * ctx: Context
+        | Fail of msg: string * ctx: Context
+
+    let (==>.) (r: StmtResult) cont  =
+        match r with
+        | Continue ctx -> (cont ctx)
+        | _ -> r
 
     let (==>) (input: Result<'a,'b>) ok  =
         Result.bind ok input
@@ -105,6 +115,8 @@ module Classic =
             evalMeasure (ket, ctx)
         | Expression.Solve ket ->
             evalSolve (ket, ctx)
+        | Expression.CallClassic (name, args) ->
+            evalCallClassic (name, args, ctx)
 
         // TODO: 
         | _ -> Error ($"{e} is not implemented")
@@ -319,6 +331,9 @@ module Classic =
                         | Ok (B x) -> (Bool x, ctx) |> Ok
                         | Ok (I x) -> (Int x, ctx) |> Ok
                         | Error msg -> $"Cannot evaluate: {msg}" |> Error
+                    | Tuple [I l], Tuple [I r]
+                    | Tuple [I l], Int r
+                    | Int l, Tuple [I r]
                     | Int l, Int r ->
                         match (op (I l) (I r)) with
                         | Ok (B x) -> (Bool x, ctx) |> Ok
@@ -328,7 +343,7 @@ module Classic =
                         match evalTuple l r with
                         | Ok s -> (Tuple s, ctx) |> Ok
                         | Error msg -> $"Cannot evaluate: {msg}" |> Error
-                    | _ -> 
+                    | x, y -> 
                         $"Invalid operands: {left} and {right}" |> Error
 
         if values.Length < 2 then
@@ -424,21 +439,31 @@ module Classic =
             | Error msg -> msg |> Error
         | v, _ -> $"Solve not available for {v}" |> Error
 
-    //----------------------------------
-    // Statement evaluation
-    //----------------------------------
+    and private evalCallClassic (name: string, args: Expression list, ctx: Context) =
+        let evalArgs (previous: Result<Value list * Context, string>)  e =
+            previous |> Result.bind (fun (previous, ctx) ->
+                match eval (e, ctx) with
+                | Ok (value, ctx) -> (previous @ [value], ctx) |> Ok
+                | Error msg -> msg |> Error
+            )
+             
+        match (ctx.TryFind name) with
+        | Some (Classic (argNames, body)) ->
+            if argNames.Length = args.Length then
+                List.fold evalArgs (([],ctx) |> Ok) args
+                |> Result.bind (fun (args, ctx) ->
+                    let args = List.zip argNames args |> Map
+                    let ctx =  Map.fold (fun acc key value -> Map.add key value acc) ctx args
+                    match run (body, ctx) with
+                    | Result (v, ctx) -> (v, ctx) |> Ok
+                    | Continue ctx -> (Value.Tuple [], ctx) |> Ok
+                    | Fail (msg, ctx) -> msg |> Error)
+            else
+                $"Classic {name} expects {argNames.Length} arguments" |> Error
+        | Some _ -> $"Invalid classic name: {name}" |> Error
+        | None ->  $"Undefined classic: {name}" |> Error
 
-    type StmtResult =
-        | Continue of ctx: Context
-        | Result of value: Value * ctx: Context
-        | Error of msg: string * ctx: Context
-
-    let (==>.) (r: StmtResult) cont  =
-        match r with
-        | Continue ctx -> (cont ctx)
-        | _ -> r
-
-    let rec run (p: Statement, ctx: Context) : StmtResult =
+    and run (p: Statement, ctx: Context) : StmtResult =
         match p with
         | Skip -> 
             Continue ctx
@@ -446,7 +471,7 @@ module Classic =
         | Return expr ->
             match eval (expr, ctx) with
             | Result.Ok v -> Result v
-            | Result.Error msg -> Error (msg, ctx)
+            | Result.Error msg -> (msg, ctx) |> Fail
 
         | Block stmts -> 
             runBlock (stmts, ctx)
@@ -454,17 +479,17 @@ module Classic =
         | Let (id, e) ->
             match eval (e, ctx) with
             | Result.Ok (v, ctx) -> ctx.Add (id, v) |> Continue
-            | Result.Error msg -> Error (msg, ctx)
+            | Result.Error msg -> (msg, ctx) |> Fail
 
         | If (cond, t, f) ->
             match (eval (cond, ctx)) with
             | Result.Ok (Bool true, ctx) -> run (t, ctx)
             | Result.Ok (Bool false, ctx) -> run (f, ctx)
-            | Result.Ok (_, ctx) -> ($"Invalid condition: {cond}", ctx) |> Error
-            | Result.Error msg -> (msg,ctx) |> Error
+            | Result.Ok (_, ctx) -> ($"Invalid condition: {cond}", ctx) |> Fail
+            | Result.Error msg -> (msg,ctx) |> Fail
 
         | _ ->
-            Error ($"{p} is not implemented.", ctx)
+            Fail ($"{p} is not implemented.", ctx)
 
     and private runBlock (stmts, ctx) : StmtResult =
         match stmts with 
