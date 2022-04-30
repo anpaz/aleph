@@ -475,19 +475,21 @@ module Classic =
             addArgsToContext argNames args ctx
             ==> fun ctx ->
                 // If success,
-                // check that the ket argumetn is valid and that it maps to a Ket:
+                // check that the ket argumetn is valid and that it maps to a valid argument:
                 eval (ket, ctx)
                 ==> function
+                    // For classical runtime, Set and Ket are equivalent:
+                    | Set ket, ctx
                     | Ket ket, ctx ->
                         // Evaluates a single tuple on a Ket.
                         // It evaluates successfully, it adds it to the resulting Set:
-                        let one (set:Result<SET,string>) (k: TUPLE) =
+                        let one (set:Result<SET,string>) (t: TUPLE) =
                             // First check if there have been errors so far:
                             set
                             ==> fun set -> 
                                 // Map the input to an actual Value, and add it to the context with
                                 // the ket argument name:
-                                let x = Tuple k
+                                let x = Tuple t
                                 let ctx' = ctx.Add (ketName, x)
                                 // Eval Body
                                 evalBody (body, ctx')
@@ -503,6 +505,9 @@ module Classic =
                                         |> Ok
                         Set.fold one (SET [] |> Ok) ket
                         ==> fun set -> (Ket set, ctx) |> Ok
+                    | Tuple t, ctx ->
+                        let ctx' = ctx.Add (ketName, Tuple t)
+                        evalBody (body, ctx')
                     | (v,_) -> $"Expecting ket value, got: {v}" |> Error
         | Some _ -> $"Undefined quantum: {name}" |> Error
         | None ->  $"Undefined quantum: {name}" |> Error

@@ -914,7 +914,7 @@ type TestClassic () =
 
 
     [<TestMethod>]
-    member this.ClassicStmt() =
+    member this.CallClassicStmt() =
         let ctx = this.Context
 
         let program = ast.Block [
@@ -929,7 +929,7 @@ type TestClassic () =
             
 
     [<TestMethod>]
-    member this.QuantumStmt() =
+    member this.CallQuantumStmt() =
         let ctx = this.Context
 
         let program = ast.Block [

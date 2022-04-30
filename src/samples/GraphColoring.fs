@@ -37,16 +37,17 @@ let program = (Block [
 
     // // checks if the coloring for the nodes x and y is invalid.
     // // invalid is when the 2 nodes of an edge have the same color.
-    // classic is_invalid_edge_coloring(edge, nodes_color) =>
+    // quantum is_invalid_edge_coloring(edge) nodes_color =>
     //     let x = edge.0
     //     let y = edge.1
     //     let color1 = nodes_color.x
     //     let color2 = nodes_color.y
     //     color1 == color2
     //
-    DefClassic (
+    DefQuantum (
         id= "is_invalid_edge_coloring", 
-        arguments=["edge"; "nodes_color"],
+        arguments=["edge"],
+        ket="nodes_color",
         body= Block [
             //Print ("edge, nodes_color", [Id "edge"; Id "nodes_color"])
             Let ("x", Project(Id("edge"), [Int(0)]));
@@ -62,8 +63,9 @@ let program = (Block [
     // quantum classify_combination(edges) nodes_color =>
     //     for e in edges:
     //        if is_invalid_edge_coloring(e) nodes_color :
-    //            false
-    //     true
+    //            return false
+    //     return true
+    //
     DefQuantum (
         id= "classify_combinations", 
         arguments=["edges"],
@@ -71,9 +73,10 @@ let program = (Block [
         body= Block [
             For ("e", Id("edges"), Block [
                 If (
-                    cond=CallClassic(
+                    cond=CallQuantum(
                         id="is_invalid_edge_coloring", 
-                        arguments=[Id("e"); Id("nodes_color")]),
+                        arguments=[Id("e")],
+                        ket=Id("nodes_color")),
                     t=Return(Bool(false)),
                     f=Skip
                 )
@@ -83,7 +86,8 @@ let program = (Block [
     );
 
     // // A ket with the color combination for all nodes. Each node is an item of a tuple.
-    // let nodes_colors = | colors(), colors(), colors(), colors() >
+    // let nodes_colors = | (colors(), colors(), colors(), colors()) >
+    //
     Let("nodes_colors", Ket [
         Tuple [
             CallClassic("colors", List.empty)
@@ -97,28 +101,30 @@ let program = (Block [
 
     // // To find a valid coloring, solve the valid_combination oracle and
     // // measure the result
-    // let a = classify_combinations (edges) nodes_colors
-    Let("a", CallQuantum(
+    // let all = classify_combinations (edges) nodes_colors
+    Let("all", CallQuantum(
         id="classify_combinations", 
         arguments=[Id("edges")],
         ket=Id("nodes_colors")
     ));
 
-    Print ("a", [Id "a"])
-    Print ("solve", [Solve (Id "a")])
+    // let answers = solve(all)
+    Let ("answers", Solve (Id "all"))
 
-    // let s1 = | solve(a) |
-    Let("s1", Measure((Solve(Id("a")))));
+    Print ("all", [Id "all"])
+    Print ("answers", [Id "answers"])
+
+    // let s1 = | answers |
+    // let s2 = | solve(a) |
+    // let s2 = | solve(a) |
+    Let("s1", Measure (Id"answers"));
+    Let("s2", Measure (Id"answers"));
+    Let("s3", Measure (Id"answers"));
+
     Print ("s1", [Id "s1"])
-
-    // let s2 = | solve(a) |
-    Let("s2", Measure((Solve(Id("a")))));
     Print ("s2", [Id "s2"])
-
-    // let s2 = | solve(a) |
-    Let("s3", Measure((Solve(Id("a")))));
     Print ("s3", [Id "s3"])
 
-    // solution
+    // s3
     Return(Id("s3"))
 ])
