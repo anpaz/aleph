@@ -29,7 +29,7 @@ module Classic =
         | Int       of int
         | Tuple     of TUPLE
         | Set       of SET
-        | Ket       of SET
+        //| Ket       of SET
         | Classic   of CLASSIC
         | Quantum   of QUANTUM
 
@@ -60,9 +60,9 @@ module Classic =
                 let body = k |> printSetBody
                 "| " + body + " >"
             | Classic (args,  _) ->
-                "classic (" + (args |> String.concat ",") + ")"
+                "classic (" + (args |> String.concat " ") + ")"
             | Quantum (args, ket, _) ->
-                "quantum (" + (args |> String.concat ",")  + ") " + ket
+                "quantum (" + (args |> String.concat " ")  + ") | " + ket
 
     type Context = Map<string, Value>
 

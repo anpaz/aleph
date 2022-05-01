@@ -4,7 +4,8 @@
     <WarnOn>3390;$(WarnOn)</WarnOn>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="classic.fs" />
+    <Compile Include="core.fs" />
+    <!-- <Compile Include="classic.fs" /> -->
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../parser/aleph.parser.fsproj" />

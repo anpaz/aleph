@@ -1,48 +1,41 @@
 ﻿namespace aleph.compiler.ast
 
-type Expression =
-    // Literals
+type Expression<'E> =
     | Id of string
     | Bool of bool
     | Int of int
-    | Tuple of values: Expression list
-    | Set of values: Expression list
-    | Ket of values: Expression list
-    | Range of start: Expression * stop: Expression
+    | Tuple of values: Expression<'E> list
+    | Set of values: Expression<'E> list
+    | Range of start: Expression<'E> * stop: Expression<'E>
 
-    // Bool expressions
-    | Equals of Expression * Expression
-    | And of Expression list
-    | Or of Expression list
-    | Not of Expression 
-    | LessThan of Expression * Expression
+    | Not of Expression<'E>
+    | Equals of Expression<'E> * Expression<'E>
+    | LessThan of Expression<'E> * Expression<'E>
+    | Plus of Expression<'E> * Expression<'E>
+    | Times of Expression<'E> * Expression<'E>
 
-    // Int expressions
-    | Add of Expression list
-    | Multiply of Expression list
+    | Block of Statement<'E> list * Expression<'E>
+    | And of Expression<'E> list
+    | Or of Expression<'E> list
+    | Add of Expression<'E> list
+    | Multiply of Expression<'E> list
 
-    // Tuple/Set expressions
-    | Project of tuple: Expression * index: Expression list
+    | If of cond: Expression<'E> * t : Expression<'E> * f: Expression<'E>
+    //| Summarize of id: string * enumeration : Expression * operation: string * body: Expression
+    | Project of tuple: Expression<'E> * index: Expression<'E> list
+    | CallMethod of id: string * arguments: Expression<'E> list
 
-    // Ket expressions
-    // TODO: | All
-    | Measure of ket: Expression
-    | Solve of ket: Expression
+    // Extensions:
+    | Extension of 'E
 
-    // Function calls
-    | CallClassic of id: string * arguments: Expression list
-    | CallQuantum of id: string * arguments: Expression list * ket: Expression
+    // // Quantum expressions
+    // // TODO: | All
+    // | Ket of values: Expression list
+    // | Measure of ket: Expression
+    // | Solve of ket: Expression
+    // | CallQuantum of id: string * arguments: Expression list * ket: Expression
 
-type Statement =
-    | Skip
-    | Block of Statement list
-    | Return of Expression
-    | Let of id: string * value: Expression
-    | If of cond: Expression * t: Statement * f: Statement
-    | For of id: string * enumeration: Expression * body : Statement
-    | DefClassic of id: string * arguments: string list * body: Statement
-    | DefQuantum of id: string * arguments: string list * ket : string * body: Statement
-
-    // For debugging:
-    | Print of string * Expression list
+and Statement<'E> =
+    | Let of id: string * value: Expression<'E>
+    | Print of string * Expression<'E> list
 

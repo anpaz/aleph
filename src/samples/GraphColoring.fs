@@ -37,11 +37,7 @@ let program = (Block [
 
     // // checks if the coloring for the nodes x and y is invalid.
     // // invalid is when the 2 nodes of an edge have the same color.
-    // quantum is_invalid_edge_coloring(edge) nodes_color =>
-    //     let x = edge.0
-    //     let y = edge.1
-    //     let color1 = nodes_color.x
-    //     let color2 = nodes_color.y
+    // quantum is_invalid_edge_coloring | color1 color2 =>
     //     color1 == color2
     //
     DefQuantum (
@@ -60,7 +56,7 @@ let program = (Block [
 
     // // A valid color combination oracle.
     // // Returns true only if the nodes' color combination is valid for all edges.
-    // quantum classify_combination(edges) nodes_color =>
+    // quantum classify_combination edges | (nodes_color: Ket) =>
     //     for e in edges:
     //        if is_invalid_edge_coloring(e) nodes_color :
     //            return false
