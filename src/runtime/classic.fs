@@ -7,8 +7,8 @@ module Classic =
 
     type QuantumExpression =
     | Ket of values: Expression<QuantumExpression> list
-    | Quantum of arguments: string list * qegs: string list * body: Expression<QuantumExpression>
-    | CallQuantum of id: string * arguments: Expression<QuantumExpression> list * ket: Expression<QuantumExpression> list
+    | Unitary of arguments: string list * qegs: string list * body: Expression<QuantumExpression>
+    | CallUnitary of id: string * arguments: Expression<QuantumExpression> list * ket: Expression<QuantumExpression>
     | Measure of ket: Expression<QuantumExpression>
     | Solve of ket: Expression<QuantumExpression>
     | All
@@ -21,13 +21,13 @@ module Classic =
     type Context = Context<QuantumExpression, QuantumValue>
     type Expression = Expression<QuantumExpression>
 
-    let evalQuantum (e, ctx) =
+    let rec evalQuantum (e, ctx) =
         match e with 
-        | All
         | Ket _ 
         | Measure _
         | Solve _
-        | Quantum _
-        | CallQuantum _ -> "Not implemented" |> Error
+        | Unitary _
+        | CallUnitary _ 
+        | All -> $"Not implemented: {e}" |> Error
 
-    let eval = (eval<QuantumExpression, QuantumValue> evalQuantum)
+    and eval = (evalCore<QuantumExpression, QuantumValue> evalQuantum)

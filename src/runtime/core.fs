@@ -8,7 +8,6 @@ module Core =
     //----------------------------------
     // Expression evaluation
     //----------------------------------
-
     type Literal = 
         | B of bool
         | I of int
@@ -62,7 +61,7 @@ module Core =
     let (==>) (input: Result<'a,'b>) ok  =
         Result.bind ok input
 
-    let eval<'E,'V>  (extension: 'E * Context<'E,'V> -> Result<Value<'E,'V> * Context<'E,'V>, string>) (e: Expression<'E>, ctx: Context<'E,'V>): Result<Value<'E,'V> * Context<'E,'V>, string> =
+    let evalCore<'E,'V>  (extension: 'E * Context<'E,'V> -> Result<Value<'E,'V> * Context<'E,'V>, string>) (e: Expression<'E>, ctx: Context<'E,'V>): Result<Value<'E,'V> * Context<'E,'V>, string> =
         let rec eval (e: Expression<'E>, ctx: Context<'E,'V>) : Result<Value<'E,'V> * Context<'E,'V>, string> =
             match e with
             | Expression.Int i -> 
@@ -107,15 +106,13 @@ module Core =
                 extension (v, ctx)
 
         and join left right T ctx =
-            let getSet = function
+            let toSet = function
                 | Bool b -> SET [[B b]] |> Some
                 | Int i -> SET [[I i]] |> Some
                 | Tuple r -> SET [r] |> Some
                 | Set s2 -> s2 |> Some
                 | _ -> None
-            let set1 = getSet left
-            let set2 = getSet right
-            match (set1, set2) with
+            match (toSet left, toSet right) with
             | (Some set1, Some set2) ->
                 let result = 
                     seq {

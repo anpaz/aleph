@@ -27,12 +27,12 @@ let program = Block ([
     //   (3, 1), 
     //   (2, 0)
     // ]
-    Let ("edges", Set([
-        Tuple [Int 0; Int 1];
-        Tuple [Int 1; Int 2];
-        Tuple [Int 3; Int 1];
-        Tuple [Int 2; Int 0];
-    ]));
+    Let ("edges", Set [
+        Tuple [Int 0; Int 1]
+        Tuple [Int 1; Int 2]
+        Tuple [Int 3; Int 1]
+        Tuple [Int 2; Int 0]
+    ])
     Print ("edges", [Id "edges"])
 
     // // checks if the coloring for the nodes x and y is invalid.
@@ -40,9 +40,9 @@ let program = Block ([
     // let is_valid_edge_coloring | color1 color2 =
     //     color1 != color2
     //
-    Let ("is_valid_edge_coloring", Q (Quantum (
-        arguments = ["edge"],
-        qegs= [ "nodes_color"],
+    Let ("is_valid_edge_coloring", Q (Unitary (
+        arguments = [ "edge" ],
+        qegs= [ "nodes_color" ],
         body= (Not (Equals (Id "color1", Id "color2"))))))
 
     // // A valid color combination oracle.
@@ -53,17 +53,17 @@ let program = Block ([
     //         is_valid_edge_coloring | coloring[x, y]
     //     valid
     //
-    Let ("classify_coloring", Q (Quantum (
-        arguments=["edges"],
-        qegs=["coloring"],
+    Let ("classify_coloring", Q (Unitary (
+        arguments=[ "edges" ],
+        qegs=[ "coloring" ],
         body = 
             Summarize ("e", Id "edges", "and", Block ([
                 Let ("x", Project (Id "e", [Int 0]))
                 Let ("y", Project (Id "e", [Int 1]))],
-                Q (CallQuantum (
+                Q (CallUnitary (
                     id="is_invalid_edge_coloring", 
-                    arguments=[Id("e")],
-                    ket = [Project (Id "coloring", [Id "x"; Id "y"])])))))))
+                    arguments=[Id "e"],
+                    ket = Project (Id "coloring", [Id "x"; Id "y"]))))))))
 
     // // A ket with the color combination for all nodes. Each node is an item of a tuple.
     // let nodes_colors = | (colors(), colors(), colors(), colors()) >
@@ -81,11 +81,10 @@ let program = Block ([
     // // To find a valid coloring, solve the valid_combination oracle and
     // // measure the result
     // let all = classify_combinations (edges) nodes_colors
-    Let("all", Q (CallQuantum (
+    Let("all", Q (CallUnitary (
         id="classify_combinations", 
         arguments=[Id "edges"],
-        ket=[Id "nodes_colors"] )))
-    
+        ket= Id "nodes_colors")))
 
     // let answers = solve(all)
     Let ("answers", Q (Solve (Id "all")))

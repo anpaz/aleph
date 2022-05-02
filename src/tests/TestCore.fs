@@ -10,7 +10,7 @@ type TestCore () =
 
     member this.TestExpression (e, expected, ?ctx)=
         let ctx = defaultArg ctx Map.empty
-        let eval = (eval<unit, unit> (fun x -> "No extension implemented" |> Error))
+        let eval = (evalCore<unit, unit> (fun x -> "No extension implemented" |> Error))
         
         match eval (e, ctx) with
         | Ok (actual, _) -> 
@@ -21,7 +21,7 @@ type TestCore () =
         
     member this.TestInvalidExpression (e, expected, ?ctx)=
         let ctx = defaultArg ctx Map.empty
-        let eval = (eval<unit, unit> (fun x -> "No extension implemented" |> Error))
+        let eval = (evalCore<unit, unit> (fun x -> "No extension implemented" |> Error))
         match eval (e, ctx)  with
         | Ok (v, _) ->
             Assert.AreEqual($"ERROR for {e}", $"Expression returned: {v}")
@@ -617,7 +617,7 @@ type TestCore () =
     [<TestMethod>]
     member this.LetStmt() =
         let ctx = this.Context
-        let eval = (eval<unit, unit> (fun x -> "No extension implemented" |> Error))
+        let eval = (evalCore<unit, unit> (fun x -> "No extension implemented" |> Error))
 
         let testValid (e, key, expected) =
             match eval (ast.Block ([e], ast.Id key), ctx) with
