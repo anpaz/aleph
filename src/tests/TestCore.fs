@@ -643,35 +643,27 @@ type TestCore () =
         |> List.iter testInvalid
 
 
-    // [<TestMethod>]
-    // member this.IfStmt() =
-    //     let ctx = this.Context
-
-    //     let testOne (stmt, expected) =
-    //         match run (stmt, ctx) with
-    //         | Continue _ -> Assert.AreEqual("", "Statement returned void.")
-    //         | Fail (msg, _) -> Assert.AreEqual("", $"Error on stmt '{stmt}': {msg}")
-    //         | Result (actual, _) -> Assert.AreEqual(expected, actual)
+    [<TestMethod>]
+    member this.IfExpressions() =
+        let ctx = this.Context
             
-    //     [
-    //         (ast.If(ast.Bool true,
-    //                 ast.Return (ast.Int -1),
-    //                 ast.Return (ast.Int 1)), 
-    //             Value.Int -1)
+        [
+            (ast.If(ast.Bool true,
+                    ast.Int -1,
+                    ast.Int 1), 
+                Value.Int -1)
 
-    //         (ast.If(ast.Bool false,
-    //                 ast.Return (ast.Int -1),
-    //                 ast.Return (ast.Int 1)), 
-    //             Value.Int 1)
-    //     ]
-    //     |> List.iter testOne
+            (ast.If(ast.Bool false,
+                    ast.Int -1,
+                    ast.Int 1), 
+                Value.Int 1)
+        ]
+        |> List.iter this.TestExpression
 
-    //     // Make sure errors are correctly reported:
-    //     let invalid = ast.If (ast.Int 4, ast.Return (ast.Int -1),ast.Return (ast.Int 1))
-    //     match run (invalid, Map.empty) with
-    //     | Fail (msg, _) -> Assert.AreEqual("Invalid condition: Int 4", msg)
-    //     | Continue _ -> Assert.AreEqual("", "Statement returned void.")
-    //     | Result (actual, _) -> Assert.AreEqual("", $"Statement returned {actual}. Expecting error.")
-
+        // Make sure errors are correctly reported:
+        [
+            ast.If (ast.Int 4, ast.Int -1, ast.Int 1), "Invalid condition: 4"
+        ]
+        |> List.iter this.TestInvalidExpression
 
             

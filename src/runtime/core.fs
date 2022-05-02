@@ -70,37 +70,39 @@ module Core =
             | Expression.Bool b -> 
                 (Value.Bool b, ctx) |> Ok
             | Expression.Id id -> 
-                evalId (id, ctx)
+                IdExpression (id, ctx)
             | Expression.Tuple values ->
-                evalTuple (values, ctx)
+                TupleExpression (values, ctx)
             | Expression.Set values ->
-                evalSet (values, ctx)
+                SetExpression (values, ctx)
             | Expression.Range (start, stop) ->
-                evalRange (start, stop, ctx)
+                RangeExpression (start, stop, ctx)
             | Expression.Not value ->
-                evalNot(value, ctx)
+                NotExpression(value, ctx)
             | Expression.Equals (left, right) ->
-                evalEquals(left, right, ctx)
+                EqualsExpression(left, right, ctx)
             | Expression.LessThan (left, right) ->
-                evalLessthan (left, right, ctx)
+                LessThanExpression (left, right, ctx)
             | Expression.Plus (left, right) ->
-                evalAdd([left; right], ctx)
+                AddExpression([left; right], ctx)
             | Expression.Times (left, right) ->
-                evalMultiply([left; right], ctx)
+                MultiplyExpression([left; right], ctx)
             | Expression.Block (stmt, value) ->
-                evalBlock(stmt, value, ctx)
+                BlockExpression(stmt, value, ctx)
             | Expression.And values ->
-                evalAnd(values, ctx)
+                AndExpression(values, ctx)
             | Expression.Or values ->
-                evalOr(values, ctx)
+                OrExpression(values, ctx)
             | Expression.Add values ->
-                evalAdd(values, ctx)
+                AddExpression(values, ctx)
             | Expression.Multiply values ->
-                evalMultiply(values, ctx)
+                MultiplyExpression(values, ctx)
+            | Expression.If (cond, t, f) ->
+                IfExpression (cond, t, f, ctx)
             | Expression.Project (values, indices) ->
-                evalProject (values, indices, ctx)
+                ProjectExpression (values, indices, ctx)
             | Expression.CallMethod (name, args) ->
-                evalCallMethod (name, args, ctx)
+                CallExpression (name, args, ctx)
             | Expression.Extension v ->
                 extension (v, ctx)
 
@@ -126,7 +128,8 @@ module Core =
                 (result, ctx) |> Ok
             | _ ->
                 $"Not a valid join expression: ({left} , {right})" |> Error
-        and evalTuple (values, ctx) = 
+
+        and TupleExpression (values, ctx) = 
             let append previous next =
                 previous 
                 ==> fun (left, ctx) ->
@@ -145,7 +148,7 @@ module Core =
             List.fold append (Ok (Value.Tuple [], ctx)) values
 
 
-        and evalSet (values, ctx) = 
+        and SetExpression (values, ctx) = 
             let append previous next =
                 previous
                 ==> fun (left, ctx) ->
@@ -184,12 +187,12 @@ module Core =
                         
             List.fold append (Ok (Value.Set (SET []), ctx)) values
 
-        and evalId (id, ctx) = 
+        and IdExpression (id, ctx) = 
             match ctx.TryFind id with
             | Some v -> (v, ctx) |> Ok
             | None -> $"Unknown variable: {id}" |> Error
 
-        and evalRange (start, stop, ctx) = 
+        and RangeExpression (start, stop, ctx) = 
             let createRange s e ctx =
                 let range = [s..(e - 1)] |> List.map (fun i -> [I i])
                 (Value.Set (SET range), ctx) |> Ok
@@ -206,7 +209,7 @@ module Core =
                         $"Invalid value for a range start..end: {start}..{stop}" |> Error
 
 
-        and evalEquals (left, right, ctx) = 
+        and EqualsExpression (left, right, ctx) = 
             eval (left, ctx)
             ==> fun (left, ctx) ->
                 eval (right, ctx)
@@ -222,14 +225,14 @@ module Core =
                     | (Set l, Set r) -> (Value.Bool (l = r), ctx) |> Ok
                     | _ -> $"Invalid expression: {left} == {right}" |> Error
 
-        and evalNot (e, ctx) = 
+        and NotExpression (e, ctx) = 
             eval (e, ctx)
             ==> fun (e, ctx) ->
                 match e with
                 | Bool b -> (Value.Bool (not b), ctx) |> Ok
                 | _ -> $"Invalid expression: !{e}" |> Error
 
-        and evalAnd (values, ctx) = 
+        and AndExpression (values, ctx) = 
             let apply previous next =
                 previous 
                 ==> fun (left, ctx) ->
@@ -247,7 +250,7 @@ module Core =
             List.fold apply (eval (values.Head, ctx)) values.Tail
 
 
-        and evalOr (values, ctx) = 
+        and OrExpression (values, ctx) = 
             let apply previous next =
                 previous 
                 ==> fun (left, ctx) ->
@@ -265,7 +268,7 @@ module Core =
             List.fold apply (eval (values.Head, ctx)) values.Tail
 
 
-        and evalLessthan (left, right, ctx) = 
+        and LessThanExpression (left, right, ctx) = 
             eval (left, ctx)
             ==> fun (left, ctx) ->
                 eval (right, ctx)
@@ -277,7 +280,7 @@ module Core =
                     | _ -> $"Invalid expression: {left} < {right}" |> Error
 
 
-        and evalArithmetic (values : Expression<'E> list, ctx) (op : Literal -> Literal -> Result<Literal, string>) = 
+        and ArithmeticExpression (values : Expression<'E> list, ctx) (op : Literal -> Literal -> Result<Literal, string>) = 
             let rec evalTuple s1 s2 =
                 match (s1, s2) with
                 | (h1::rest1), (h2::rest2) ->
@@ -320,7 +323,7 @@ module Core =
                 List.fold apply (eval (values.Head, ctx)) values.Tail
 
 
-        and evalAdd (values, ctx) =
+        and AddExpression (values, ctx) =
             let add l r =
                 match (l, r) with
                 | B true, B false
@@ -328,17 +331,25 @@ module Core =
                 | B _, B _ -> B false |> Ok
                 | I l, I r -> I (l + r) |> Ok
                 | _ -> $"tuple elements must have be of the same type: {l} != {r}" |> Error
-            evalArithmetic (values, ctx) add
+            ArithmeticExpression (values, ctx) add
 
-        and evalMultiply (values, ctx) =
+        and MultiplyExpression (values, ctx) =
             let multiply l r =
                 match (l, r) with
                 | B l, B r -> B (l && r) |> Ok
                 | I l, I r -> I (l * r) |> Ok
                 | _ -> $"tuple elements must have be of the same type: {l} != {r}" |> Error
-            evalArithmetic (values, ctx) multiply
+            ArithmeticExpression (values, ctx) multiply
 
-        and evalProject (value, index, ctx) =
+        and IfExpression (cond, t, f, ctx) =
+            eval (cond, ctx)
+            ==> fun (cond, ctx) ->
+                match cond with
+                | Bool true -> eval (t, ctx)
+                | Bool false -> eval (f, ctx)
+                | _ -> $"Invalid condition: {cond}" |> Error
+
+        and ProjectExpression (value, index, ctx) =
             let indices previous next =
                 previous
                 |> Result.bind (fun (previous, ctx) ->
@@ -386,7 +397,7 @@ module Core =
             else
                 $"Invalid arguments: expects {argNames.Length}, got {args.Length}" |> Error
 
-        and evalBlock (stmts, value, ctx) =
+        and BlockExpression (stmts, value, ctx) =
             let rec evalStatements previous next =
                 previous
                 ==> fun ctx ->
@@ -402,7 +413,7 @@ module Core =
                 eval (value, ctx')
                 ==> fun (v, _) -> (v, ctx) |> Ok
 
-        and evalCallMethod (name, args, ctx) =
+        and CallExpression (name, args, ctx) =
             match ctx.TryFind name with
             | Some (Method (argNames, body)) ->
                 addArgsToContext argNames args ctx
@@ -410,12 +421,13 @@ module Core =
             | Some _ -> $"Undefined classic: {name}" |> Error
             | None ->  $"Undefined classic: {name}" |> Error
 
+
         and evalStmt (p, ctx) =
             match p with
             | Let (id, e) -> eval (e, ctx) ==> fun (v, ctx) -> ctx.Add (id, v) |> Ok
-            | Print (msg, values) -> print (msg, values, ctx)
+            | Print (msg, values) -> Print (msg, values, ctx)
 
-        and print (msg, values, ctx) =
+        and Print (msg, values, ctx) =
             let iterate result next =
                 result 
                 ==> fun (result, ctx) ->
@@ -427,5 +439,4 @@ module Core =
                 |> printfn "%s" 
                 ctx |> Ok
 
-        
         eval (e, ctx)
