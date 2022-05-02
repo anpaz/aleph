@@ -553,45 +553,65 @@ type TestCore () =
             (ast.CallMethod("plusone", [ast.Int 1; ast.Int 1]), "Invalid arguments: expects 1, got 2")
 //            (ast.CallMethod("plusone", [ast.Id "k1"]), "Invalid operands: | (0, 1, 3, False, 5), (10, 11, 13, True, 25) > and 1")
             (ast.CallMethod("plusone", [ast.Tuple [ast.Int 3; ast. Int 10]]), "Invalid operands: (3, 10) and 1")
-            (ast.CallMethod("foo", [ast.Id "t1"]), "Undefined classic: foo")
-            (ast.CallMethod("t1", [ast.Id "i1"]), "Undefined classic: t1")
+            (ast.CallMethod("foo", [ast.Id "t1"]), "Undefined method: foo")
+            (ast.CallMethod("t1", [ast.Id "i1"]), "Undefined method: t1")
 
         ]
         |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
 
 
-    // [<TestMethod>]
-    // member this.ReturnStmt() =
-    //     let ctx = this.Context
 
-    //     let testOne (stmt, expected) =
-    //         match run (stmt, ctx) with
-    //         | Continue _ -> Assert.AreEqual("", "Statement returned void.")
-    //         | Fail (msg, _) -> Assert.AreEqual("", $"Error on stmt '{stmt}': {msg}")
-    //         | Result (actual, _) -> Assert.AreEqual(expected, actual)
-            
-    //     [
-    //         (ast.Return(ast.Int(7)), Value.Int 7)
-    //         (ast.Return(ast.Tuple([ast.Int(3); ast.Int(5)])), Value.Tuple([I(3); I(5)]))
-    //         (ast.Block([ast.Return(ast.Id("b1"))]), Value.Tuple([B false]))
-    //         (ast.Block([
-    //             ast.Skip
-    //             ast.Return(ast.Id("t1"))
-    //         ]),  Value.Tuple([B(false); I(5)]))
-    //         (ast.Block([
-    //             ast.Skip
-    //             ast.Return(ast.Id("i1"))
-    //             ast.Return(ast.Id("b1"))
-    //         ]),  Value.Tuple([I 3]))
-    //     ]
-    //     |> List.iter testOne
 
-    //     // Make sure errors are correctly reported:
-    //     let invalid = ast.Return(ast.Id("foo"))
-    //     match run (invalid, Map.empty) with
-    //     | Fail (msg, _) -> Assert.AreEqual("Unknown variable: foo", msg)
-    //     | Continue _ -> Assert.AreEqual("", "Statement returned void.")
-    //     | Result (actual, _) -> Assert.AreEqual("", $"Statement returned {actual}. Expecting error.")
+    [<TestMethod>]
+    member this.ForExpressions() =
+        let ctx = 
+            this.Context
+                .Add("sum", Value.Method (["a"; "b"], ast.Add [ast.Id "a"; ast.Id "b"]))
+                .Add("times", Value.Method (["a"; "b"], ast.Multiply [ast.Id "a"; ast.Id "b"]))
+                .Add("and", Value.Method (["a"; "b"], ast.And [ast.Id "a"; ast.Id "b"]))
+                .Add("or", Value.Method (["a"; "b"], ast.Or [ast.Id "a"; ast.Id "b"]))
+
+        let t = ast.Tuple [ast.Int 1; ast.Int 2; ast.Int 3; ast.Int 4]
+        let s = ast.Set [ast.Int 1; ast.Int 2; ast.Int 3; ast.Int 4]
+        let s5 = ast.Set [ast.Int 5; ast.Int 10; ast.Int 15]
+
+        [
+            // summarize e in [1;2;3;4] with sum e -> 10
+            ast.Summarize ("e", s, "sum", ast.Id "e"), Value.Int 10
+
+            // summarize e in [1;2;3;4] with and { let i = e; i < 10 } -> true
+            ast.Summarize ("e", t, "and", ast.Block ([
+                ast.Let ("i", ast.Id "e")],
+                ast.LessThan (ast.Id "i", ast.Int 10))), Value.Bool true
+
+            // summarize e in [5;10;15] with and { let i = e; i < 10 } -> false
+            ast.Summarize ("e", s5, "and", ast.Block ([
+                ast.Let ("i", ast.Id "e")],
+                ast.LessThan (ast.Id "i", ast.Int 10))), Value.Bool false
+
+            // summarize e in [5;10;15] with or { e < 10 } -> true
+            ast.Summarize ("e", s5, "or", ast.LessThan (ast.Id "e", ast.Int 119)), Value.Bool true
+
+            // summarize e in 21 with sum e -> 21
+            ast.Summarize ("x", ast.Int 21, "sum", ast.Id "x"), Value.Int 21
+
+            // summarize e in true with or e -> trye
+            ast.Summarize ("e", ast.Bool true, "or", ast.Id "e"), Value.Bool true
+
+            // summarize e in (false, false, true) with sum e -> true
+            ast.Summarize ("e", ast.Tuple [ast.Bool false; ast.Bool false; ast.Bool true], "sum", ast.Id "e"), Value.Bool true
+        ]
+        |> List.iter (fun (e, v) -> this.TestExpression (e, v, ctx))
+
+        [
+            ast.Summarize ("e", s5, "or", ast.LessThan (ast.Id "i", ast.Int 119)), "Unknown variable: i"
+            ast.Summarize ("e", ast.Tuple [ast.Bool false; ast.Int 3], "sum", ast.Id "e"), "Invalid operands: False and 3"
+            ast.Summarize ("e", s5, "foo", ast.Id "e"), "Undefined method: foo"
+            ast.Summarize ("e", ast.Id "plusone", "or", ast.LessThan (ast.Id "i", ast.Int 119)), "Invalid enumeration: classic (a)"
+        ]
+        |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
+
+
 
 
     [<TestMethod>]
@@ -623,14 +643,14 @@ type TestCore () =
                     ast.Let ("a", ast.Int 0)
                     ast.Let ("a", ast.Int 1)
                     ast.Let ("a", ast.Int 2)], 
-                    ast.Times (ast.Int 10, ast.Id "a"))), 
+                    ast.Multiply [ast.Int 10; ast.Id "a"])), 
                 "e", Value.Int 20)
             (ast.Let("f", 
                 ast.Block ([
                     ast.Let ("a", ast.Int 0)
                     ast.Let ("b", ast.Int 1)
                     ast.Let ("c", ast.Int 2)],
-                    ast.Plus (ast.Id "a", ast.Id "c"))),
+                    ast.Add [ast.Id "a"; ast.Id "c"])),
                 "f", Value.Int 2)
         ]
         |> List.iter testValid

@@ -11,22 +11,20 @@ type Expression<'E> =
     | Not of Expression<'E>
     | Equals of Expression<'E> * Expression<'E>
     | LessThan of Expression<'E> * Expression<'E>
-    | Plus of Expression<'E> * Expression<'E>
-    | Times of Expression<'E> * Expression<'E>
 
-    | Block of Statement<'E> list * Expression<'E>
     | And of Expression<'E> list
     | Or of Expression<'E> list
     | Add of Expression<'E> list
     | Multiply of Expression<'E> list
 
+    | Block of Statement<'E> list * Expression<'E>
     | If of cond: Expression<'E> * t : Expression<'E> * f: Expression<'E>
-    //| Summarize of id: string * enumeration : Expression * operation: string * body: Expression
+    | Summarize of id: string * enumeration : Expression<'E> * operation: string * body: Expression<'E>
     | Project of tuple: Expression<'E> * index: Expression<'E> list
     | CallMethod of id: string * arguments: Expression<'E> list
 
-    // Extensions:
-    | Extension of 'E
+    // Quantum Extensions:
+    | Q of 'E
 
     // // Quantum expressions
     // // TODO: | All

@@ -19,15 +19,15 @@ module Core =
 
     type TUPLE = Literal list
     type SET = Set<TUPLE>
-    type CLASSIC_METHOD<'E> = string list * Expression<'E>
+    type METHOD<'E> = string list * Expression<'E>
 
     type Value<'E, 'V> =
         | Bool      of bool
         | Int       of int
         | Tuple     of TUPLE
         | Set       of SET
-        | Method    of CLASSIC_METHOD<'E>
-        | Extension of 'V
+        | Method    of METHOD<'E>
+        | Q         of 'V
 
         override this.ToString() =
             let printSetBody s = 
@@ -54,7 +54,7 @@ module Core =
                 "[" + body + "]"
             | Method (args,  _) ->
                 "classic (" + (args |> String.concat " ") + ")"
-            | Extension e ->
+            | Q e ->
                 e.ToString()
 
     type Context<'E,'V> = Map<string, Value<'E,'V>>
@@ -83,10 +83,6 @@ module Core =
                 EqualsExpression(left, right, ctx)
             | Expression.LessThan (left, right) ->
                 LessThanExpression (left, right, ctx)
-            | Expression.Plus (left, right) ->
-                AddExpression([left; right], ctx)
-            | Expression.Times (left, right) ->
-                MultiplyExpression([left; right], ctx)
             | Expression.Block (stmt, value) ->
                 BlockExpression(stmt, value, ctx)
             | Expression.And values ->
@@ -99,11 +95,13 @@ module Core =
                 MultiplyExpression(values, ctx)
             | Expression.If (cond, t, f) ->
                 IfExpression (cond, t, f, ctx)
+            | Expression.Summarize (name, enumeration, operation, body) ->
+                SummarizeExpression (name, enumeration, operation, body, ctx)
             | Expression.Project (values, indices) ->
                 ProjectExpression (values, indices, ctx)
             | Expression.CallMethod (name, args) ->
                 CallExpression (name, args, ctx)
-            | Expression.Extension v ->
+            | Expression.Q v ->
                 extension (v, ctx)
 
         and join left right T ctx =
@@ -418,9 +416,55 @@ module Core =
             | Some (Method (argNames, body)) ->
                 addArgsToContext argNames args ctx
                 ==> fun ctx -> eval (body, ctx)
-            | Some _ -> $"Undefined classic: {name}" |> Error
-            | None ->  $"Undefined classic: {name}" |> Error
+            | Some _ -> $"Undefined method: {name}" |> Error
+            | None ->  $"Undefined method: {name}" |> Error
 
+
+        and enumerate (value, ctx) =
+            match (eval (value, ctx)) with
+            | Result.Ok (Int i, _) -> [Int i] |> Ok
+            | Result.Ok (Bool b, _) -> [Bool b] |> Ok
+            | Result.Ok (Tuple t, _) -> 
+                t |> List.map (function | B b -> Bool b | I i -> Int i) |> Ok
+            | Result.Ok (Set s, _) ->
+                s 
+                |> Set.toList
+                |> List.map Value.Tuple
+                |> Ok
+            | Result.Ok (v, _) -> $"Invalid enumeration: {v}" |> Error
+            | Result.Error msg -> msg |> Error
+
+
+        and SummarizeExpression (name, enumeration, operation, body, ctx) =
+            // Get all elements from the enumeration
+            enumerate (enumeration, ctx)
+            ==> fun elements ->
+                // Get all values to aggregate by evaluating the body 
+                // for each element in the enumeration
+                let oneValue previous next =
+                    previous
+                    ==> fun previous ->
+                        let ctx' = ctx.Add (name, next)
+                        eval (body, ctx')
+                        ==> fun (next, _) ->
+                            (previous @ [next]) |> Ok
+                List.fold oneValue ([] |> Ok) elements
+                ==>  fun values ->
+                    // Aggregate all the values.
+                    // If only one value, return that
+                    if values.Length = 1 then
+                        (values.Head, ctx) |> Ok
+                    else
+                        // If more than one value, expect that "operation" points to a binary operation
+                        // return the value of calling the method recursively for each element.
+                        let one previous next =
+                            previous
+                            ==> fun previous ->
+                                let ctx' = ctx.Add("__p__", previous).Add("__n__", next)
+                                CallExpression (operation, [Id "__p__"; Id "__n__"], ctx') 
+                                ==> fun (v, _) -> v |> Ok
+                        List.fold one (values.Head |> Ok) values.Tail
+                        ==> fun value -> (value, ctx) |> Ok
 
         and evalStmt (p, ctx) =
             match p with
