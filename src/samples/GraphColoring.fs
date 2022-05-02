@@ -1,24 +1,24 @@
 module GraphColoring
 
 open aleph.compiler.ast
+open aleph.runtime.Classic
 
-let program = (Block [
+
+let program = Block ([
     // let RED   = 0
     // let BLUE  = 1
     // let GREEN = 2
-    Let ("RED",   Int(0));
-    Let ("BLUE",  Int(1));
-    Let ("GREEN", Int(2));
+    Let ("RED",   Int 0);
+    Let ("BLUE",  Int 1);
+    Let ("GREEN", Int 2);
 
 
     // // Return the list of all available colors:
-    // classic colors() ->
+    // let colors() =
     //     [ RED, BLUE, GREEN ]
-    DefClassic (
-        id= "colors", 
-        arguments=List.empty, 
-        body=Return (Set([Id("RED"); Id("BLUE"); Id("GREEN")]))
-    );
+    Let ("colors", Method (
+        arguments = List.empty, 
+        body = Set [Id "RED"; Id "BLUE"; Id"GREEN"]));
 
     // // Edges are listed classically, so we can iterate through them
     // let edges = [
@@ -28,99 +28,84 @@ let program = (Block [
     //   (2, 0)
     // ]
     Let ("edges", Set([
-        Tuple([Int(0); Int(1)]);
-        Tuple([Int(1); Int(2)]);
-        Tuple([Int(3); Int(1)]);
-        Tuple([Int(2); Int(0)]);
+        Tuple [Int 0; Int 1];
+        Tuple [Int 1; Int 2];
+        Tuple [Int 3; Int 1];
+        Tuple [Int 2; Int 0];
     ]));
     Print ("edges", [Id "edges"])
 
     // // checks if the coloring for the nodes x and y is invalid.
     // // invalid is when the 2 nodes of an edge have the same color.
-    // quantum is_invalid_edge_coloring | color1 color2 =>
-    //     color1 == color2
+    // let is_valid_edge_coloring | color1 color2 =
+    //     color1 != color2
     //
-    DefQuantum (
-        id= "is_invalid_edge_coloring", 
-        arguments=["edge"],
-        ket="nodes_color",
-        body= Block [
-            //Print ("edge, nodes_color", [Id "edge"; Id "nodes_color"])
-            Let ("x", Project(Id("edge"), [Int(0)]));
-            Let ("y", Project(Id("edge"), [Int(1)]));
-            Let ("color1", Project(Id("nodes_color"), [Id("x")]));
-            Let ("color2", Project(Id("nodes_color"), [Id("y")]));
-            Return (Equals(Id("color1"), Id("color2")))
-        ]
-    );
+    Let ("is_valid_edge_coloring", Q (Quantum (
+        arguments = ["edge"],
+        qegs= [ "nodes_color"],
+        body= (Not (Equals (Id "color1", Id "color2"))))))
 
     // // A valid color combination oracle.
     // // Returns true only if the nodes' color combination is valid for all edges.
-    // quantum classify_combination edges | (nodes_color: Ket) =>
-    //     for e in edges:
-    //        if is_invalid_edge_coloring(e) nodes_color :
-    //            return false
-    //     return true
+    // let classify_coloring edges | coloring =
+    //     let valid = summarize e in edges with and
+    //         let (x, y) = e
+    //         is_valid_edge_coloring | coloring[x, y]
+    //     valid
     //
-    DefQuantum (
-        id= "classify_combinations", 
+    Let ("classify_coloring", Q (Quantum (
         arguments=["edges"],
-        ket="nodes_color",
-        body= Block [
-            For ("e", Id("edges"), Block [
-                If (
-                    cond=CallQuantum(
-                        id="is_invalid_edge_coloring", 
-                        arguments=[Id("e")],
-                        ket=Id("nodes_color")),
-                    t=Return(Bool(false)),
-                    f=Skip
-                )
-            ]);
-            Return(Bool(true))
-        ]
-    );
+        qegs=["coloring"],
+        body = 
+            Summarize ("e", Id "edges", "and", Block ([
+                Let ("x", Project (Id "e", [Int 0]))
+                Let ("y", Project (Id "e", [Int 1]))],
+                Q (CallQuantum (
+                    id="is_invalid_edge_coloring", 
+                    arguments=[Id("e")],
+                    ket = [Project (Id "coloring", [Id "x"; Id "y"])])))))))
 
     // // A ket with the color combination for all nodes. Each node is an item of a tuple.
     // let nodes_colors = | (colors(), colors(), colors(), colors()) >
-    //
-    Let("nodes_colors", Ket [
+    Let("nodes_colors", (Q (Ket [
         Tuple [
-            CallClassic("colors", List.empty)
-            CallClassic("colors", List.empty)
-            CallClassic("colors", List.empty)
-            CallClassic("colors", List.empty)
+            CallMethod ("colors", List.empty)
+            CallMethod ("colors", List.empty)
+            CallMethod ("colors", List.empty)
+            CallMethod ("colors", List.empty)
         ]
-    ]);
+    ])))
 
     Print ("nodes_colors", [Id "nodes_colors"])
 
     // // To find a valid coloring, solve the valid_combination oracle and
     // // measure the result
     // let all = classify_combinations (edges) nodes_colors
-    Let("all", CallQuantum(
+    Let("all", Q (CallQuantum (
         id="classify_combinations", 
-        arguments=[Id("edges")],
-        ket=Id("nodes_colors")
-    ));
+        arguments=[Id "edges"],
+        ket=[Id "nodes_colors"] )))
+    
 
     // let answers = solve(all)
-    Let ("answers", Solve (Id "all"))
+    Let ("answers", Q (Solve (Id "all")))
 
     Print ("all", [Id "all"])
     Print ("answers", [Id "answers"])
 
     // let s1 = | answers |
-    // let s2 = | solve(a) |
-    // let s2 = | solve(a) |
-    Let("s1", Measure (Id"answers"));
-    Let("s2", Measure (Id"answers"));
-    Let("s3", Measure (Id"answers"));
+    // let s2 = | answers |
+    // let s2 = | answers |
+    Let("s1", Q (Measure (Id "answers")))
+    Let("s2", Q (Measure (Id "answers")))
+    Let("s3", Q (Measure (Id "answers")))
 
     Print ("s1", [Id "s1"])
     Print ("s2", [Id "s2"])
     Print ("s3", [Id "s3"])
 
+    ],
+
     // s3
-    Return(Id("s3"))
-])
+    Id("s3"))
+

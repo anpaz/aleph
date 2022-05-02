@@ -69,6 +69,8 @@ module Core =
                 (Value.Int i, ctx) |> Ok
             | Expression.Bool b -> 
                 (Value.Bool b, ctx) |> Ok
+            | Expression.Method (name, args) ->
+                (Value.Method (name, args), ctx) |> Ok
             | Expression.Id id -> 
                 IdExpression (id, ctx)
             | Expression.Tuple values ->
