@@ -1,8 +1,10 @@
 namespace aleph.runtime
 
 open aleph.parser.core
+open aleph.runtime.Utils
 
 module Core =
+
     //----------------------------------
     // Expression evaluation
     //----------------------------------
@@ -16,50 +18,33 @@ module Core =
 
     type TUPLE = Literal list
     type SET = Set<TUPLE>
-    type METHOD<'E> = string list * Expression<'E>
 
     type Value<'E, 'V> =
         | Bool      of bool
         | Int       of int
         | Tuple     of TUPLE
         | Set       of SET
-        | Method    of METHOD<'E>
+        | Method    of string list * Expression<'E>
         | Q         of 'V
-
         override this.ToString() =
-            let printSetBody s = 
-                s
-                |> Set.toList
-                |> List.map (fun e -> (Tuple e).ToString())
-                |> String.concat ", "
-
             match this with
-            | Bool b ->
-                b.ToString()
-            | Int i ->
-                i.ToString()
-            | Tuple [t] ->
-                t.ToString()
-            | Tuple s ->
-                let body =
-                    s 
-                    |> List.map (fun s -> s.ToString())
-                    |> String.concat ", "
-                "(" + body + ")"
-            | Set s ->
-                let body = s |> printSetBody
-                "[" + body + "]"
-            | Method (args,  _) ->
-                "classic (" + (args |> String.concat " ") + ")"
-            | Q e ->
-                e.ToString()
+            | Bool b -> b.ToString()
+            | Int i -> i.ToString()
+            | Tuple [i] -> i.ToString()
+            | Tuple t -> "(" + (printTupleBody t) + ")"
+            | Set s -> "[" + (printSetBody s) + "]"
+            | Method (args,  _) -> "(" + (args |> String.concat " ") + ") -> ()"
+            | Q e -> e.ToString()
 
     type Context<'E,'V> = Map<string, Value<'E,'V>>
+    type Extension<'E, 'V> = 'E * Context<'E,'V> -> Result<Value<'E,'V> * Context<'E,'V>, string>
 
-    let (==>) (input: Result<'a,'b>) ok  =
-        Result.bind ok input
+    type RuntimeExtension<'E, 'V> = 
+        abstract member Eval : 'E * Context<'E,'V> -> Result<Value<'E,'V> * Context<'E,'V>, string>
+        abstract member ToSet : 'V -> SET option
+        abstract member FromSet : SET -> 'V
 
-    let evalCore<'E,'V>  (extension: 'E * Context<'E,'V> -> Result<Value<'E,'V> * Context<'E,'V>, string>) (e: Expression<'E>, ctx: Context<'E,'V>): Result<Value<'E,'V> * Context<'E,'V>, string> =
+    let evalCore<'E,'V> (extension: RuntimeExtension<'E,'V>) (e: Expression<'E>, ctx: Context<'E,'V>) =
         let rec eval (e: Expression<'E>, ctx: Context<'E,'V>) : Result<Value<'E,'V> * Context<'E,'V>, string> =
             match e with
             | Expression.Int i -> 
@@ -101,15 +86,17 @@ module Core =
             | Expression.CallMethod (name, args) ->
                 CallExpression (name, args, ctx)
             | Expression.Q v ->
-                extension (v, ctx)
+                extension.Eval (v, ctx)
 
-        and join left right T ctx =
-            let toSet = function
-                | Bool b -> SET [[B b]] |> Some
-                | Int i -> SET [[I i]] |> Some
-                | Tuple r -> SET [r] |> Some
-                | Set s2 -> s2 |> Some
-                | _ -> None
+        and toSet = function
+            | Bool b -> SET [[B b]] |> Some
+            | Int i -> SET [[I i]] |> Some
+            | Tuple r -> SET [r] |> Some
+            | Set s2 -> s2 |> Some
+            | Q e -> extension.ToSet e
+            | _ -> None
+
+        and cross_product (left:Value<'E, 'V>) (right:Value<'E, 'V>) T ctx =
             match (toSet left, toSet right) with
             | (Some set1, Some set2) ->
                 let result = 
@@ -131,12 +118,15 @@ module Core =
                     eval (next, ctx)
                     ==> fun (right, ctx) ->
                         match (left, right) with
+                        | Q _, _
+                        | _, Q _ ->
+                            cross_product left right (SET >> extension.FromSet >> Q) ctx
                         | Set _, _
                         | _, Set _ ->
-                            join left right (SET >> Set) ctx
+                            cross_product left right (SET >> Set) ctx
                         | Tuple _, _
                         | _, Tuple _ ->
-                            join left right (List.head >> Tuple) ctx
+                            cross_product left right (List.head >> Tuple) ctx
                         | _ -> 
                             $"Cannot join elements: {left} - {right}" |> Error
 
