@@ -8,6 +8,8 @@ open aleph.runtime.Core
 
 module Classic =
 
+    let random = System.Random()
+
     type QuantumValue =
     | K         of SET
     | U         of string list * string * Expression<QuantumExpression>
@@ -23,7 +25,7 @@ module Classic =
     let rec evalQuantum (e, ctx) =
         match e with 
         | Ket values -> evalKet (values, ctx)
-        | Measure _
+        | Measure ket -> evalMeasure (ket, ctx)
         | Solve _
         | Unitary _
         | CallUnitary _ 
@@ -37,6 +39,22 @@ module Classic =
                 (Q (K items), ctx) |> Ok
             | (v, _) -> 
                 $"Invalid value for a Ket element: {v}" |> Error
+
+    and private evalMeasure (value: Expression, ctx: Context) =
+        eval (value, ctx)
+        ==> function
+        | Q (K items), ctx ->
+            if items.IsEmpty then
+                (Tuple [], ctx) |> Ok
+            else 
+                let i = int (random.NextDouble() * (double (items.Count)))
+                let s = (items |> Set.toSeq |> Seq.item i)
+                match s with
+                | [B b] -> (Bool b, ctx) |> Ok
+                | [I i] -> (Int i, ctx) |> Ok
+                | s -> (Tuple s, ctx) |> Ok
+        | v, _ -> $"Measure not available for {v}" |> Error
+
 
     and extension = { 
         new RuntimeExtension<QuantumExpression, QuantumValue> with
