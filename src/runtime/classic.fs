@@ -26,7 +26,7 @@ module Classic =
         match e with 
         | Ket values -> evalKet (values, ctx)
         | Measure ket -> evalMeasure (ket, ctx)
-        | Solve _
+        | Solve ket -> evalSolve (ket, ctx)
         | Unitary _
         | CallUnitary _ 
         | All -> $"Not implemented: {e}" |> Error
@@ -55,6 +55,28 @@ module Classic =
                 | s -> (Tuple s, ctx) |> Ok
         | v, _ -> $"Measure not available for {v}" |> Error
 
+    and private evalSolve (value: Expression, ctx: Context) =
+        eval (value, ctx)
+        ==> function
+        | Q (K items), ctx ->
+            if items.Count > 0 then
+                let length = items.MinimumElement.Length
+                if (length < 2) then
+                    $"Solve expects kets of size > 2. Ket size: {length}" |> Error
+                else
+                    let filter (t: TUPLE) =
+                        match t.[t.Length - 1] with
+                        | B b -> b
+                        | I i -> i = -1
+                    let trim (t: TUPLE) =
+                        t |> List.rev |> List.tail |> List.rev
+                    items |> Set.filter filter |> Set.map trim |> Ok
+            else
+                Set.empty |> Ok
+            |> function
+            | Ok selected  -> (Q (K selected), ctx) |> Ok
+            | Error msg -> msg |> Error
+        | v, _ -> $"Solve not available for {v}" |> Error
 
     and extension = { 
         new RuntimeExtension<QuantumExpression, QuantumValue> with

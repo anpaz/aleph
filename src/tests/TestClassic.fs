@@ -14,6 +14,7 @@ type TestClassic () =
 
     let Measure = Measure >> Q
     let Ket = Ket >> Q
+    let Solve = Solve >> Q
 
 
     member this.TestExpression (e, expected, ?ctx)=
@@ -201,3 +202,48 @@ type TestClassic () =
         ]
         |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
 
+
+    [<TestMethod>]
+    member this.SolveExpressions() =
+        let ctx = this.Context
+
+        [
+            // Solve |(3, true), (4, false), (5, false))> -> |3>
+            (Solve (Ket [
+                Tuple [Int 3; Bool true]
+                Tuple [Int 4; Bool false]
+                Tuple [Int 5; Bool false]
+            ]), Value.Q (K (SET [ [I 3] ])))
+            // Solve |(3, true), (4, true), (5, true))> -> |3, 4, 5>
+            (Solve(Ket [
+                Tuple [Int 3; Bool true]
+                Tuple [Int 4; Bool true]
+                Tuple [Int 5; Bool true]
+            ]), Value.Q (K (SET [ [I 3]; [I 4]; [I 5] ])))
+            // Solve |(1, 1, true), (2, 4, false), (3, 5, true))> -> |(1, 1), (1, 5)>
+            (Solve (Ket [
+                Tuple [Int 1; Int 1; Bool true]
+                Tuple [Int 2; Int 4; Bool false]
+                Tuple [Int 3; Int 5; Bool true]
+            ]), Value.Q (K (SET [ [I 1; I 1]; [I 3; I 5] ])))
+            // Solve |(1, 1, 13, 0) (2, 4, 24, -1), (3, 5, 35, 1))> -> |(2, 4, 24)>
+            (Solve (Ket [
+                Tuple [Int 1; Int 1; Int 13; Int 0]
+                Tuple [Int 2; Int 4; Int 24; Int -1]
+                Tuple [Int 3; Int 5; Int 35; Int 10]
+                Tuple [Int 3; Int 5; Int 35; Int 12]
+                Tuple [Int 2; Int 4; Int 24; Int -1]
+                Tuple [Int 3; Int 5; Int 12; Int 0]
+                Tuple [Int 3; Int 5; Int 25; Int -1]
+            ]), Value.Q (K (SET [ [I 2; I 4; I 24]; [I 3; I 5; I 25] ])))
+        ]
+        |> List.iter (fun (e, v) -> this.TestExpression (e, v, ctx))
+
+        [
+            // Solve 1
+            (Solve(Int 1), "Solve not available for 1")
+            // Solve |-1,4,5>
+            (Solve(Ket [Int -1; Int 4; Int 5]), "Solve expects kets of size > 2. Ket size: 1")
+
+        ]
+        |> List.iter (fun (n, msg) -> this.TestInvalidExpression (n, msg, ctx))
