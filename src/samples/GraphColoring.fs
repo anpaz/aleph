@@ -1,7 +1,7 @@
 module GraphColoring
 
-open aleph.compiler.ast
-open aleph.runtime.Classic
+open aleph.parser.core
+open aleph.parser.quantum
 
 
 let program = Block ([

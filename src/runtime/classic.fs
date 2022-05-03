@@ -1,33 +1,36 @@
 namespace aleph.runtime
 
-open aleph.compiler.ast
+open aleph.parser.core
+open aleph.parser.quantum
+
 open aleph.runtime.Core
 
 module Classic =
 
-    type QuantumExpression =
-    | Ket of values: Expression<QuantumExpression> list
-    | Unitary of arguments: string list * qegs: string list * body: Expression<QuantumExpression>
-    | CallUnitary of id: string * arguments: Expression<QuantumExpression> list * ket: Expression<QuantumExpression>
-    | Measure of ket: Expression<QuantumExpression>
-    | Solve of ket: Expression<QuantumExpression>
-    | All
-
     type QuantumValue =
-    | K         of SET
-    | QMethod   of string list * string * Expression<QuantumExpression>
+    | Ket         of SET
+    | Unitary     of string list * string * Expression<QuantumExpression>
 
     type Value = Value<QuantumExpression, QuantumValue>
     type Context = Context<QuantumExpression, QuantumValue>
     type Expression = Expression<QuantumExpression>
 
-    let rec evalQuantum (e, ctx) =
+    let rec evalQuantum (e: QuantumExpression, ctx) =
         match e with 
-        | Ket _ 
-        | Measure _
-        | Solve _
-        | Unitary _
-        | CallUnitary _ 
-        | All -> $"Not implemented: {e}" |> Error
+        | QuantumExpression.Ket _ 
+        | QuantumExpression.Measure _
+        | QuantumExpression.Solve _
+        | QuantumExpression.Unitary _
+        | QuantumExpression.CallUnitary _ 
+        | QuantumExpression.All -> $"Not implemented: {e}" |> Error
+
+    and private evalKet (values, ctx) = 
+        eval (values, ctx)
+        ==> function
+            | (Set items, ctx)
+            | (Q (Ket items), ctx) -> 
+                (Ket items, ctx) |> Ok
+            | (v, _) -> 
+                $"Invalid value for a Ket element: {v}" |> Error
 
     and eval = (evalCore<QuantumExpression, QuantumValue> evalQuantum)

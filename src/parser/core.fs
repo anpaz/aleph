@@ -1,4 +1,4 @@
-﻿namespace aleph.compiler.ast
+﻿namespace aleph.parser.core
 
 
 type Expression<'E> =
@@ -26,7 +26,7 @@ type Expression<'E> =
 
     | CallMethod of id: string * arguments: Expression<'E> list
 
-    // Quantum Extensions:
+    // Quantum Nodes:
     | Q of 'E
 
 

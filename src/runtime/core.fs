@@ -1,8 +1,6 @@
-// fsharplint:disable-next-line NamespaceNames
 namespace aleph.runtime
 
-open aleph.compiler.ast
-
+open aleph.parser.core
 
 module Core =
     //----------------------------------
@@ -90,7 +88,7 @@ module Core =
                 AndExpression(values, ctx)
             | Expression.Or values ->
                 OrExpression(values, ctx)
-            | Expression.Add values ->
+            | Expression.Add values ->  
                 AddExpression(values, ctx)
             | Expression.Multiply values ->
                 MultiplyExpression(values, ctx)

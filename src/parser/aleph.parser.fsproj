@@ -6,7 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="tree.fs" />
+    <Compile Include="core.fs" />
+    <Compile Include="quantum.fs" />
   </ItemGroup>
 
 </Project>

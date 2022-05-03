@@ -1,6 +1,6 @@
 module Program 
 
-open aleph.compiler
+open aleph.parser.core
 open aleph.runtime.Core
 
 [<EntryPoint>]
