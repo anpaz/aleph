@@ -10,16 +10,14 @@ type TestCore () =
 
     let onlyCore = { 
         new RuntimeExtension<unit, int> with
-            override this.Eval (_,_) =  "No extension implemented" |> Error
-            override this.ToSet _ = failwith "Not implemented"
-            override this.FromSet _ = failwith "Not implemented"
+            override this.Eval core (e, ctx) = core (e, ctx)
     }
 
     let eval = (evalCore onlyCore)
 
     member this.TestExpression (e, expected, ?ctx)=
-        let ctx = defaultArg ctx Map.empty        
-        
+        let ctx = defaultArg ctx (Context (Map.empty, eval))
+
         match eval (e, ctx) with
         | Ok (actual, _) -> 
             Assert.AreEqual(expected.ToString(), actual.ToString())
@@ -28,7 +26,8 @@ type TestCore () =
             Assert.Fail()
         
     member this.TestInvalidExpression (e, expected, ?ctx)=
-        let ctx = defaultArg ctx Map.empty
+        let ctx = defaultArg ctx (Context (Map.empty, eval))
+        
         match eval (e, ctx)  with
         | Ok (v, _) ->
             Assert.AreEqual($"ERROR for {e}", $"Expression returned: {v}")
@@ -47,14 +46,14 @@ type TestCore () =
         // classic = plusone (a) -> a + 1
         let plusone = Value.Method (["a"], Add([Id "a"; Int 1]))
 
-        Map[ 
+        Context (Map[ 
             ("i1", i1)
             ("b1", b1)
             ("t1", t1)
             ("t2", t2)
             ("s1", s1)
             ("plusone", plusone)
-        ]
+        ], eval)
 
 
     [<TestMethod>]
@@ -68,13 +67,13 @@ type TestCore () =
     member this.IdExpressions() =
         let ctx = this.Context
 
-        for i in ctx.Keys do
-            this.TestExpression(Id(i), ctx.[i], ctx)
+        for i in ctx.Map.Keys do
+            this.TestExpression(Id(i), ctx.Map.[i], ctx)
 
         // Some negative cases too:
-        this.TestInvalidExpression(Id("i1"), "Unknown variable: i1", Map.empty)
+        this.TestInvalidExpression(Id("i1"), "Unknown variable: i1", (Context (Map.empty, eval)))
 
-        Assert.IsFalse(ctx.ContainsKey "foo")
+        Assert.IsTrue((ctx.TryFind "foo").IsNone)
         this.TestInvalidExpression(Id("foo"), "Unknown variable: foo", ctx)
 
 
@@ -229,11 +228,11 @@ type TestCore () =
             
             //  given s1 = [ (F, 5), (T,12) ]
             // [ s1 ] -> [ (F, 5), (T,12) ]
-            (Set([Id("s1")]), ctx["s1"])            // Tuple with set inside
+            (Set([Id("s1")]), ctx.Map["s1"])            // Tuple with set inside
 
             //  given s1 = [ (F, 5), (T,12) ]
             // [ s1, s1 ] -> [ (F, 5), (T,12) ]
-            (Set([Id("s1");Id("s1")]), ctx["s1"])            // Tuple with set inside
+            (Set([Id("s1");Id("s1")]), ctx.Map["s1"])            // Tuple with set inside
 
             // [ [ (0,0), (1,1) ], (0,1), (1,1)  ] --> [ (0,0), (0,1), (1,1) ] ]
             (Set([
@@ -634,7 +633,7 @@ type TestCore () =
             match eval (Block ([e], Id key), ctx) with
             | Error msg -> Assert.AreEqual(expected, msg)
             | Ok (_, ctx) ->
-                let actual = ctx[key]
+                let actual = ctx.Map[key]
                 Assert.AreEqual(expected, actual)
 
 

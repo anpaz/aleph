@@ -36,16 +36,63 @@ module Core =
             | Method (args,  _) -> "(" + (args |> String.concat " ") + ") -> ()"
             | Q e -> e.ToString()
 
-    type Context<'E,'V> = Map<string, Value<'E,'V>>
-    type Extension<'E, 'V> = 'E * Context<'E,'V> -> Result<Value<'E,'V> * Context<'E,'V>, string>
+    type Context<'E,'V>(map: Map<string, Value<'E, 'V>>, eval: (Expression<'E> * Context<'E,'V>) -> Result<Value<'E,'V> * Context<'E,'V>, string>) =
+        abstract member Add : key: string * Value<'E,'V> -> Context<'E,'V> 
+        abstract member Add : keys: string list * values: Value<'E,'V> list -> Context<'E,'V> 
+        abstract member Add : string list * values: Expression<'E> list -> Result<Context<'E,'V>, string>
+        abstract member TryFind : key: string -> Value<'E,'V> option
+
+        member this.Map = map
+        
+        default self.Add (key, value) = 
+            Context (map.Add(key, value), eval)
+
+        default self.Add (keys : string list, values: Value<'E,'V> list) = 
+            List.zip keys values
+            |> List.fold (fun (c: Context<'E,'V>) -> c.Add) self
+
+        default self.Add (keys, expressions) = 
+            let addAll ctx (names: string list) (values: Expression<'E> list) =
+                if names.Length = values.Length then
+                    let one previous arg =
+                        previous 
+                        ==> fun (previous, ctx) ->
+                            eval (arg, ctx)
+                            ==> fun (arg, ctx) ->  (previous @ [arg], ctx) |> Ok
+
+                    List.fold one (([], ctx) |> Ok) values
+                    ==> fun (values, ctx') ->
+                        let ctx = ctx'.Add (keys, values)
+                        ctx |> Ok
+                else
+                    $"Invalid arguments: expects {names.Length}, got {values.Length}" |> Error
+
+            // Support to receive a Tuple or another object.
+            match (keys, expressions) with
+            | [], [] -> self |> Ok
+            | [n], [e] -> eval (e, self) ==> fun (v, ctx) -> ctx.Add (n, v) |> Ok
+            | _, [v] ->
+                eval (v, self)
+                ==> function
+                    | Tuple values, ctx -> 
+                        let expressions = values |> List.map (function | I i -> Expression<'E>.Int i | B b -> Expression<'E>.Bool b)
+                        addAll ctx keys expressions
+                    | _ -> $"Invalid arguments: expects {keys.Length}, got {v}" |> Error
+            | _, _ ->
+                addAll self keys expressions
+
+        default self.TryFind key =
+            map.TryFind key
 
     type RuntimeExtension<'E, 'V> = 
-        abstract member Eval : 'E * Context<'E,'V> -> Result<Value<'E,'V> * Context<'E,'V>, string>
-        abstract member ToSet : 'V -> SET option
-        abstract member FromSet : SET -> 'V
+        abstract member Eval : (Expression<'E> * Context<'E,'V> -> Result<Value<'E,'V> * Context<'E,'V>, string>) -> Expression<'E> * Context<'E,'V> -> Result<Value<'E,'V> * Context<'E,'V>, string>
 
     let evalCore<'E,'V> (extension: RuntimeExtension<'E,'V>) (e: Expression<'E>, ctx: Context<'E,'V>) =
-        let rec eval (e: Expression<'E>, ctx: Context<'E,'V>) : Result<Value<'E,'V> * Context<'E,'V>, string> =
+        
+        let rec eval (e, ctx) = 
+            extension.Eval AllCoreExpressions (e, ctx)
+
+        and AllCoreExpressions (e, ctx) =
             match e with
             | Expression.Int i -> 
                 (Value.Int i, ctx) |> Ok
@@ -86,17 +133,16 @@ module Core =
             | Expression.CallMethod (name, args) ->
                 CallExpression (name, args, ctx)
             | Expression.Q v ->
-                extension.Eval (v, ctx)
+                $"Not implemented {v}" |> Error
 
         and toSet = function
             | Bool b -> SET [[B b]] |> Some
             | Int i -> SET [[I i]] |> Some
             | Tuple r -> SET [r] |> Some
             | Set s2 -> s2 |> Some
-            | Q e -> extension.ToSet e
             | _ -> None
 
-        and cross_product (left:Value<'E, 'V>) (right:Value<'E, 'V>) T ctx =
+        and cross_product (left:Value<'E, 'V>) (right:Value<'E, 'V>) (T : TUPLE list -> Value<'E, 'V>) ctx =
             match (toSet left, toSet right) with
             | (Some set1, Some set2) ->
                 let result = 
@@ -118,9 +164,6 @@ module Core =
                     eval (next, ctx)
                     ==> fun (right, ctx) ->
                         match (left, right) with
-                        | Q _, _
-                        | _, Q _ ->
-                            cross_product left right (SET >> extension.FromSet >> Q) ctx
                         | Set _, _
                         | _, Set _ ->
                             cross_product left right (SET >> Set) ctx
@@ -337,14 +380,13 @@ module Core =
         and ProjectExpression (value, index, ctx) =
             let indices previous next =
                 previous
-                |> Result.bind (fun (previous, ctx) ->
+                ==> fun (previous, ctx) ->
                     eval (next, ctx)
                     ==> fun (next, ctx) ->
                         match next with
                         | Int next
                         | Tuple [I next] -> (previous @ [ next ], ctx) |> Ok
                         | _ -> "all indices must be of type int: {next}" |> Error
-                )
 
             match List.fold indices (([], ctx) |> Ok) index with
             | Ok (indices, ctx) ->
@@ -366,21 +408,6 @@ module Core =
                 | :? System.ArgumentException -> $"Index in project outside of range" |> Error
             | Error msg -> $"Invalid indices: {msg}" |> Error
 
-        and addArgsToContext (argNames: string list) (args: Expression<'E> list) ctx =
-            let one previous arg =
-                previous 
-                ==> fun (previous, ctx) ->
-                    eval (arg, ctx)
-                    ==> fun (arg, ctx) -> (previous @ [arg], ctx) |> Ok
-
-            if argNames.Length = args.Length then
-                List.fold one (([], ctx) |> Ok) args
-                ==> fun (args, ctx) ->
-                    let args = List.zip argNames args |> Map
-                    let ctx =  Map.fold (fun acc key value -> Map.add key value acc) ctx args
-                    ctx |> Ok
-            else
-                $"Invalid arguments: expects {argNames.Length}, got {args.Length}" |> Error
 
         and BlockExpression (stmts, value, ctx) =
             let rec evalStatements previous next =
@@ -401,25 +428,24 @@ module Core =
         and CallExpression (name, args, ctx) =
             match ctx.TryFind name with
             | Some (Method (argNames, body)) ->
-                addArgsToContext argNames args ctx
+                ctx.Add(argNames, args)
                 ==> fun ctx -> eval (body, ctx)
             | Some _ -> $"Undefined method: {name}" |> Error
             | None ->  $"Undefined method: {name}" |> Error
 
-
         and enumerate (value, ctx) =
-            match (eval (value, ctx)) with
-            | Result.Ok (Int i, _) -> [Int i] |> Ok
-            | Result.Ok (Bool b, _) -> [Bool b] |> Ok
-            | Result.Ok (Tuple t, _) -> 
-                t |> List.map (function | B b -> Bool b | I i -> Int i) |> Ok
-            | Result.Ok (Set s, _) ->
-                s 
-                |> Set.toList
-                |> List.map Value.Tuple
-                |> Ok
-            | Result.Ok (v, _) -> $"Invalid enumeration: {v}" |> Error
-            | Result.Error msg -> msg |> Error
+            eval (value, ctx)
+            ==> function
+                | (Int i, _) -> [Int i] |> Ok
+                | (Bool b, _) -> [Bool b] |> Ok
+                | (Tuple t, _) -> 
+                    t |> List.map (function | B b -> Bool b | I i -> Int i) |> Ok
+                | (Set s, _) ->
+                    s 
+                    |> Set.toList
+                    |> List.map Value.Tuple
+                    |> Ok
+                | (v, _) -> $"Invalid enumeration: {v}" |> Error
 
 
         and SummarizeExpression (name, enumeration, operation, body, ctx) =

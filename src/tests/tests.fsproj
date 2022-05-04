@@ -5,8 +5,8 @@
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="TestClassic.fs" />
     <Compile Include="TestCore.fs" />
+    <Compile Include="TestClassic.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

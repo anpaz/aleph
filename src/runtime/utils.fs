@@ -16,4 +16,3 @@ module Utils =
         |> Set.toList
         |> List.map (function | [e] -> e.ToString() | e -> ("(" + (printTupleBody e).ToString() + ")"))
         |> String.concat ", "
-
