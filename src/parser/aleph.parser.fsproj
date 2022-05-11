@@ -6,8 +6,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="core.fs" />
-    <Compile Include="quantum.fs" />
+    <Compile Include="untyped.fs" />
+    <Compile Include="typed.fs" />
+    <!-- <Compile Include="quantum.fs" /> -->
   </ItemGroup>
 
 </Project>
