@@ -8,7 +8,7 @@
   <ItemGroup>
     <Compile Include="untyped.fs" />
     <Compile Include="typed.fs" />
-    <!-- <Compile Include="quantum.fs" /> -->
+    <Compile Include="type-checker.fs" />
   </ItemGroup>
 
 </Project>
