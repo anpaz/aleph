@@ -1,7 +1,7 @@
 module Program 
 
-open aleph.parser.core
-open aleph.runtime.Core
+// open aleph.parser.core
+// open aleph.runtime.Core
 
 [<EntryPoint>]
 let main _ =
