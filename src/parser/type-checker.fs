@@ -8,18 +8,32 @@ module TypeChecker =
     let (==>) (input: Result<'a,'b>) ok  =
         Result.bind ok input
 
-    let is_bool = function
-    | Classic (_, Type.Bool) -> true
-    | _ -> false
+    let is_bool msg e = 
+        match e with 
+        | Classic (_, Type.Bool) -> e |> Ok
+        | Classic (e, t) -> msg + $"Expected bool expression, got: ({e}:{t})" |> Error
+        | Quantum (e, t) -> msg + $"Expected bool expression, got: ({e}:{t})" |> Error
 
-    let is_tuple = function
-    | Classic (_, Type.Tuple _) -> true
-    | _ -> false
+    let is_set_element msg e =
+        match e with 
+        | Classic (_, Type.Int _)
+        | Classic (_, Type.Bool _)
+        | Classic (_, Type.Tuple _) -> e |> Ok
+        | Classic (e, t) -> msg + $"Expected int, bool or tuple expression, got: ({e}:{t})" |> Error
+        | Quantum (e, t) -> msg + $"Expected int, bool or tuple expression, got: ({e}:{t})" |> Error
 
-    let is_bool_or_int = function
-    | Classic (_, Type.Bool)
-    | Classic (_, Type.Int) -> true
-    | _ -> false
+    let is_tuple msg e =
+        match e with 
+        | Classic (_, Type.Tuple _) -> e |> Ok
+        | Classic (e, t) -> msg + $"Expected tuple expression, got: ({e}:{t})" |> Error
+        | Quantum (e, t) -> msg + $"Expected tuple expression, got: ({e}:{t})" |> Error
+
+    let is_bool_or_int msg e = 
+        match e with 
+        | Classic (_, Type.Bool)
+        | Classic (_, Type.Int) -> e |> Ok
+        | Classic (e, t) -> msg + $"Expected bool or int expression, got: ({e}:{t})" |> Error
+        | Quantum (e, t) -> msg + $"Expected bool or int expression, got: ({e}:{t})" |> Error
 
     // For a list of typed Expressions (E), returns two list: one with just the expression
     // elements and a second with just the Types.
@@ -34,7 +48,7 @@ module TypeChecker =
                     ==> fun (expressions, types) ->
                         (e :: expressions, t::types) |> Ok
                 | _ ->
-                    $"Invalid element: {head}" |> Error
+                    $"Invalid element: {head}. Expecting a classic type." |> Error
             | [] -> ([], []) |> Ok
         next values
 
@@ -52,6 +66,8 @@ module TypeChecker =
         | Expression.Tuple values -> typecheck_tuple (values, ctx)
         | Expression.Set values -> typecheck_set (values, ctx)
 
+        | Expression.Not value -> typecheck_not (value, ctx)
+        | Expression.Or values -> typecheck_or (values, ctx)
         | Expression.And values -> typecheck_and (values, ctx)
 
         | Expression.Range _
@@ -59,8 +75,6 @@ module TypeChecker =
         | Expression.Method _
         | Expression.CallMethod _
 
-        | Expression.Not _
-        | Expression.Or _
         | Expression.Equals _
         | Expression.LessThan _
 
@@ -99,7 +113,7 @@ module TypeChecker =
         (Classic (IntLiteral i, Type.Int), ctx) |> Ok
 
     and typecheck_tuple (values, ctx) =
-        typecheck_expression_list is_bool_or_int (values, ctx)
+        typecheck_expression_list (is_bool_or_int  "Invalid tuple element. ") (values, ctx)
         ==> fun (values, ctx) ->
             unzip_classic values
             ==> fun (exps, types) ->
@@ -109,7 +123,7 @@ module TypeChecker =
         match values with
         | [] -> (Classic (C.Set [], Type.Set (Type.Tuple [])), ctx) |> Ok
         | _ ->
-            typecheck_expression_list is_tuple (values, ctx)
+            typecheck_expression_list (is_set_element "Invalid set element. ") (values, ctx)
             ==> fun (values, ctx) ->
                 unzip_classic values
                 ==> fun (exps, types) ->
@@ -121,24 +135,27 @@ module TypeChecker =
                         "All tuples in a set must be of the same type." |> Error
 
     and typecheck_and (values, ctx) =
-        match values with
-        | [] -> "And expressions require at least one element" |> Error
-        | _ ->
-            typecheck_expression_list is_bool (values, ctx)
-            ==> fun (values, ctx) ->
-                unzip_classic values
-                ==> fun (exps, _) ->
-                    (Classic (C.And exps, Type.Bool), ctx) |> Ok
+        typecheck_expression_list (is_bool "Invalid And element. ") (values, ctx)
+        ==> fun (values, ctx) ->
+            unzip_classic values
+            ==> fun (exps, _) ->
+                (Classic (C.And exps, Type.Bool), ctx) |> Ok
 
     and typecheck_or (values, ctx) =
-        match values with
-        | [] -> "Or expressions require at least one element" |> Error
-        | _ ->
-            typecheck_expression_list is_bool (values, ctx)
-            ==> fun (values, ctx) ->
-                unzip_classic values
-                ==> fun (exps, _) ->
-                    (Classic (C.Or exps, Type.Bool), ctx) |> Ok
+        typecheck_expression_list (is_bool "Invalid Or element. ") (values, ctx)
+        ==> fun (values, ctx) ->
+            unzip_classic values
+            ==> fun (exps, _) ->
+                (Classic (C.Or exps, Type.Bool), ctx) |> Ok
+
+    and typecheck_not (value, ctx) =
+        typecheck(value, ctx)
+        ==> fun (value, ctx) ->
+            match value with 
+            | Classic (v, Type.Bool) ->
+                (Classic (C.Not v, Type.Bool), ctx) |> Ok
+            | _ ->
+                $"Not expressions require boolean arguments, got: {value}" |> Error
 
     // Typechecks an untyped expression list. Receives a callback such that
     // each expression can be validated. If all the expressions are valid
@@ -149,12 +166,11 @@ module TypeChecker =
             | head :: tail ->
                 typecheck (head, ctx)
                 ==> fun (head, ctx) ->
-                    if is_valid_expression head then
+                    is_valid_expression head
+                    ==> fun head ->
                         next (tail, ctx)
                         ==> fun (tail, ctx) ->
                             (head :: tail, ctx) |> Ok
-                    else
-                        $"Invalid element: {head}" |> Error
             | [] -> ([], ctx) |> Ok
         next (values, ctx)
 
