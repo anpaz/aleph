@@ -17,63 +17,61 @@ and QType =
     | QInt
 
 type C =
-    | Var of string * Type
+    | Var of string
 
-    | BoolLiteral of bool * Type
-    | IntLiteral of int * Type
-    | Tuple of values: C list * Type
-    | Set of  values: C list * Type
-    | Range of  start: C * stop: C * Type
+    | BoolLiteral of bool
+    | IntLiteral of int
+    | Tuple of values: C list
+    | Set of  values: C list
+    | Range of  start: C * stop: C
 
-    | Not of C * Type
-    | And of C * C * Type
-    | Or of C * C * Type
-    | Equals of C * C * Type
-    | LessThan of C * C * Type
+    | Not of C
+    | And of C list
+    | Or of C list
+    | Equals of C * C
+    | LessThan of C * C
 
-    | Add of C * C * Type
-    | Multiply of C * C * Type
+    | Add of C * C
+    | Multiply of C * C
 
-    | Method of name: Id * arguments: Id list * body: C * Type
-    | CallMethod of method: C * arguments: C list * Type
+    | Method of name: Id * arguments: Id list * body: C
+    | CallMethod of method: C * arguments: C list
 
-    | Join of values: C list * Type
-    | Project of source: C * indices: C list * Type
-    | Block of stmts: Statement list * value: C * Type
-    | If of cond: C * t : C * f: C * Type
-    | Summarize of id: Id * enumeration : C * operation: C * body: C * Type
+    | Join of values: C * C
+    | Project of source: C * indices: C list
+    | Block of stmts: Statement list * value: C
+    | If of cond: C * t : C * f: C
+    | Summarize of id: Id * enumeration : C * operation: C * body: C
 
-    | CallQMethod of method: C * arguments: C list * qarguments: Q list * QType
-
-    | Sample of ket: Q * Type
-    | Measure of ket: Q * shots: C * Type
-    | Solve of ket: Q * shots: C * QType
+    | Sample of ket: Q
+    | Measure of ket: Q * shots: C
 
 and Q =
-    | Var of string * QType
+    | Var of string
 
-    | Constant of C * QType
-    | AllKet of size: int * QType
+    | Constant of C
+    | AllKet of size: int
 
-    | Not of Q * QType
-    | And of Q * Q * QType
-    | Or of Q * Q * QType
-    | Equals of Q * Q * QType
+    | Not of Q
+    | And of Q * Q
+    | Or of Q * Q
+    | Equals of Q * Q
 
-    | Add of Q * Q * QType
-    | Multiply of Q * Q * QType
+    | Add of Q * Q
+    | Multiply of Q * Q
 
-    | Join of values: Q list * QType
-    | Project of source: Q * indices: C list * QType
-    | Block of qstmts: Statement list * Q * QType
-    | If of cond: Q * t : Q * f: Q * QType
-    | Summarize of id: Id * enumeration : C * operation: C * body: Q * QType
+    | Join of values: Q * Q
+    | Project of source: Q * indices: C list
+    | Block of qstmts: Statement list * Q
+    | If of cond: Q * t : Q * f: Q
+    | Summarize of id: Id * enumeration : C * operation: C * body: Q
 
-    | CallQMethod of method: C * arguments: C list * qarguments: Q list * QType
+    | CallQMethod of method: C * arguments: C list * qarguments: Q list
+    | Solve of ket: Q
 
 and E =
-    | Classic of C
-    | Quantum of Q
+    | Classic of C * Type
+    | Quantum of Q * QType
 
 and Statement =
     | Let of id: Id * value: E

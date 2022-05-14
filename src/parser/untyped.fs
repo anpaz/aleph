@@ -21,6 +21,7 @@ type Expression =
 
     | Add of Expression list
     | Multiply of Expression list
+    | Join of Expression list
 
     | Project of tuple: Expression * index: Expression list
     | Block of Statement list * Expression
