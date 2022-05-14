@@ -1,99 +1,72 @@
 namespace aleph.parser.typed
 
-type Id = string
+open aleph.parser.ast
 
-type Bool =
-    | Literal of bool
+type Type =
+    | Bool
+    | Int
+    | Tuple of Type list
+    | Set of Type
+    | Histogram of Type
+    | CMethod of Type list * Type
+    | QMethod of Type list * QType * QType
 
-    | Equals of Value * Value
-    | Not of Bool
-    | And of Bool * Bool
-    | Or of Bool * Bool
-    | LessThan of Int * Int
+and QType =
+    | Ket of QType list
+    | QBool
+    | QInt
 
-and Int =
-    | Literal of int
+type TypedExpression =
+    | Var of string * Type
 
-    | Add of Int * Int
-    | Multiply of Int * Int
+    | BoolLiteral of bool * Type
+    | IntLiteral of int * Type
+    | Tuple of values: TypedExpression list * Type
+    | Set of  values: TypedExpression list * Type
+    | Range of  start: TypedExpression * stop: TypedExpression * Type
 
-and Tuple = 
-    | Literal of Value * Value
+    | Not of TypedExpression * Type
+    | And of TypedExpression * TypedExpression * Type
+    | Or of TypedExpression * TypedExpression * Type
+    | Equals of TypedExpression * TypedExpression * Type
+    | LessThan of TypedExpression * TypedExpression * Type
 
-    | Sample of Ket // Like measure, but only 1 shot.
+    | Add of TypedExpression * TypedExpression * Type
+    | Multiply of TypedExpression * TypedExpression * Type
 
-and Set =
-    | Literal of Tuple list
-    | Range of Range
+    | Method of name: Id * arguments: Id list * body: TypedExpression * Type
+    | CallMethod of method: TypedExpression * arguments: TypedExpression list * Type
 
-and Ket =
-    | Literal of values: Set
-    | AllKet of size: Int
+    | Join of values: TypedExpression list * Type
+    | Project of source: TypedExpression * indices: TypedExpression list * Type
+    | Block of Statement list * value: TypedExpression * Type
+    | If of cond: TypedExpression * t : TypedExpression * f: TypedExpression * Type
+    | Summarize of id: Id * enumeration : TypedExpression * operation: TypedExpression * body: TypedExpression * Type
 
-    | Solve of Ket
-    | CallQMethod of method: QMethod<Q> * arguments: C list * qarguments: Q list
-    
-and Histogram = 
-    | Measure of ket: Ket * shots: Int
+    | CallQMethod of method: TypedExpression * arguments: TypedExpression list * qarguments: QTypedExpression list * QType
 
-and Value = 
-    | Bool of Bool
-    | Int of Int
-    | Tuple of Tuple
-    | Set of Set
-    | Ket of Ket
+    | Sample of ket: QTypedExpression * Type
+    | Measure of ket: QTypedExpression * shots: TypedExpression * Type
+    | Solve of ket: QTypedExpression * shots: TypedExpression * QType
 
-    | Join of Value * Value
-    | Project of source: Value * index: Int
+and QTypedExpression =
+    | Var of string * QType
 
-and C =
-    | Value of Value
-    | Histogram of Histogram
-    | CMethod of CMethod<C>
-    | QMethod of QMethod<Q>
+    | Constant of TypedExpression * QType
+    | AllKet of size: int * QType
 
-    | Var of Id
-    | MethodCall of CMethod<C>
-    | Block of Block<C>
-    | If of If<C>
+    | Not of QTypedExpression * QType
+    | And of QTypedExpression * QTypedExpression * QType
+    | Or of QTypedExpression * QTypedExpression * QType
+    | Equals of QTypedExpression * QTypedExpression * QType
 
-and QBool =
-    | Const of Bool
-    | Equals of QValue * QValue
-    | Not of QBool
-    | And of QBool * QBool
-    | Or of QBool * QBool
+    | Add of QTypedExpression * QTypedExpression * QType
+    | Multiply of QTypedExpression * QTypedExpression * QType
 
-and QInt =
-    | Const of Int
-    | Add of QInt * QInt
-    | Multiply of QInt * QInt
+    | Join of values: QTypedExpression list * QType
+    | Project of source: QTypedExpression * indices: TypedExpression list * QType
+    | Block of Statement list * QTypedExpression * QType
+    | If of cond: QTypedExpression * t : QTypedExpression * f: QTypedExpression * QType
+    | Summarize of id: Id * enumeration : TypedExpression * operation: TypedExpression * body: QTypedExpression * QType
 
-and QValue = 
-    | QBool of QBool
-    | QInt of QInt
-    | Project of source: QValue * index: Int
-
-and Q =
-    | Ket of Ket
-    | QBool of QBool
-    | QInt of QInt
-
-    | Var of Id
-    | MethodCall of QMethod<Q>
-    | Block of Block<Q>
-    | If of If<Q>
-
-and Expression =
-    | Classical of C
-    | Quantum of Q
-
-and Statement =
-    | Let of id : Id * value: Expression
-    | Print of string * Expression list
-
-and Block<'T> = { stmts : Statement list; value: 'T }
-and If<'T> = { cond: Bool; t: 'T; f: 'T }
-and Range = { start: Int; step: Int; stop: Int }
-and CMethod<'T> = { arguments: Id list; body: 'T }
-and QMethod<'T> = { arguments: Id list; qarguments: Id list; body: 'T }
+    | CallQMethod of method: TypedExpression * arguments: TypedExpression list * qarguments: QTypedExpression list * QType

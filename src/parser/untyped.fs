@@ -3,7 +3,7 @@
 type Id = Id
 
 type Expression =
-    | Id of Id
+    | Var of Id
     | Bool of bool
     | Int of int
     | Tuple of values: Expression list
