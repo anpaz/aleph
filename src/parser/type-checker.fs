@@ -30,7 +30,7 @@ module TypeChecker =
             | head :: tail ->
                 match head with
                 | Classic (e,t) ->
-                    next items
+                    next tail
                     ==> fun (expressions, types) ->
                         (e :: expressions, t::types) |> Ok
                 | _ ->
@@ -38,10 +38,13 @@ module TypeChecker =
             | [] -> ([], []) |> Ok
         next values
 
+    type AnyType =
+        | Type of Type
+        | QType of QType
 
-    type Context = Map<Id, E>
+    type TypeContext = Map<Id, AnyType>
 
-    let rec typecheck (e: Expression, ctx: Context) =
+    let rec typecheck (e: Expression, ctx: TypeContext) =
         match e with 
         | Expression.Var id -> typecheck_var (id, ctx)
         | Expression.Bool b -> typecheck_bool (b, ctx)
@@ -83,7 +86,10 @@ module TypeChecker =
 
     and typecheck_var (id, ctx) =
         match ctx.TryFind id with
-        | Some e -> (e, ctx) |> Ok
+        | Some t -> 
+            match t with
+            | Type t -> (Classic (C.Var id, t), ctx) |> Ok
+            | QType t -> (Quantum (Q.Var id, t), ctx) |> Ok
         | None -> $"Unknown variable: {id}" |> Error
 
     and typecheck_bool (b, ctx) =

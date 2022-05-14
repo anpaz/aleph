@@ -1,6 +1,6 @@
 ﻿namespace aleph.parser.ast
 
-type Id = Id
+type Id = string
 
 type Expression =
     | Var of Id

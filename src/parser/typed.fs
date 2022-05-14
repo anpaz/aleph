@@ -17,8 +17,8 @@ and QType =
     | QInt
 
 type C =
-    | Var of string
-
+    | Var of Id
+    
     | BoolLiteral of bool
     | IntLiteral of int
     | Tuple of values: C list
@@ -47,7 +47,7 @@ type C =
     | Measure of ket: Q * shots: C
 
 and Q =
-    | Var of string
+    | Var of Id
 
     | Constant of C
     | AllKet of size: int
