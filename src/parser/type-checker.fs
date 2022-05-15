@@ -70,7 +70,7 @@ module TypeChecker =
         | Expression.Or values -> typecheck_or (values, ctx)
         | Expression.And values -> typecheck_and (values, ctx)
 
-        | Expression.Range _
+        | Expression.Range (start, stop) -> typecheck_range (start, stop, ctx)
 
         | Expression.Method _
         | Expression.CallMethod _
@@ -156,6 +156,21 @@ module TypeChecker =
                 (Classic (C.Not v, Type.Bool), ctx) |> Ok
             | _ ->
                 $"Not expressions require boolean arguments, got: {value}" |> Error
+
+    and typecheck_range (start, stop, ctx) =
+        typecheck(start, ctx)
+        ==> fun (start, ctx) ->
+            match start with 
+            | Classic (start, Type.Int) ->
+                typecheck (stop, ctx)
+                ==> fun (stop, ctx) ->
+                match stop with 
+                | Classic (stop, Type.Int) ->
+                    (Classic (C.Range (start, stop), Type.Set Type.Int), ctx) |> Ok
+                | _ ->
+                    $"Stop must be an int expression, got: {stop}" |> Error
+            | _ ->
+                $"Start must be an int expression, got: {start}" |> Error
 
     // Typechecks an untyped expression list. Receives a callback such that
     // each expression can be validated. If all the expressions are valid

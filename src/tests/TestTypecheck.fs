@@ -179,7 +179,6 @@ type TestCore () =
         |> List.iter (this.TestInvalidExpression ctx)
 
 
-
     [<TestMethod>]
     member this.TestAndOrNot () =
         let ctx = this.TypeContext
@@ -209,5 +208,31 @@ type TestCore () =
             u.And [u.Bool true; u.Int 23], "Invalid And element. Expected bool expression, got: (IntLiteral 23:Int)"
             u.Or [u.Bool true; u.Int 23], "Invalid Or element. Expected bool expression, got: (IntLiteral 23:Int)"
             u.Not (u.Int 23), "Not expressions require boolean arguments, got: Classic (IntLiteral 23, Int)"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
+
+
+
+    [<TestMethod>]
+    member this.TestRange() =
+        let ctx = this.TypeContext
+
+        [
+            // 0..0
+            u.Range (u.Int 0, u.Int 0), 
+                Type.Set Type.Int,
+                C.Range (C.IntLiteral 0, C.IntLiteral 0)
+            // 0..3 -> [0, 1, 2]
+            u.Range (u.Var "i1", u.Int 0), 
+                Type.Set Type.Int,
+                C.Range (C.Var "i1", C.IntLiteral 0)
+        ]
+        |> List.iter (this.TestClassicExpression ctx)
+
+        [
+            // t1 .. 10: Invalid start type
+            u.Range (u.Var "t1", u.Int 0), "Start must be an int expression, got: Classic (Var \"t1\", Tuple [Bool; Int])"
+            // 10 .. t1: Invalid start type
+            u.Range (u.Int 10 , u.Var "t1"), "Stop must be an int expression, got: Classic (Var \"t1\", Tuple [Bool; Int])"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
