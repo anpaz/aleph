@@ -1,20 +1,6 @@
-namespace aleph.parser.typed
+namespace aleph.parser.ast.typed
 
 open aleph.parser.ast
-
-type Type =
-    | Bool
-    | Int
-    | Tuple of Type list
-    | Set of Type
-    | Histogram of Type
-    | CMethod of Type list * Type
-    | QMethod of Type list * QType * QType
-
-and QType =
-    | Ket of QType list
-    | QBool
-    | QInt
 
 type C =
     | Var of Id
@@ -34,7 +20,9 @@ type C =
     | Add of C * C
     | Multiply of C * C
 
-    | Method of name: Id * arguments: Id list * body: C
+    | Method of arguments: Id list * body: C
+    | QMethod of arguments: Id list * qarguments: Id list * body: C
+
     | CallMethod of method: C * arguments: C list
 
     | Join of values: C * C
@@ -50,7 +38,7 @@ and Q =
     | Var of Id
 
     | Constant of C
-    | AllKet of size: int
+    | KetAll of size: C
 
     | Not of Q
     | And of Q * Q

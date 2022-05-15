@@ -1,7 +1,7 @@
 namespace aleph.parser
 
 open aleph.parser.ast
-open aleph.parser.typed
+open aleph.parser.ast.typed
 
 module TypeChecker =
 
@@ -58,6 +58,10 @@ module TypeChecker =
 
     type TypeContext = Map<Id, AnyType>
 
+    let add_to_context (ctx:TypeContext) (arguments: (Id * AnyType) list) : TypeContext =
+        arguments 
+        |> List.fold (fun state arg -> state.Add arg) ctx
+
     let rec typecheck (e: Expression, ctx: TypeContext) =
         match e with 
         | Expression.Var id -> typecheck_var (id, ctx)
@@ -72,7 +76,10 @@ module TypeChecker =
 
         | Expression.Range (start, stop) -> typecheck_range (start, stop, ctx)
 
-        | Expression.Method _
+        | Expression.Method (arguments, body) -> typecheck_method (arguments, body, ctx)
+
+        | Expression.KetAll size -> typecheck_ketall (size, ctx)
+
         | Expression.CallMethod _
 
         | Expression.Equals _
@@ -88,7 +95,6 @@ module TypeChecker =
         | Expression.Summarize _
 
         | Expression.Ket _
-        | Expression.AllKet _
 
         | Expression.QMethod _
         | Expression.CallQMethod _
@@ -172,6 +178,30 @@ module TypeChecker =
             | _ ->
                 $"Start must be an int expression, got: {start}" |> Error
 
+    and typecheck_method (arguments, body, ctx) =
+        let ctx =
+            arguments 
+            |> List.map (fun (n, t) -> (n, AnyType.Type t))
+            |> add_to_context ctx
+        typecheck (body, ctx)
+        ==> fun (body, ctx) ->
+            match body with
+            | Classic (e, t) ->
+                let argNames = arguments |> List.map (fun a -> (fst a))
+                let argTypes = arguments |> List.map (fun a -> (snd a))
+                (Classic (C.Method (argNames, e), Type.CMethod (argTypes, t)), ctx) |> Ok
+            | Quantum _ -> "Methods must have a classic return type" |> Error
+
+
+    and typecheck_ketall (size, ctx) =
+        typecheck (size, ctx)
+        ==> fun (size, ctx) ->
+            match size with 
+            | Classic (v, Type.Int) ->
+                (Quantum (Q.KetAll v, QType.Ket [QType.QInt]), ctx) |> Ok
+            | _ ->
+                $"Ket size must be an int expression, got: {size}" |> Error
+
     // Typechecks an untyped expression list. Receives a callback such that
     // each expression can be validated. If all the expressions are valid
     // it returns the list of corresponding typed expressions.
@@ -188,5 +218,3 @@ module TypeChecker =
                             (head :: tail, ctx) |> Ok
             | [] -> ([], ctx) |> Ok
         next (values, ctx)
-
-

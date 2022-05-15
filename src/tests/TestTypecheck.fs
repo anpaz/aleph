@@ -3,7 +3,7 @@ namespace aleph.tests
 open Microsoft.VisualStudio.TestTools.UnitTesting
 
 open aleph.parser.ast
-open aleph.parser.typed
+open aleph.parser.ast.typed
 open aleph.parser.TypeChecker
 
 // alias for untyped expressions
@@ -234,5 +234,59 @@ type TestCore () =
             u.Range (u.Var "t1", u.Int 0), "Start must be an int expression, got: Classic (Var \"t1\", Tuple [Bool; Int])"
             // 10 .. t1: Invalid start type
             u.Range (u.Int 10 , u.Var "t1"), "Stop must be an int expression, got: Classic (Var \"t1\", Tuple [Bool; Int])"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
+
+
+
+    [<TestMethod>]
+    member this.TestMethod() =
+        let ctx = this.TypeContext
+
+        [
+            // let m () = true
+            u.Method ([], u.Bool true),
+                Type.CMethod ([], Type.Bool),
+                C.Method ([], C.BoolLiteral true)
+            // let m (a: Int; b: Tuple<Int, Bool>) = b
+            u.Method ([("a", Type.Int); ("b", Type.Tuple [Type.Int; Type.Bool])], u.Var "b"),
+                Type.CMethod ([Type.Int; Type.Tuple [Type.Int; Type.Bool]], Type.Tuple [Type.Int; Type.Bool]),
+                C.Method (["a"; "b"], C.Var "b")
+            // let m (i:Int) = 
+            //      lambda (y: Bool) = 42
+            u.Method ([("i", Type.Int)], u.Method (["y",Type.Bool], u.Int 42)),
+                Type.CMethod ([Type.Int], Type.CMethod ([Type.Bool], Type.Int)),
+                C.Method (["i"], C.Method (["y"], C.IntLiteral 42))
+        ]
+        |> List.iter (this.TestClassicExpression ctx)
+
+        [
+            // let m () = |@,2>
+            u.Method ([], u.KetAll (u.Int 2)), "Methods must have a classic return type"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
+
+
+
+    [<TestMethod>]
+    member this.TestKetAll() =
+        let ctx = this.TypeContext
+
+        [
+            // |@,3>
+            u.KetAll (u.Int 3),
+                QType.Ket [QType.QInt],
+                Q.KetAll (C.IntLiteral 3)
+
+            // |@,i1>
+            u.KetAll (u.Var "i1"),
+                QType.Ket [QType.QInt],
+                Q.KetAll (C.Var "i1")
+        ]
+        |> List.iter (this.TestQuantumExpression ctx)
+
+        [
+            u.KetAll (u.Bool false), "Ket size must be an int expression, got: Classic (BoolLiteral false, Bool)"
+            // TODO: Quatum types
         ]
         |> List.iter (this.TestInvalidExpression ctx)

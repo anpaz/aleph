@@ -2,6 +2,21 @@
 
 type Id = string
 
+type Type =
+    | Bool
+    | Int
+    | Tuple of Type list
+    | Set of Type
+    | Histogram of Type
+    | CMethod of Type list * Type
+    | QMethod of Type list * QType * QType
+
+and QType =
+    | Ket of QType list
+    | QBool
+    | QInt
+
+
 type Expression =
     | Var of Id
     | Bool of bool
@@ -10,7 +25,7 @@ type Expression =
     | Set of values: Expression list
     | Range of start: Expression * stop: Expression
 
-    | Method of arguments: Id list * body: Expression
+    | Method of arguments: (Id * Type) list * body: Expression
     | CallMethod of name: Id * arguments: Expression list
 
     | Not of Expression
@@ -29,9 +44,9 @@ type Expression =
     | Summarize of id: Id * enumeration : Expression * operation: Id * body: Expression
 
     | Ket of values: Expression list
-    | AllKet of size: int
+    | KetAll of size: Expression
 
-    | QMethod of arguments: Id list * qarguments: Id list * body: Expression
+    | QMethod of arguments: (Id * Type) list * qarguments: (Id * QType) list * body: Expression
     | CallQMethod of name: Id * arguments: Expression list * ket: Expression
 
     | Sample of ket: Expression
