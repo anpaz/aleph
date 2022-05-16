@@ -166,6 +166,7 @@ let y line |0,1,2> 2 3          // y == Ket<Int>
 ```
 
 To see why, if `m` is a `Ket` then
+```
 let line m x b =
     let s0 = m * x              // Ket * int == Ket
     let s1 = s0 + b             // Ket + int == Ket
