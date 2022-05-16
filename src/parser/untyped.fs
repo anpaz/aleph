@@ -34,9 +34,9 @@ type Expression =
     | Equals of Expression * Expression
     | LessThan of Expression * Expression
 
-    | Add of Expression list
-    | Multiply of Expression list
-    | Join of Expression list
+    | Add of Expression * Expression
+    | Multiply of Expression * Expression
+    | Join of Expression * Expression
 
     | Project of tuple: Expression * index: Expression list
     | Block of Statement list * Expression

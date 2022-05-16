@@ -36,16 +36,16 @@ type C =
 and Q =
     | Var of Id
 
-    | Constant of C
+    | Literal of C
     | KetAll of size: C
 
     | Not of Q
-    | And of Q * Q
-    | Or of Q * Q
-    | Equals of Q * Q
+    | And of Q
+    | Or of Q
+    | Equals of Q
 
-    | Add of Q * Q
-    | Multiply of Q * Q
+    | Add of Q
+    | Multiply of Q
 
     | Join of values: Q * Q
     | Project of source: Q * indices: C list

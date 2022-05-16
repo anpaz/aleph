@@ -52,6 +52,20 @@ module TypeChecker =
             | [] -> ([], []) |> Ok
         next values
 
+    // Gets a typed expression (E), and returns
+    // its quantum equivalent. If the expression is already quantum returns
+    // itself, otherwise return the corresponding elements for a quantum Literal.
+    let make_q e =
+        match e with 
+        | Quantum (l, t) -> (l, t) |> Ok
+        | Classic (l, Type.Set (Type.Tuple t)) -> (Literal l, QType.Ket t) |> Ok
+        | Classic (l, Type.Set t) -> (Literal l, QType.Ket [t]) |> Ok
+        | Classic (l, Type.Int) -> (Literal l, QType.Ket [Type.Int]) |> Ok
+        | Classic (l, Type.Bool) -> (Literal l, QType.Ket [Type.Bool]) |> Ok
+        | Classic (l, Type.Tuple t) -> (Literal l, QType.Ket t) |> Ok
+        | _ -> "Cannot create quantum literal from {e}" |> Error 
+
+
     type TypeContext = Map<Id, AnyType>
 
     let QInt = QType.Ket [Type.Int]
@@ -73,10 +87,13 @@ module TypeChecker =
         | Expression.Or values -> typecheck_or (values, ctx)
         | Expression.And values -> typecheck_and (values, ctx)
 
+        | Expression.Add (left, right) -> typecheck_add (left, right, ctx)
+
         | Expression.Range (start, stop) -> typecheck_range (start, stop, ctx)
 
         | Expression.Method (arguments, body) -> typecheck_method (arguments, body, ctx)
 
+        | Expression.Ket values -> typecheck_ket (values,ctx)
         | Expression.KetAll size -> typecheck_ketall (size, ctx)
 
         | Expression.CallMethod _
@@ -84,7 +101,6 @@ module TypeChecker =
         | Expression.Equals _
         | Expression.LessThan _
 
-        | Expression.Add _
         | Expression.Multiply _
         | Expression.Join _
 
@@ -92,8 +108,6 @@ module TypeChecker =
         | Expression.Block _
         | Expression.If _
         | Expression.Summarize _
-
-        | Expression.Ket _
 
         | Expression.Sample _
         | Expression.Measure _
@@ -187,13 +201,45 @@ module TypeChecker =
                 (Classic (C.Method (argNames, e), Type.Method (argTypes, t)), ctx) |> Ok
             | Quantum _ -> "Methods must have a classic return type" |> Error
 
+    and typecheck_ket (value, ctx) =
+        typecheck (Expression.Set value, ctx)
+        ==> fun (value, ctx) ->
+            make_q value
+            ==> fun value -> (Quantum value, ctx) |> Ok
+
+    and typecheck_add (left, right, ctx) =
+        typecheck(left, ctx)
+        ==> fun (left, ctx) ->
+            typecheck (right, ctx)
+            ==> fun (right, ctx) ->
+                match (left, right) with
+                | Classic _, Classic _ -> typecheck_add_classic (left, right, ctx)
+                | _ -> typecheck_add_quantum (left, right, ctx)
+
+    and typecheck_add_classic (left, right, ctx) =
+        unzip_classic [left; right]
+        ==> fun (values, types) ->
+            match (types) with
+            | [Type.Int;  Type.Int] -> (Classic (C.Add (values.[0], values.[1]), Type.Int), ctx) |> Ok
+            | [Type.Bool; Type.Bool] -> (Classic (C.Add (values.[0], values.[1]), Type.Bool), ctx) |> Ok
+            | [Type.Tuple lt; Type.Tuple rt] when lt = rt -> (Classic (C.Add (values.[0], values.[1]), Type.Tuple lt), ctx) |> Ok
+            | _ -> $"Add can only be applied to elements of the same type." |> Error
+
+    and typecheck_add_quantum (left, right, ctx) =
+        make_q left
+        ==> fun (l, lt) ->
+            make_q right
+            ==> fun (r, rt) ->
+                match (lt, rt) with
+                | QType.Ket lt,  QType.Ket rt when lt = rt -> (Quantum (Q.Add (Q.Join (l, r)), QType.Ket lt), ctx) |> Ok
+                | QType.Ket lt,  QType.Ket rt -> $"Quantum addition can only be applied to Kets of the same type." |> Error
 
     and typecheck_ketall (size, ctx) =
         typecheck (size, ctx)
         ==> fun (size, ctx) ->
             match size with 
             | Classic (v, Type.Int) ->
-                (Quantum (Q.KetAll v, QType.Ket [Type.Int]), ctx) |> Ok
+                (Quantum (Q.KetAll v, QInt), ctx) |> Ok
             | _ ->
                 $"Ket size must be an int expression, got: {size}" |> Error
 
