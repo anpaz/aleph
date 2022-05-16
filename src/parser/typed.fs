@@ -21,9 +21,8 @@ type C =
     | Multiply of C * C
 
     | Method of arguments: Id list * body: C
-    | QMethod of arguments: Id list * qarguments: Id list * body: C
 
-    | CallMethod of method: C * arguments: C list
+    | CallMethod of method: C * arguments: E list
 
     | Join of values: C * C
     | Project of source: C * indices: C list
@@ -54,7 +53,7 @@ and Q =
     | If of cond: Q * t : Q * f: Q
     | Summarize of id: Id * enumeration : C * operation: C * body: Q
 
-    | CallQMethod of method: C * arguments: C list * qarguments: Q list
+    | CallMethod of method: C * arguments: E list
     | Solve of ket: Q
 
 and E =

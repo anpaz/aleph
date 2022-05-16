@@ -8,14 +8,14 @@ type Type =
     | Tuple of Type list
     | Set of Type
     | Histogram of Type
-    | CMethod of Type list * Type
-    | QMethod of Type list * QType * QType
+    | Method of AnyType list * Type
 
 and QType =
-    | Ket of QType list
-    | QBool
-    | QInt
+    | Ket of Type list
 
+and AnyType =
+    | Type of Type
+    | QType of QType
 
 type Expression =
     | Var of Id
@@ -25,7 +25,7 @@ type Expression =
     | Set of values: Expression list
     | Range of start: Expression * stop: Expression
 
-    | Method of arguments: (Id * Type) list * body: Expression
+    | Method of arguments: (Id * AnyType) list * body: Expression
     | CallMethod of name: Id * arguments: Expression list
 
     | Not of Expression
@@ -45,9 +45,6 @@ type Expression =
 
     | Ket of values: Expression list
     | KetAll of size: Expression
-
-    | QMethod of arguments: (Id * Type) list * qarguments: (Id * QType) list * body: Expression
-    | CallQMethod of name: Id * arguments: Expression list * ket: Expression
 
     | Sample of ket: Expression
     | Measure of ket: Expression * shots: Expression
