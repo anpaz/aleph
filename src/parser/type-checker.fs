@@ -52,11 +52,10 @@ module TypeChecker =
             | [] -> ([], []) |> Ok
         next values
 
-    type AnyType =
-        | Type of Type
-        | QType of QType
-
     type TypeContext = Map<Id, AnyType>
+
+    let QInt = QType.Ket [Type.Int]
+    let QBool = QType.Ket [Type.Bool]
 
     let add_to_context (ctx:TypeContext) (arguments: (Id * AnyType) list) : TypeContext =
         arguments 
@@ -95,9 +94,6 @@ module TypeChecker =
         | Expression.Summarize _
 
         | Expression.Ket _
-
-        | Expression.QMethod _
-        | Expression.CallQMethod _
 
         | Expression.Sample _
         | Expression.Measure _
@@ -181,7 +177,6 @@ module TypeChecker =
     and typecheck_method (arguments, body, ctx) =
         let ctx =
             arguments 
-            |> List.map (fun (n, t) -> (n, AnyType.Type t))
             |> add_to_context ctx
         typecheck (body, ctx)
         ==> fun (body, ctx) ->
@@ -189,7 +184,7 @@ module TypeChecker =
             | Classic (e, t) ->
                 let argNames = arguments |> List.map (fun a -> (fst a))
                 let argTypes = arguments |> List.map (fun a -> (snd a))
-                (Classic (C.Method (argNames, e), Type.CMethod (argTypes, t)), ctx) |> Ok
+                (Classic (C.Method (argNames, e), Type.Method (argTypes, t)), ctx) |> Ok
             | Quantum _ -> "Methods must have a classic return type" |> Error
 
 
@@ -198,7 +193,7 @@ module TypeChecker =
         ==> fun (size, ctx) ->
             match size with 
             | Classic (v, Type.Int) ->
-                (Quantum (Q.KetAll v, QType.Ket [QType.QInt]), ctx) |> Ok
+                (Quantum (Q.KetAll v, QType.Ket [Type.Int]), ctx) |> Ok
             | _ ->
                 $"Ket size must be an int expression, got: {size}" |> Error
 

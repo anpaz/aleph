@@ -47,11 +47,10 @@ type TestCore () =
             "t1", AnyType.Type (Type.Tuple [Type.Bool; Type.Int])
             "t2", AnyType.Type (Type.Tuple [Type.Bool; Type.Int])
             "s1", AnyType.Type (Type.Set (Type.Tuple [Type.Bool; Type.Int]))
-            "qb1", AnyType.QType (QType.QBool)
-            "k1", AnyType.QType (QType.Ket [QType.QInt])
-            "k2", AnyType.QType (QType.Ket [QType.QInt; QType.QBool])
-            "m1", AnyType.Type (Type.CMethod ([], Type.Int))
-            "qm1", AnyType.Type (Type.QMethod ([], QType.QBool, QType.QInt))
+            "qb1", AnyType.QType QBool
+            "k1", AnyType.QType QInt
+            "k2", AnyType.QType (QType.Ket [Type.Int; Type.Bool])
+            "m1", AnyType.Type (Type.Method ([], Type.Int))
         ]
 
 
@@ -72,14 +71,13 @@ type TestCore () =
 
         [
             u.Var "i1", Type.Int, C.Var "i1"
-            u.Var "m1", Type.CMethod ([], Type.Int), C.Var "m1"
-            u.Var "qm1", Type.QMethod ([], QType.QBool, QType.QInt), C.Var "qm1"
+            u.Var "m1", Type.Method ([], Type.Int), C.Var "m1"
         ]
         |> List.iter (this.TestClassicExpression ctx)
 
         [
-            u.Var "qb1", QType.QBool, Q.Var "qb1"
-            u.Var "k1", QType.Ket [QType.QInt], Q.Var "k1"
+            u.Var "qb1", QBool, Q.Var "qb1"
+            u.Var "k1", QInt, Q.Var "k1"
         ]
         |> List.iter (this.TestQuantumExpression ctx)
 
@@ -128,7 +126,7 @@ type TestCore () =
 
         [
             u.Tuple [u.Var "foo"], "Unknown variable: foo"
-            u.Tuple [u.Var "i1"; u.Var "b1"; u.Var "m1"], "Invalid tuple element. Expected bool or int expression, got: (Var \"m1\":CMethod ([], Int))"
+            u.Tuple [u.Var "i1"; u.Var "b1"; u.Var "m1"], "Invalid tuple element. Expected bool or int expression, got: (Var \"m1\":Method ([], Int))"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -171,7 +169,7 @@ type TestCore () =
 
         [
             u.Set [u.Var "foo"], "Unknown variable: foo"
-            u.Set [u.Var "i1"; u.Var "b1"; u.Var "m1"], "Invalid set element. Expected int, bool or tuple expression, got: (Var \"m1\":CMethod ([], Int))"
+            u.Set [u.Var "i1"; u.Var "b1"; u.Var "m1"], "Invalid set element. Expected int, bool or tuple expression, got: (Var \"m1\":Method ([], Int))"
             u.Set [u.Int 4; u.Bool true], "All tuples in a set must be of the same type."
             u.Set [u.Tuple [u.Int 4; u.Bool true]; u.Tuple [u.Int 1; u.Int 2]], "All tuples in a set must be of the same type."
             u.Set [u.Var "t1"; u.Tuple [u.Bool true; u.Int 5; u.Int 2]], "All tuples in a set must be of the same type."
@@ -204,7 +202,7 @@ type TestCore () =
 
         [
             u.And [u.Var "foo"], "Unknown variable: foo"
-            u.And [u.Var "qb1"], "Invalid And element. Expected bool expression, got: (Var \"qb1\":QBool)"
+            u.And [u.Var "qb1"], "Invalid And element. Expected bool expression, got: (Var \"qb1\":Ket [Bool])"
             u.And [u.Bool true; u.Int 23], "Invalid And element. Expected bool expression, got: (IntLiteral 23:Int)"
             u.Or [u.Bool true; u.Int 23], "Invalid Or element. Expected bool expression, got: (IntLiteral 23:Int)"
             u.Not (u.Int 23), "Not expressions require boolean arguments, got: Classic (IntLiteral 23, Int)"
@@ -246,16 +244,16 @@ type TestCore () =
         [
             // let m () = true
             u.Method ([], u.Bool true),
-                Type.CMethod ([], Type.Bool),
+                Type.Method ([], Type.Bool),
                 C.Method ([], C.BoolLiteral true)
             // let m (a: Int; b: Tuple<Int, Bool>) = b
-            u.Method ([("a", Type.Int); ("b", Type.Tuple [Type.Int; Type.Bool])], u.Var "b"),
-                Type.CMethod ([Type.Int; Type.Tuple [Type.Int; Type.Bool]], Type.Tuple [Type.Int; Type.Bool]),
+            u.Method ([("a", Type Type.Int); ("b", Type (Type.Tuple [Type.Int; Type.Bool]))], u.Var "b"),
+                Type.Method ([Type Type.Int; Type (Type.Tuple [Type.Int; Type.Bool])], Type.Tuple [Type.Int; Type.Bool]),
                 C.Method (["a"; "b"], C.Var "b")
             // let m (i:Int) = 
             //      lambda (y: Bool) = 42
-            u.Method ([("i", Type.Int)], u.Method (["y",Type.Bool], u.Int 42)),
-                Type.CMethod ([Type.Int], Type.CMethod ([Type.Bool], Type.Int)),
+            u.Method ([("i", Type Type.Int)], u.Method (["y", Type Type.Bool], u.Int 42)),
+                Type.Method ([Type Type.Int], Type.Method ([Type Type.Bool], Type.Int)),
                 C.Method (["i"], C.Method (["y"], C.IntLiteral 42))
         ]
         |> List.iter (this.TestClassicExpression ctx)
@@ -275,12 +273,12 @@ type TestCore () =
         [
             // |@,3>
             u.KetAll (u.Int 3),
-                QType.Ket [QType.QInt],
+                QInt,
                 Q.KetAll (C.IntLiteral 3)
 
             // |@,i1>
             u.KetAll (u.Var "i1"),
-                QType.Ket [QType.QInt],
+                QInt,
                 Q.KetAll (C.Var "i1")
         ]
         |> List.iter (this.TestQuantumExpression ctx)
