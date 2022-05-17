@@ -221,9 +221,7 @@ module TypeChecker =
         ==> fun (values, types) ->
             match (types) with
             | [Type.Int;  Type.Int] -> (Classic (C.Add (values.[0], values.[1]), Type.Int), ctx) |> Ok
-            | [Type.Bool; Type.Bool] -> (Classic (C.Add (values.[0], values.[1]), Type.Bool), ctx) |> Ok
-            | [Type.Tuple lt; Type.Tuple rt] when lt = rt -> (Classic (C.Add (values.[0], values.[1]), Type.Tuple lt), ctx) |> Ok
-            | _ -> $"Add can only be applied to elements of the same type." |> Error
+            | _ -> $"Add can only be applied to int expressions" |> Error
 
     and typecheck_add_quantum (left, right, ctx) =
         make_q left
@@ -231,15 +229,15 @@ module TypeChecker =
             make_q right
             ==> fun (r, rt) ->
                 match (lt, rt) with
-                | QType.Ket lt,  QType.Ket rt when lt = rt -> (Quantum (Q.Add (Q.Join (l, r)), QType.Ket lt), ctx) |> Ok
-                | QType.Ket lt,  QType.Ket rt -> $"Quantum addition can only be applied to Kets of the same type." |> Error
+                | QType.Ket [Type.Int],  QType.Ket[Type.Int] -> (Quantum (Q.Add (Q.Join (l, r)), QType.Ket [Type.Int]), ctx) |> Ok
+                | _ -> $"Quantum addition can only be applied to int Kets" |> Error
 
     and typecheck_ketall (size, ctx) =
         typecheck (size, ctx)
         ==> fun (size, ctx) ->
             match size with 
             | Classic (v, Type.Int) ->
-                (Quantum (Q.KetAll v, QInt), ctx) |> Ok
+                (Quantum (Q.KetAll v, QType.Ket [Type.Int]), ctx) |> Ok
             | _ ->
                 $"Ket size must be an int expression, got: {size}" |> Error
 
