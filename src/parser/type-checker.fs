@@ -60,9 +60,9 @@ module TypeChecker =
         | Quantum (l, t) -> (l, t) |> Ok
         | Classic (l, Type.Set (Type.Tuple t)) -> (Literal l, QType.Ket t) |> Ok
         | Classic (l, Type.Set t) -> (Literal l, QType.Ket [t]) |> Ok
-        | Classic (l, Type.Int) -> (Literal l, QType.Ket [Type.Int]) |> Ok
-        | Classic (l, Type.Bool) -> (Literal l, QType.Ket [Type.Bool]) |> Ok
-        | Classic (l, Type.Tuple t) -> (Literal l, QType.Ket t) |> Ok
+        | Classic (l, Type.Int) -> (Literal (C.Set [l]), QType.Ket [Type.Int]) |> Ok
+        | Classic (l, Type.Bool) -> (Literal (C.Set [l]), QType.Ket [Type.Bool]) |> Ok
+        | Classic (l, Type.Tuple t) -> (Literal (C.Set [l]), QType.Ket t) |> Ok
         | _ -> "Cannot create quantum literal from {e}" |> Error 
 
 
@@ -148,7 +148,7 @@ module TypeChecker =
                     if allEqual then
                         (Classic (C.Set exps, Type.Set head), ctx) |> Ok
                     else
-                        "All tuples in a set must be of the same type." |> Error
+                        "All elements in a set must be of the same type." |> Error
 
     and typecheck_and (values, ctx) =
         typecheck_expression_list (is_bool "Invalid And element. ") (values, ctx)

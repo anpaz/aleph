@@ -170,9 +170,9 @@ type TestCore () =
         [
             u.Set [u.Var "foo"], "Unknown variable: foo"
             u.Set [u.Var "i1"; u.Var "b1"; u.Var "m1"], "Invalid set element. Expected int, bool or tuple expression, got: (Var \"m1\":Method ([], Int))"
-            u.Set [u.Int 4; u.Bool true], "All tuples in a set must be of the same type."
-            u.Set [u.Tuple [u.Int 4; u.Bool true]; u.Tuple [u.Int 1; u.Int 2]], "All tuples in a set must be of the same type."
-            u.Set [u.Var "t1"; u.Tuple [u.Bool true; u.Int 5; u.Int 2]], "All tuples in a set must be of the same type."
+            u.Set [u.Int 4; u.Bool true], "All elements in a set must be of the same type."
+            u.Set [u.Tuple [u.Int 4; u.Bool true]; u.Tuple [u.Int 1; u.Int 2]], "All elements in a set must be of the same type."
+            u.Set [u.Var "t1"; u.Tuple [u.Bool true; u.Int 5; u.Int 2]], "All elements in a set must be of the same type."
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -265,6 +265,40 @@ type TestCore () =
         |> List.iter (this.TestInvalidExpression ctx)
 
 
+    [<TestMethod>]
+    member this.TestKet() =
+        let ctx = this.TypeContext
+
+        [
+            // |>
+            u.Ket [],
+                QType.Ket [],
+                Q.Literal (C.Set [])
+            // |1>
+            u.Ket [u.Int 1],
+                QType.Ket [Type.Int],
+                Q.Literal (C.Set [C.IntLiteral 1])
+            // |true, false>
+            u.Ket [u.Bool true; u.Bool false],
+                QType.Ket [Type.Bool],
+                Q.Literal (C.Set [C.BoolLiteral true; C.BoolLiteral false])
+            // |(1,2), (3,4)>
+            u.Ket [u.Tuple [u.Int 1; u.Int 2]; u.Tuple [u.Int 3; u.Int 4]],
+                QType.Ket [Type.Int; Type.Int],
+                Q.Literal (C.Set [C.Tuple [C.IntLiteral 1; C.IntLiteral 2]; C.Tuple [C.IntLiteral 3; C.IntLiteral 4]])
+            // |(1,false), (3,true)>
+            u.Ket [u.Tuple [u.Int 1; u.Bool false]; u.Tuple [u.Int 3; u.Bool true]],
+                QType.Ket [Type.Int; Type.Bool],
+                Q.Literal (C.Set [C.Tuple [C.IntLiteral 1; C.BoolLiteral false]; C.Tuple [C.IntLiteral 3; C.BoolLiteral true]])
+        ]
+        |> List.iter (this.TestQuantumExpression ctx)
+
+        [
+            u.Ket [u.Bool true; u.Int 12], "All elements in a set must be of the same type."
+            u.Ket [u.Tuple [u.Int 1; u.Bool false]; u.Tuple [u.Int 3; u.Int 4]], "All elements in a set must be of the same type."
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
+
 
     [<TestMethod>]
     member this.TestKetAll() =
@@ -275,7 +309,6 @@ type TestCore () =
             u.KetAll (u.Int 3),
                 QInt,
                 Q.KetAll (C.IntLiteral 3)
-
             // |@,i1>
             u.KetAll (u.Var "i1"),
                 QInt,
@@ -285,6 +318,58 @@ type TestCore () =
 
         [
             u.KetAll (u.Bool false), "Ket size must be an int expression, got: Classic (BoolLiteral false, Bool)"
-            // TODO: Quatum types
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
+
+
+    [<TestMethod>]
+    member this.TestClassicAdd() =
+        let ctx = this.TypeContext
+
+        [
+            // 1 + 1
+            u.Add (u.Int 1, u.Int 1),
+                Type.Int,
+                C.Add (C.IntLiteral 1, C.IntLiteral 1)
+        ]
+        |> List.iter (this.TestClassicExpression ctx)
+
+        [
+            // No overloading:
+            u.Add (u.Bool true, u.Bool false), "Add can only be applied to int expressions"
+            u.Add (u.Int 1, u.Bool false), "Add can only be applied to int expressions"
+            u.Add (u.Tuple [u.Int 1], u.Tuple [u.Int 1]), "Add can only be applied to int expressions"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
+
+    [<TestMethod>]
+    member this.TestQuantumAdd() =
+        let ctx = this.TypeContext
+
+        [
+            // |0, 1> + |1, 2, 3>
+            u.Add (u.Ket [u.Int 0;u.Int 1], u.Ket [u.Int 1; u.Int 2; u.Int 3]),
+                QType.Ket [Type.Int],
+                Q.Add (Q.Join (
+                    Q.Literal (C.Set [C.IntLiteral 0; C.IntLiteral 1]), 
+                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3])))
+            // 1 + |1, 2, 3>
+            u.Add (u.Int 1, u.Ket [u.Int 1;u.Int 2;u.Int 3]),
+                QType.Ket [Type.Int],
+                Q.Add (Q.Join (
+                    Q.Literal (C.Set [C.IntLiteral 1]), 
+                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3])))
+            // |1, 2, 3> + 1
+            u.Add (u.Ket [u.Int 1;u.Int 2;u.Int 3], u.Int 1),
+                QType.Ket [Type.Int],
+                Q.Add (Q.Join (
+                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]),
+                    Q.Literal (C.Set [C.IntLiteral 1])))
+        ]
+        |> List.iter (this.TestQuantumExpression ctx)
+
+        [
+            u.Add (u.Ket [u.Bool true; u.Int 1], u.Ket [u.Bool false; u.Int 2; u.Int 3]), "All elements in a set must be of the same type."
+            u.Add (u.Ket [u.Bool true], u.Ket [u.Bool false]), "Quantum addition can only be applied to int Kets"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
