@@ -373,3 +373,55 @@ type TestCore () =
             u.Add (u.Ket [u.Bool true], u.Ket [u.Bool false]), "Quantum addition can only be applied to int Kets"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
+
+    [<TestMethod>]
+    member this.TestClassicMultiply() =
+        let ctx = this.TypeContext
+
+        [
+            // 1 * 1
+            u.Multiply (u.Int 1, u.Int 1),
+                Type.Int,
+                C.Multiply (C.IntLiteral 1, C.IntLiteral 1)
+        ]
+        |> List.iter (this.TestClassicExpression ctx)
+
+        [
+            // No overloading:
+            u.Multiply (u.Bool true, u.Bool false), "Multiply can only be applied to int expressions"
+            u.Multiply (u.Int 1, u.Bool false), "Multiply can only be applied to int expressions"
+            u.Multiply (u.Tuple [u.Int 1], u.Tuple [u.Int 1]), "Multiply can only be applied to int expressions"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
+
+    [<TestMethod>]
+    member this.TestQuantumMultiply() =
+        let ctx = this.TypeContext
+
+        [
+            // |0, 1> * |1, 2, 3>
+            u.Multiply (u.Ket [u.Int 0;u.Int 1], u.Ket [u.Int 1; u.Int 2; u.Int 3]),
+                QType.Ket [Type.Int],
+                Q.Multiply (Q.Join (
+                    Q.Literal (C.Set [C.IntLiteral 0; C.IntLiteral 1]), 
+                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3])))
+            // 1 * |1, 2, 3>
+            u.Multiply (u.Int 1, u.Ket [u.Int 1;u.Int 2;u.Int 3]),
+                QType.Ket [Type.Int],
+                Q.Multiply (Q.Join (
+                    Q.Literal (C.Set [C.IntLiteral 1]), 
+                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3])))
+            // |1, 2, 3> * 1
+            u.Multiply (u.Ket [u.Int 1;u.Int 2;u.Int 3], u.Int 1),
+                QType.Ket [Type.Int],
+                Q.Multiply (Q.Join (
+                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]),
+                    Q.Literal (C.Set [C.IntLiteral 1])))
+        ]
+        |> List.iter (this.TestQuantumExpression ctx)
+
+        [
+            u.Multiply (u.Ket [u.Bool true; u.Int 1], u.Ket [u.Bool false; u.Int 2; u.Int 3]), "All elements in a set must be of the same type."
+            u.Multiply (u.Ket [u.Bool true], u.Ket [u.Bool false]), "Quantum multiplication can only be applied to int Kets"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)

@@ -88,6 +88,7 @@ module TypeChecker =
         | Expression.And values -> typecheck_and (values, ctx)
 
         | Expression.Add (left, right) -> typecheck_add (left, right, ctx)
+        | Expression.Multiply (left, right) -> typecheck_multiply (left, right, ctx)
 
         | Expression.Range (start, stop) -> typecheck_range (start, stop, ctx)
 
@@ -101,7 +102,6 @@ module TypeChecker =
         | Expression.Equals _
         | Expression.LessThan _
 
-        | Expression.Multiply _
         | Expression.Join _
 
         | Expression.Project _
@@ -231,6 +231,31 @@ module TypeChecker =
                 match (lt, rt) with
                 | QType.Ket [Type.Int],  QType.Ket[Type.Int] -> (Quantum (Q.Add (Q.Join (l, r)), QType.Ket [Type.Int]), ctx) |> Ok
                 | _ -> $"Quantum addition can only be applied to int Kets" |> Error
+
+    and typecheck_multiply (left, right, ctx) =
+        typecheck(left, ctx)
+        ==> fun (left, ctx) ->
+            typecheck (right, ctx)
+            ==> fun (right, ctx) ->
+                match (left, right) with
+                | Classic _, Classic _ -> typecheck_multiply_classic (left, right, ctx)
+                | _ -> typecheck_multiply_quantum (left, right, ctx)
+
+    and typecheck_multiply_classic (left, right, ctx) =
+        unzip_classic [left; right]
+        ==> fun (values, types) ->
+            match (types) with
+            | [Type.Int;  Type.Int] -> (Classic (C.Multiply (values.[0], values.[1]), Type.Int), ctx) |> Ok
+            | _ -> $"Multiply can only be applied to int expressions" |> Error
+
+    and typecheck_multiply_quantum (left, right, ctx) =
+        make_q left
+        ==> fun (l, lt) ->
+            make_q right
+            ==> fun (r, rt) ->
+                match (lt, rt) with
+                | QType.Ket [Type.Int],  QType.Ket[Type.Int] -> (Quantum (Q.Multiply (Q.Join (l, r)), QType.Ket [Type.Int]), ctx) |> Ok
+                | _ -> $"Quantum multiplication can only be applied to int Kets" |> Error
 
     and typecheck_ketall (size, ctx) =
         typecheck (size, ctx)
