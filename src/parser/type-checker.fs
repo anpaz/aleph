@@ -97,7 +97,7 @@ module TypeChecker =
         | Expression.Ket values -> typecheck_ket (values,ctx)
         | Expression.KetAll size -> typecheck_ketall (size, ctx)
 
-        | Expression.CallMethod _
+        | Expression.CallMethod (method, args) -> typecheck_callmethod (method, args, ctx)
 
         | Expression.Equals _
         | Expression.LessThan _
@@ -194,12 +194,13 @@ module TypeChecker =
             |> add_to_context ctx
         typecheck (body, ctx)
         ==> fun (body, ctx) ->
+            let argNames = arguments |> List.map (fun a -> (fst a))
+            let argTypes = arguments |> List.map (fun a -> (snd a))
             match body with
-            | Classic (e, t) ->
-                let argNames = arguments |> List.map (fun a -> (fst a))
-                let argTypes = arguments |> List.map (fun a -> (snd a))
-                (Classic (C.Method (argNames, e), Type.Method (argTypes, t)), ctx) |> Ok
-            | Quantum _ -> "Methods must have a classic return type" |> Error
+            | Classic (_, t) ->
+                (Classic (C.Method (argNames, body), Type.Method (argTypes, AnyType.Type t)), ctx) |> Ok
+            | Quantum (_, qt) ->
+                (Classic (C.Method (argNames, body), Type.Method (argTypes, AnyType.QType qt)), ctx) |> Ok
 
     and typecheck_ket (value, ctx) =
         typecheck (Expression.Set value, ctx)
@@ -257,6 +258,35 @@ module TypeChecker =
                 | QType.Ket [Type.Int],  QType.Ket[Type.Int] -> (Quantum (Q.Multiply (Q.Join (l, r)), QType.Ket [Type.Int]), ctx) |> Ok
                 | _ -> $"Quantum multiplication can only be applied to int Kets" |> Error
 
+    and typecheck_callmethod (method, args, ctx) =
+        let any_type e = e |> Ok
+
+        // typecheck the method name:
+        typecheck(method, ctx)
+        ==> fun (method, ctx) ->
+            // If the variable is associated with a method:
+            match method with
+            | Classic (m, Type.Method (argTypes, rType)) ->
+                // typecheck the list of arguments to pass:
+                typecheck_expression_list any_type (args, ctx)
+                ==> fun (args, ctx) ->
+                    // verify that the types of the arguments we'll be passing 
+                    // match the expected type of the arguments
+                    let argTypes' = args |> List.map (function 
+                        | Classic (_, t) -> AnyType.Type t 
+                        | Quantum (_, t) -> AnyType.QType t)
+                    if argTypes = argTypes' then
+                        // Everything matches. Check the return type
+                        // to decide if it's a classical or a quantum method:
+                        match rType with
+                        | AnyType.Type t -> 
+                            (Classic (C.CallMethod (m, args), t), ctx) |> Ok
+                        | AnyType.QType qt -> 
+                            (Quantum (Q.CallMethod (m, args), qt), ctx) |> Ok
+                    else
+                        $"Arguments type missmatch. Expected {argTypes} got {argTypes'}" |> Error
+            | _ -> $"Invalid expression: {method}" |> Error
+                    
     and typecheck_ketall (size, ctx) =
         typecheck (size, ctx)
         ==> fun (size, ctx) ->

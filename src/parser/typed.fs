@@ -20,7 +20,7 @@ type C =
     | Add of C * C
     | Multiply of C * C
 
-    | Method of arguments: Id list * body: C
+    | Method of arguments: Id list * body: E
 
     | CallMethod of method: C * arguments: E list
 

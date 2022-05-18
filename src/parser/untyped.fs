@@ -8,7 +8,7 @@ type Type =
     | Tuple of Type list
     | Set of Type
     | Histogram of Type
-    | Method of AnyType list * Type
+    | Method of AnyType list * AnyType
 
 and QType =
     | Ket of Type list
@@ -26,7 +26,7 @@ type Expression =
     | Range of start: Expression * stop: Expression
 
     | Method of arguments: (Id * AnyType) list * body: Expression
-    | CallMethod of name: Id * arguments: Expression list
+    | CallMethod of method: Expression * arguments: Expression list
 
     | Not of Expression
     | And of Expression list

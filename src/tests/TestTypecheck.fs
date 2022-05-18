@@ -50,7 +50,8 @@ type TestCore () =
             "qb1", AnyType.QType QBool
             "k1", AnyType.QType QInt
             "k2", AnyType.QType (QType.Ket [Type.Int; Type.Bool])
-            "m1", AnyType.Type (Type.Method ([], Type.Int))
+            "m1", AnyType.Type (Type.Method ([], AnyType.Type Type.Int))
+            "q1", AnyType.Type (Type.Method ([], AnyType.QType QType.Ket[Type.Int]))
         ]
 
 
@@ -71,7 +72,7 @@ type TestCore () =
 
         [
             u.Var "i1", Type.Int, C.Var "i1"
-            u.Var "m1", Type.Method ([], Type.Int), C.Var "m1"
+            u.Var "m1", Type.Method ([], Type Type.Int), C.Var "m1"
         ]
         |> List.iter (this.TestClassicExpression ctx)
 
@@ -126,7 +127,7 @@ type TestCore () =
 
         [
             u.Tuple [u.Var "foo"], "Unknown variable: foo"
-            u.Tuple [u.Var "i1"; u.Var "b1"; u.Var "m1"], "Invalid tuple element. Expected bool or int expression, got: (Var \"m1\":Method ([], Int))"
+            u.Tuple [u.Var "i1"; u.Var "b1"; u.Var "m1"], "Invalid tuple element. Expected bool or int expression, got: (Var \"m1\":Method ([], Type Int))"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -169,7 +170,7 @@ type TestCore () =
 
         [
             u.Set [u.Var "foo"], "Unknown variable: foo"
-            u.Set [u.Var "i1"; u.Var "b1"; u.Var "m1"], "Invalid set element. Expected int, bool or tuple expression, got: (Var \"m1\":Method ([], Int))"
+            u.Set [u.Var "i1"; u.Var "b1"; u.Var "m1"], "Invalid set element. Expected int, bool or tuple expression, got: (Var \"m1\":Method ([], Type Int))"
             u.Set [u.Int 4; u.Bool true], "All elements in a set must be of the same type."
             u.Set [u.Tuple [u.Int 4; u.Bool true]; u.Tuple [u.Int 1; u.Int 2]], "All elements in a set must be of the same type."
             u.Set [u.Var "t1"; u.Tuple [u.Bool true; u.Int 5; u.Int 2]], "All elements in a set must be of the same type."
@@ -244,23 +245,27 @@ type TestCore () =
         [
             // let m () = true
             u.Method ([], u.Bool true),
-                Type.Method ([], Type.Bool),
-                C.Method ([], C.BoolLiteral true)
+                Type.Method ([], Type Type.Bool),
+                C.Method ([], Classic (C.BoolLiteral true, Type.Bool))
             // let m (a: Int; b: Tuple<Int, Bool>) = b
             u.Method ([("a", Type Type.Int); ("b", Type (Type.Tuple [Type.Int; Type.Bool]))], u.Var "b"),
-                Type.Method ([Type Type.Int; Type (Type.Tuple [Type.Int; Type.Bool])], Type.Tuple [Type.Int; Type.Bool]),
-                C.Method (["a"; "b"], C.Var "b")
+                Type.Method (
+                    [Type Type.Int; Type (Type.Tuple [Type.Int; Type.Bool])], 
+                    Type (Type.Tuple [Type.Int; Type.Bool])),
+                C.Method (["a"; "b"], Classic (C.Var "b",  (Type.Tuple [Type.Int; Type.Bool])))
             // let m (i:Int) = 
             //      lambda (y: Bool) = 42
             u.Method ([("i", Type Type.Int)], u.Method (["y", Type Type.Bool], u.Int 42)),
-                Type.Method ([Type Type.Int], Type.Method ([Type Type.Bool], Type.Int)),
-                C.Method (["i"], C.Method (["y"], C.IntLiteral 42))
+                Type.Method (
+                    [Type Type.Int], 
+                    Type (Type.Method ([Type Type.Bool], Type Type.Int))),
+                C.Method (["i"], (Classic (C.Method (
+                    ["y"], 
+                    Classic (C.IntLiteral 42, Type.Int)), Type.Method ([Type Type.Bool], Type Type.Int))))
         ]
         |> List.iter (this.TestClassicExpression ctx)
 
         [
-            // let m () = |@,2>
-            u.Method ([], u.KetAll (u.Int 2)), "Methods must have a classic return type"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -423,5 +428,54 @@ type TestCore () =
         [
             u.Multiply (u.Ket [u.Bool true; u.Int 1], u.Ket [u.Bool false; u.Int 2; u.Int 3]), "All elements in a set must be of the same type."
             u.Multiply (u.Ket [u.Bool true], u.Ket [u.Bool false]), "Quantum multiplication can only be applied to int Kets"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
+
+
+    [<TestMethod>]
+    member this.TestCallMethod() =
+        let ctx = 
+            this.TypeContext
+                .Add("m2", AnyType.Type (
+                    Type.Method (
+                        [AnyType.QType (QType.Ket [Type.Int]); AnyType.Type (Type.Tuple [Type.Int; Type.Bool])], 
+                        AnyType.Type (Type.Tuple [Type.Int; Type.Int]))))
+                .Add("q2", AnyType.Type (
+                    Type.Method (
+                        [AnyType.QType (QType.Ket [Type.Int]); AnyType.Type (Type.Tuple [Type.Int; Type.Bool])], 
+                        AnyType.QType (QType.Ket [Type.Bool]))))
+
+        [
+            // m1()
+            u.CallMethod (u.Var "m1", []),
+                Type.Int,
+                C.CallMethod (C.Var ("m1"), [])
+            // m2(Ket<Int>, Tuple<Int, Bool>) : Tuple<Int, Int>
+            u.CallMethod (u.Var "m2", [u.Ket [u.Int 1]; u.Tuple [u.Int 2; u.Bool false]]),
+                Type.Tuple [Type.Int; Type.Int],
+                C.CallMethod (C.Var ("m2"),  [
+                    Quantum (Q.Literal (C.Set [C.IntLiteral 1]), QType.Ket [Type.Int]); 
+                    Classic (C.Tuple [C.IntLiteral 2; C.BoolLiteral false], Type.Tuple[Type.Int; Type.Bool])])
+        ]
+        |> List.iter (this.TestClassicExpression ctx)
+
+        [
+            // q1()
+            u.CallMethod (u.Var "q1", []),
+                QType.Ket [Type.Int],
+                Q.CallMethod (C.Var ("q1"), [])
+            // m2(Ket<Int>, (Int, Bool) : Ket<Bool>
+            u.CallMethod (u.Var "q2", [u.Ket [u.Int 1]; u.Tuple [u.Int 2; u.Bool false]]),
+                QType.Ket [Type.Bool],
+                Q.CallMethod (C.Var ("q2"),  [
+                    Quantum (Q.Literal (C.Set [C.IntLiteral 1]), QType.Ket[Type.Int]); 
+                    Classic (C.Tuple [C.IntLiteral 2; C.BoolLiteral false], Type.Tuple[Type.Int; Type.Bool])])
+        ]
+        |> List.iter (this.TestQuantumExpression ctx)
+
+        [
+            u.CallMethod (u.Var "m1", [u.Int 1]), "Arguments type missmatch. Expected [] got [Type Int]"
+            u.CallMethod (u.Var "q1", [u.Int 1]), "Arguments type missmatch. Expected [] got [Type Int]"
+            u.CallMethod (u.Var "m2", [u.Int 1; u.Tuple [u.Int 2; u.Bool false]]), "Arguments type missmatch. Expected [QType (Ket [Int]); Type (Tuple [Int; Bool])] got [Type Int; Type (Tuple [Int; Bool])]"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
