@@ -379,6 +379,59 @@ type TestCore () =
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
+
+    [<TestMethod>]
+    member this.TestClassicEquals() =
+        let ctx = this.TypeContext
+
+        [
+            // 1 + 1
+            u.Equals (u.Int 1, u.Int 1),
+                Type.Bool,
+                C.Equals (C.IntLiteral 1, C.IntLiteral 1)
+        ]
+        |> List.iter (this.TestClassicExpression ctx)
+
+        [
+            // No overloading:
+            u.Equals (u.Bool true, u.Bool false), "== can only be applied to int expressions"
+            u.Equals (u.Int 1, u.Bool false), "== can only be applied to int expressions"
+            u.Equals (u.Tuple [u.Int 1], u.Tuple [u.Int 1]), "== can only be applied to int expressions"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
+
+    [<TestMethod>]
+    member this.TestQuantumEquals() =
+        let ctx = this.TypeContext
+
+        [
+            // |0, 1> + |1, 2, 3>
+            u.Equals (u.Ket [u.Int 0;u.Int 1], u.Ket [u.Int 1; u.Int 2; u.Int 3]),
+                QType.Ket [Type.Bool],
+                Q.Equals (Q.Join (
+                    Q.Literal (C.Set [C.IntLiteral 0; C.IntLiteral 1]), 
+                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3])))
+            // 1 + |1, 2, 3>
+            u.Equals (u.Int 1, u.Ket [u.Int 1;u.Int 2;u.Int 3]),
+                QType.Ket [Type.Bool],
+                Q.Equals (Q.Join (
+                    Q.Literal (C.Set [C.IntLiteral 1]), 
+                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3])))
+            // |1, 2, 3> + 1
+            u.Equals (u.Ket [u.Int 1;u.Int 2;u.Int 3], u.Int 1),
+                QType.Ket [Type.Bool],
+                Q.Equals (Q.Join (
+                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]),
+                    Q.Literal (C.Set [C.IntLiteral 1])))
+        ]
+        |> List.iter (this.TestQuantumExpression ctx)
+
+        [
+            u.Equals (u.Ket [u.Bool true; u.Int 1], u.Ket [u.Bool false; u.Int 2; u.Int 3]), "All elements in a set must be of the same type."
+            u.Equals (u.Ket [u.Bool true], u.Ket [u.Bool false]), "Quantum == can only be applied to int Kets"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
+
     [<TestMethod>]
     member this.TestClassicMultiply() =
         let ctx = this.TypeContext
@@ -428,6 +481,24 @@ type TestCore () =
         [
             u.Multiply (u.Ket [u.Bool true; u.Int 1], u.Ket [u.Bool false; u.Int 2; u.Int 3]), "All elements in a set must be of the same type."
             u.Multiply (u.Ket [u.Bool true], u.Ket [u.Bool false]), "Quantum multiplication can only be applied to int Kets"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
+
+
+    [<TestMethod>]
+    member this.TestLessThan() =
+        let ctx = this.TypeContext
+
+        [
+            // 1 < 1
+            u.LessThan (u.Int 1, u.Int 1),
+                Type.Bool,
+                C.LessThan (C.IntLiteral 1, C.IntLiteral 1)
+        ]
+        |> List.iter (this.TestClassicExpression ctx)
+
+        [
+            u.LessThan (u.Bool true, u.Bool false), "Both expressions for < must be int. Got Classic (BoolLiteral true, Bool) < Classic (BoolLiteral false, Bool)"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 

@@ -99,8 +99,8 @@ module TypeChecker =
 
         | Expression.CallMethod (method, args) -> typecheck_callmethod (method, args, ctx)
 
-        | Expression.Equals _
-        | Expression.LessThan _
+        | Expression.Equals (left, right) -> typecheck_equals (left, right, ctx)
+        | Expression.LessThan (left, right) -> typecheck_lessthan (left, right, ctx)
 
         | Expression.Join _
 
@@ -257,6 +257,44 @@ module TypeChecker =
                 match (lt, rt) with
                 | QType.Ket [Type.Int],  QType.Ket[Type.Int] -> (Quantum (Q.Multiply (Q.Join (l, r)), QType.Ket [Type.Int]), ctx) |> Ok
                 | _ -> $"Quantum multiplication can only be applied to int Kets" |> Error
+
+
+    and typecheck_equals (left, right, ctx) =
+        typecheck(left, ctx)
+        ==> fun (left, ctx) ->
+            typecheck (right, ctx)
+            ==> fun (right, ctx) ->
+                match (left, right) with
+                | Classic _, Classic _ -> typecheck_equals_classic (left, right, ctx)
+                | _ -> typecheck_equals_quantum (left, right, ctx)
+
+    and typecheck_equals_classic (left, right, ctx) =
+        unzip_classic [left; right]
+        ==> fun (values, types) ->
+            match (types) with
+            | [Type.Int;  Type.Int] -> (Classic (C.Equals (values.[0], values.[1]), Type.Bool), ctx) |> Ok
+            | _ -> $"== can only be applied to int expressions" |> Error
+
+    and typecheck_equals_quantum (left, right, ctx) =
+        make_q left
+        ==> fun (l, lt) ->
+            make_q right
+            ==> fun (r, rt) ->
+                match (lt, rt) with
+                | QType.Ket [Type.Int],  QType.Ket[Type.Int] -> (Quantum (Q.Equals (Q.Join (l, r)), QType.Ket [Type.Bool]), ctx) |> Ok
+                | _ -> $"Quantum == can only be applied to int Kets" |> Error
+
+
+    and typecheck_lessthan (left, right, ctx) =
+        typecheck(left, ctx)
+        ==> fun (left, ctx) ->
+            typecheck (right, ctx)
+            ==> fun (right, ctx) ->
+                match (left, right) with
+                | Classic (left, Type.Int), Classic (right, Type.Int) ->
+                    (Classic (C.LessThan (left, right), Type.Bool), ctx) |> Ok
+                | _ -> $"Both expressions for < must be int. Got {left} < {right}" |> Error
+
 
     and typecheck_callmethod (method, args, ctx) =
         let any_type e = e |> Ok
