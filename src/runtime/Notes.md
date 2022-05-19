@@ -118,9 +118,13 @@ corresponding registers.
 Project Ket<Int,Bool,Int> [0,1] --> Ket<Int,Bool>
 ```
 
-## And, Or, Equal
+## And, Or
 
-Take a QBool pair, and return a QBool
+Take a Ket<Bool, Bool> pair, and return a Ket<Bool>
+
+## Equals
+
+Take a QInt pair, and return a QBool
 
 ## +, * -
 
@@ -135,7 +139,6 @@ Takes a Ket and returns a classical value that mimics the Ket's type.
 Takes a Ket and a number of shots and returns a histogram in which the keys
 mimics the Ket's type, and the values are integers (representing the number
 of times that value was measured).
-
 
 ## Methods
 
@@ -172,3 +175,71 @@ let line m x b =
     let s1 = s0 + b             // Ket + int == Ket
     s1
 ```
+
+## A Note on Expressions
+
+All quantum expressions take a Ket and return a Ket. For example, Q.Add
+takes a `Ket<Int, Int>` and returns a `Ket<Int>`. Obviously, the values in the
+returned Ket depend on the input, so for example if we have:
+```
+k1 = | (0,0), (0,1), (1,0), (1,1) >
+k2 = Q.Add (k1)
+```
+
+then k2's histogram is:
+    * 0: .25
+    * 1: .50
+    * 2: .25
+
+more over, k2 and k1 are entangled, which means that if they're joined,
+the values of k2 remember where they are coming from, so if:
+k3 = Q.Join (k1, k2)
+
+then, k3's hisogram is:
+    * (0,0,0) : 0.25
+    * (0,1,1) : 0.25
+    * (1,0,1) : 0.25
+    * (1,1,2) : 0.25
+
+this is different from joining un-entangled kets, as that is normally the cross-product.
+As such, if we have:
+```
+k4 = | (0,0), (0,1) >
+k5 = Q.Join (k4, k2)
+```
+
+then k5's histogram is:
+   * (0,0,0): 0.125
+   * (0,0,1): 0.25
+   * (0,0,2): 0.125
+   * (0,1,0): 0.125
+   * (0,1,1): 0.25
+   * (0,1,2): 0.125
+
+FAQ: 
+- what happens if you modify entangled Kets?
+  *This is not possible, as all Kets are read-only*
+
+- but what about destructive actions like measurement?
+  *In Aleph, measuring or sampling are non-destructive actions, so applying them to a Ket doesn't modify it*
+
+- is entanglement transitive?
+  *Yes*. For example:
+```
+    k1 = |0,1>
+    k2 = |0,1>
+    k3 = Q.Join(k1, k2)
+    k4 = Q.Add k3
+    k5 = Q.Join (k1, k4)
+```
+    k5's histogram:
+    * (0, 0) : 0.25
+    * (0, 1) : 0.25
+    * (1, 1) : 0.25
+    * (1, 2) : 0.25
+
+
+
+
+
+
