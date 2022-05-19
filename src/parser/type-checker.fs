@@ -102,7 +102,7 @@ module TypeChecker =
         | Expression.Equals (left, right) -> typecheck_equals (left, right, ctx)
         | Expression.LessThan (left, right) -> typecheck_lessthan (left, right, ctx)
 
-        | Expression.Join _
+        | Expression.Join (left, right) -> typecheck_join (left, right, ctx)
 
         | Expression.Project _
         | Expression.Block _
@@ -281,7 +281,6 @@ module TypeChecker =
                 | QType.Ket [Type.Int],  QType.Ket[Type.Int] -> (Quantum (Q.Equals (Q.Join (l, r)), QType.Ket [Type.Bool]), ctx) |> Ok
                 | _ -> $"Quantum == can only be applied to int Kets" |> Error
 
-
     and typecheck_lessthan (left, right, ctx) =
         // TODO: quantum < ?
         typecheck(left, ctx)
@@ -293,6 +292,18 @@ module TypeChecker =
                     (Classic (C.LessThan (left, right), Type.Bool), ctx) |> Ok
                 | _ -> $"Both expressions for < must be int. Got {left} < {right}" |> Error
 
+    and typecheck_join (left, right, ctx) =
+        // TODO: quantum < ?
+        typecheck(left, ctx)
+        ==> fun (left, ctx) ->
+            typecheck (right, ctx)
+            ==> fun (right, ctx) ->
+                match (left, right) with
+                | Classic (left, Type.Tuple lt), Classic (right, Type.Tuple rt) ->
+                    (Classic (C.Join (left, right), Type.Tuple (lt @ rt)), ctx) |> Ok
+                | Quantum (left, QType.Ket lt), Quantum (right, QType.Ket rt) ->
+                    (Quantum (Q.Join (left, right), QType.Ket (lt @ rt)), ctx) |> Ok
+                | _ -> $"Join is only supported on tuples and kets, got: {left} , {right}" |> Error
 
     and typecheck_callmethod (method, args, ctx) =
         let any_type e = e |> Ok

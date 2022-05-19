@@ -550,3 +550,53 @@ type TestCore () =
             u.CallMethod (u.Var "m2", [u.Int 1; u.Tuple [u.Int 2; u.Bool false]]), "Arguments type missmatch. Expected [QType (Ket [Int]); Type (Tuple [Int; Bool])] got [Type Int; Type (Tuple [Int; Bool])]"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
+
+
+    [<TestMethod>]
+    member this.TestJoin() =
+        let ctx = this.TypeContext
+
+        [
+            // ((), ())
+            u.Join (u.Tuple [], u.Tuple []),
+                Type.Tuple [],
+                C.Join (C.Tuple [], C.Tuple [])
+            // (t1, ())
+            u.Join (u.Var "t1", u.Tuple []),
+                Type.Tuple [Type.Bool; Type.Int],
+                C.Join (C.Var "t1", C.Tuple [])
+            // ((1,1), (0,0,false))
+            u.Join (u.Tuple [u.Int 1; u.Int 1], u.Tuple [u.Int 0; u.Int 0; u.Bool true]),
+                Type.Tuple [Type.Int; Type.Int; Type.Int; Type.Int; Type.Bool],
+                C.Join (C.Tuple [C.IntLiteral 1; C.IntLiteral 1], C.Tuple[C.IntLiteral 0; C.IntLiteral 0; C.BoolLiteral true])
+        ]
+        |> List.iter (this.TestClassicExpression ctx)
+
+        [
+            // (|>|), |>)
+            u.Join (u.Ket [], u.Ket []),
+                QType.Ket [],
+                Q.Join (Q.Literal (C.Set []), Q.Literal (C.Set []))
+            // (t1, |>)
+            u.Join (u.Var "k1", u.Ket []),
+                QType.Ket [Type.Int],
+                Q.Join (Q.Var "k1", Q.Literal (C.Set []))
+            // (t1, |1,2,3>)
+            u.Join (u.Var "k1", u.Ket [u.Int 1; u.Int 2; u.Int 3]),
+                QType.Ket [Type.Int; Type.Int],
+                Q.Join (
+                    Q.Var "k1", 
+                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
+            // (|(1,1)>, |(0,0,false)>)
+            u.Join (u.Ket [u.Tuple [u.Int 1; u.Int 1]], u.Ket [u.Tuple [u.Int 0; u.Int 0; u.Bool true]]),
+                QType.Ket [Type.Int; Type.Int; Type.Int; Type.Int; Type.Bool],
+                Q.Join (
+                    Q.Literal (C.Set [C.Tuple [C.IntLiteral 1; C.IntLiteral 1]]),
+                    Q.Literal (C.Set [C.Tuple [C.IntLiteral 0; C.IntLiteral 0; C.BoolLiteral true]]))
+        ]
+        |> List.iter (this.TestQuantumExpression ctx)
+
+        [
+            u.Join (u.Bool true, u.Int 1), "Join is only supported on tuples and kets, got: Classic (BoolLiteral true, Bool) , Classic (IntLiteral 1, Int)"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
