@@ -151,6 +151,7 @@ module TypeChecker =
                         "All elements in a set must be of the same type." |> Error
 
     and typecheck_and (values, ctx) =
+        // TODO: QUANTUM
         typecheck_expression_list (is_bool "Invalid And element. ") (values, ctx)
         ==> fun (values, ctx) ->
             unzip_classic values
@@ -158,6 +159,7 @@ module TypeChecker =
                 (Classic (C.And exps, Type.Bool), ctx) |> Ok
 
     and typecheck_or (values, ctx) =
+        // TODO: QUANTUM
         typecheck_expression_list (is_bool "Invalid Or element. ") (values, ctx)
         ==> fun (values, ctx) ->
             unzip_classic values
@@ -165,6 +167,7 @@ module TypeChecker =
                 (Classic (C.Or exps, Type.Bool), ctx) |> Ok
 
     and typecheck_not (value, ctx) =
+        // TODO: quantum
         typecheck(value, ctx)
         ==> fun (value, ctx) ->
             match value with 
@@ -201,12 +204,6 @@ module TypeChecker =
                 (Classic (C.Method (argNames, body), Type.Method (argTypes, AnyType.Type t)), ctx) |> Ok
             | Quantum (_, qt) ->
                 (Classic (C.Method (argNames, body), Type.Method (argTypes, AnyType.QType qt)), ctx) |> Ok
-
-    and typecheck_ket (value, ctx) =
-        typecheck (Expression.Set value, ctx)
-        ==> fun (value, ctx) ->
-            make_q value
-            ==> fun value -> (Quantum value, ctx) |> Ok
 
     and typecheck_add (left, right, ctx) =
         typecheck(left, ctx)
@@ -286,6 +283,7 @@ module TypeChecker =
 
 
     and typecheck_lessthan (left, right, ctx) =
+        // TODO: quantum < ?
         typecheck(left, ctx)
         ==> fun (left, ctx) ->
             typecheck (right, ctx)
@@ -324,7 +322,13 @@ module TypeChecker =
                     else
                         $"Arguments type missmatch. Expected {argTypes} got {argTypes'}" |> Error
             | _ -> $"Invalid expression: {method}" |> Error
-                    
+
+    and typecheck_ket (value, ctx) =
+        typecheck (Expression.Set value, ctx)
+        ==> fun (value, ctx) ->
+            make_q value
+            ==> fun value -> (Quantum value, ctx) |> Ok
+
     and typecheck_ketall (size, ctx) =
         typecheck (size, ctx)
         ==> fun (size, ctx) ->
