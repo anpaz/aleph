@@ -8,6 +8,12 @@ module TypeChecker =
     let (==>) (input: Result<'a,'b>) ok  =
         Result.bind ok input
 
+    let is_int msg e = 
+        match e with 
+        | Classic (_, Type.Int) -> e |> Ok
+        | Classic (e, t) -> msg + $"Expected int expression, got: ({e}:{t})" |> Error
+        | Quantum (e, t) -> msg + $"Expected int expression, got: ({e}:{t})" |> Error
+
     let is_bool msg e = 
         match e with 
         | Classic (_, Type.Bool) -> e |> Ok
@@ -104,7 +110,7 @@ module TypeChecker =
 
         | Expression.Join (left, right) -> typecheck_join (left, right, ctx)
 
-        | Expression.Project _
+        | Expression.Project (value, indices) -> typecheck_project (value, indices, ctx)
         | Expression.Block _
         | Expression.If _
         | Expression.Summarize _
@@ -365,3 +371,59 @@ module TypeChecker =
                             (head :: tail, ctx) |> Ok
             | [] -> ([], ctx) |> Ok
         next (values, ctx)
+
+    and typecheck_project (value, indices, ctx) =
+        // if all the index expressions match to int literals
+        // returns the corresponding list of ints, otherwise returns None
+        let all_constant previous index =
+            previous 
+            |> Option.bind (fun previous ->
+                match index with 
+                | C.IntLiteral i -> previous @ [i] |> Some
+                | _ -> None)
+        // assuming we received a list of int literals as indices,
+        // this returns a:
+        //      C.Project expression for classical Tuples
+        //      Q.Project expression for Kets
+        let use_project (value, (idx: int list), ctx) =
+            let projected_types (types: Type list) =
+                idx
+                |> List.map (fun i -> types.[i % idx.Length])
+            match value with
+            | Classic (left, Type.Tuple types) ->
+                (Classic (C.Project (left, idx), Type.Tuple (projected_types types)), ctx) |> Ok
+            | Quantum (left, QType.Ket types) ->
+                (Quantum (Q.Project (left, idx), QType.Ket (projected_types types)), ctx) |> Ok
+            | _ -> $"Project is only supported on tuples and kets" |> Error
+        // assuming we received a list of non-literal ints as indices
+        // this checks that the types in a Tuple or Ket are all the same and if so it returns
+        // [C|Q].Index expression
+        let use_index (value, (indices: C list), ctx) =
+            let all_the_same (types: Type list) = 
+                let head = types.Head
+                types.Tail |> List.forall (fun t -> t = head)
+            match value with
+            | Classic (left, Type.Tuple types) ->
+                if (all_the_same types) then
+                    (Classic (C.Index (left, indices), Type.Tuple (List.replicate (indices.Length) types.Head)), ctx) |> Ok
+                else
+                    "Indexing of tuples is only available on tuples of a single type" |> Error
+            | Quantum (left, QType.Ket types) ->
+                if (all_the_same types) then
+                    (Quantum (Q.Index (left, indices), QType.Ket (List.replicate (indices.Length) types.Head)), ctx) |> Ok
+                else
+                    "Indexing of kets is only available on kets of a single type" |> Error
+            | _ -> $"Project is only supported on tuples and kets" |> Error
+
+        typecheck(value, ctx)
+        ==> fun (value, ctx) ->
+            typecheck_expression_list (is_int "Invalid projection index. ") (indices, ctx)
+            ==> fun (indices, ctx) ->
+                indices |> unzip_classic
+                ==> fun (idx_exp, _) ->
+                    match (idx_exp |> List.fold all_constant (Some [])) with 
+                    | Some idx -> use_project (value, idx, ctx)
+                    | None -> use_index (value, idx_exp, ctx)
+
+        
+

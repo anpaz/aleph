@@ -600,3 +600,63 @@ type TestCore () =
             u.Join (u.Bool true, u.Int 1), "Join is only supported on tuples and kets, got: Classic (BoolLiteral true, Bool) , Classic (IntLiteral 1, Int)"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
+
+
+
+    [<TestMethod>]
+    member this.TestProject() =
+        let ctx = this.TypeContext
+
+        [
+            // (1).0
+            u.Project (u.Tuple [Int 1], [Int 0]),
+                Type.Tuple [Type.Int],
+                C.Project (C.Tuple [C.IntLiteral 1], [0])
+            // (1).[0, 2]  --> Note, index in projection is modular, so 2 == 0
+            u.Project (u.Tuple [Int 1], [Int 0; Int 0]),
+                Type.Tuple [Type.Int; Type.Int],
+                C.Project (C.Tuple [C.IntLiteral 1], [0; 0])
+            // (1, false, 3, true).[1,2]
+            u.Project (u.Tuple [Int 1; u.Bool false; Int 3; u.Bool true], [Int 1; Int 2]),
+                Type.Tuple [Type.Bool; Type.Int],
+                C.Project (C.Tuple [C.IntLiteral 1; C.BoolLiteral false; C.IntLiteral 3; C.BoolLiteral true], [1;2])
+            // (1).[i1, i1, 0]
+            u.Project (u.Tuple [Int 1], [u.Var "i1"; u.Var "i1"; u.Int 0]),
+                Type.Tuple [Type.Int; Type.Int; Type.Int],
+                C.Index (C.Tuple [C.IntLiteral 1], [C.Var "i1";C.Var "i1";C.IntLiteral 0])
+        ]
+        |> List.iter (this.TestClassicExpression ctx)
+
+        [
+            // |1>.0
+            u.Project (u.Ket [Int 1], [Int 0]),
+                QType.Ket [Type.Int],
+                Q.Project (Q.Literal (C.Set [C.IntLiteral 1]), [0])
+            // k1.[0, 2]  --> Note, index in projection is modular, so 2 == 0
+            u.Project (u.Var "k1", [Int 0; Int 0]),
+                QType.Ket [Type.Int; Type.Int],
+                Q.Project (Q.Var "k1", [0; 0])
+            // |(1, false, 3, true)>.[1,2]
+            u.Project (u.Ket [u.Tuple [Int 1; u.Bool false; Int 3; u.Bool true]], [Int 1; Int 2]),
+                QType.Ket [Type.Bool; Type.Int],
+                Q.Project (Q.Literal (C.Set [Tuple [C.IntLiteral 1; C.BoolLiteral false; C.IntLiteral 3; C.BoolLiteral true]]), [1;2])
+            // k1.[i1, i1, 0]
+            u.Project (u.Var "k1", [u.Var "i1"; u.Var "i1"; u.Int 0]),
+                QType.Ket [Type.Int; Type.Int; Type.Int],
+                Q.Index (Q.Var "k1", [C.Var "i1"; C.Var "i1"; C.IntLiteral 0])
+        ]
+        |> List.iter (this.TestQuantumExpression ctx)
+
+        [
+            // (1, false, 3).[i1,2]
+            u.Project (u.Tuple [Int 1; u.Bool false; Int 3], [u.Var "i1"; Int 2]), "Indexing of tuples is only available on tuples of a single type"
+            // |(1, false, 3)>.[i1,2]
+            u.Project (u.Ket [u.Tuple [Int 1; u.Bool false; Int 3]], [u.Var "i1"; Int 2]), "Indexing of kets is only available on kets of a single type"
+            // [(1, false, 3)].[0]
+            u.Project (u.Set [u.Tuple [Int 1; u.Bool false; Int 3]], [u.Int 2]), "Project is only supported on tuples and kets"
+            // [(1, false, 3)].[i1]
+            u.Project (u.Set [u.Tuple [Int 1; u.Bool false; Int 3]], [u.Var "i1"]), "Project is only supported on tuples and kets"
+            // [1, 2, 3].[false]
+            u.Project (u.Set [Int 1; u.Int 2; Int 3], [u.Bool false]), "Invalid projection index. Expected int expression, got: (BoolLiteral false:Bool)"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
