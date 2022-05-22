@@ -114,7 +114,7 @@ module TypeChecker =
 
         | Expression.Project (value, indices) -> typecheck_project (value, indices, ctx)
         | Expression.Block (stmts, r) -> typecheck_block (stmts, r, ctx)
-        | Expression.If _
+        | Expression.If (c, t, f) -> typecheck_if (c, t, f, ctx)
         | Expression.Summarize _
 
         | Expression.Sample _
@@ -388,8 +388,10 @@ module TypeChecker =
         let use_project (value, (idx: int list), ctx) =
             let projected_types (types: Type list) =
                 idx
-                |> List.map (fun i -> types.[i % idx.Length])
+                |> List.map (fun i -> types.[i % types.Length])
             match value with
+            | Classic (left, Type.Tuple types) when idx.Length = 1->
+                (Classic (C.Project (left, idx), (projected_types types).Head), ctx) |> Ok
             | Classic (left, Type.Tuple types) ->
                 (Classic (C.Project (left, idx), Type.Tuple (projected_types types)), ctx) |> Ok
             | Quantum (left, QType.Ket types) ->
@@ -405,7 +407,10 @@ module TypeChecker =
             match value with
             | Classic (left, Type.Tuple types) ->
                 if (all_the_same types) then
-                    (Classic (C.Index (left, indices), Type.Tuple (List.replicate (indices.Length) types.Head)), ctx) |> Ok
+                    if indices.Length =1 then
+                        (Classic (C.Index (left, indices), types.Head), ctx) |> Ok
+                    else
+                        (Classic (C.Index (left, indices), Type.Tuple (List.replicate (indices.Length) types.Head)), ctx) |> Ok
                 else
                     "Indexing of tuples is only available on tuples of a single type" |> Error
             | Quantum (left, QType.Ket types) ->
@@ -451,3 +456,40 @@ module TypeChecker =
                     (Classic (C.Block (stmts, e), t), ctx) |> Ok
                 | Quantum (e, t) ->
                     (Quantum (Q.Block (stmts, e), t), ctx) |> Ok
+
+    and typecheck_if (c, t, f, ctx) =
+        typecheck_expression_list any_expression ([c; t; f], ctx)
+        ==> fun (exps, ctx) ->
+            match exps with
+            | [Classic _; Classic _; Classic _] -> typecheck_if_classic (exps.[0], exps[1], exps[2], ctx)
+            | _ -> typecheck_if_quantum (exps.[0], exps[1], exps[2], ctx)
+            
+    and typecheck_if_classic (c, t, f, ctx) =
+        match (c, t, f) with 
+        | Classic (c, Type.Bool), Classic (t, tt), Classic (f, tf) when tt = tf->
+            (Classic (C.If (c, t, f), tt), ctx) |> Ok
+        | Classic (c, Type.Bool), Classic _, Classic _->
+            $"Both branches of if statement must be of the same type" |> Error
+        | Classic (c, _), Classic _, Classic _ -> 
+            $"If condition must be a boolean" |> Error
+        | _ ->
+            assert false // we should never be here.
+            $"Expecting only classical expressions" |> Error
+
+    // We get here if any of the expressions (condition, true, false) are quantum.
+    // If that's the case, the return value will be quantum, so the first thing is to 
+    // make the t and f quantum; we check that their types are the same.
+    // Then, we check if the condition is classical or quantum, as the
+    // language offers condition expressions for both: Q.IfClassic and Q.IfQuantum.
+    and typecheck_if_quantum (c, t, f, ctx) =
+        make_q t ==> fun (t, tt) -> make_q f ==> fun (f, ff) ->
+            if tt = ff then     // Cheks the result types are the same.
+                match c with
+                | Classic (c, Type.Bool) ->
+                    (Quantum (Q.IfClassic (c, t, f), tt), ctx) |> Ok
+                | Quantum (c, QType.Ket [Type.Bool]) ->
+                    (Quantum (Q.IfQuantum (c, t, f), tt), ctx) |> Ok
+                | _ ->
+                    $"If condition must be a boolean" |> Error
+            else 
+                $"Both branches of if statement must be of the same type" |> Error

@@ -610,12 +610,16 @@ type TestCore () =
         [
             // (1).0
             u.Project (u.Tuple [Int 1], [Int 0]),
-                Type.Tuple [Type.Int],
+                Type.Int,
                 C.Project (C.Tuple [C.IntLiteral 1], [0])
             // (1).[0, 2]  --> Note, index in projection is modular, so 2 == 0
             u.Project (u.Tuple [Int 1], [Int 0; Int 0]),
                 Type.Tuple [Type.Int; Type.Int],
                 C.Project (C.Tuple [C.IntLiteral 1], [0; 0])
+            // (1, false, 3, true).3
+            u.Project (u.Tuple [Int 1; u.Bool false; Int 3; u.Bool true], [Int 3]),
+                Type.Bool,
+                C.Project (C.Tuple [C.IntLiteral 1; C.BoolLiteral false; C.IntLiteral 3; C.BoolLiteral true], [3])
             // (1, false, 3, true).[1,2]
             u.Project (u.Tuple [Int 1; u.Bool false; Int 3; u.Bool true], [Int 1; Int 2]),
                 Type.Tuple [Type.Bool; Type.Int],
@@ -636,6 +640,10 @@ type TestCore () =
             u.Project (u.Var "k1", [Int 0; Int 0]),
                 QType.Ket [Type.Int; Type.Int],
                 Q.Project (Q.Var "k1", [0; 0])
+            // k2.1
+            u.Project (u.Var "k2", [Int 1]),
+                QType.Ket [Type.Bool],
+                Q.Project (Q.Var "k2", [1])
             // |(1, false, 3, true)>.[1,2]
             u.Project (u.Ket [u.Tuple [Int 1; u.Bool false; Int 3; u.Bool true]], [Int 1; Int 2]),
                 QType.Ket [Type.Bool; Type.Int],
@@ -660,8 +668,6 @@ type TestCore () =
             u.Project (u.Set [Int 1; u.Int 2; Int 3], [u.Bool false]), "Invalid projection index. Expected int expression, got: (BoolLiteral false:Bool)"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
-
-
 
 
     [<TestMethod>]
@@ -707,5 +713,61 @@ type TestCore () =
         [
             // { let s = 5 == false; a}
             u.Block ([aleph.parser.ast.Statement.Let ("a", u.Equals (u.Int 5, u.Bool false))], u.Var "a"), "== can only be applied to int expressions"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
+
+
+    [<TestMethod>]
+    member this.TestIf() =
+        let ctx = this.TypeContext
+
+        [
+            // { if true then 1 else 0 }
+            u.If (u.Bool true, u.Int 1, u.Int 0),
+                Type.Int,
+                C.If (C.BoolLiteral true, C.IntLiteral 1, C.IntLiteral 0)
+            // { if b1 or t1.0 then (0, 1) else (0, 0) }
+            u.If (u.Or [u.Var "b1"; u.Project (u.Var "t1", [u.Int 0])], u.Tuple [u.Int 0; u.Int 1], u.Tuple [u.Int 0; u.Int 0]),
+                Type.Tuple [Type.Int; Type.Int],
+                C.If (C.Or [C.Var "b1"; C.Project (C.Var "t1", [0])], C.Tuple [C.IntLiteral 0; C.IntLiteral 1], C.Tuple [C.IntLiteral 0; C.IntLiteral 0])
+        ]
+        |> List.iter (this.TestClassicExpression ctx)
+
+        [
+            // { if true then k1 else |0> }
+            u.If (u.Bool true, u.Var "k1", u.Ket [u.Int 0]),
+                QType.Ket [Type.Int],
+                Q.IfClassic (C.BoolLiteral true, Q.Var "k1", Q.Literal (Set [C.IntLiteral 0]))
+            // { if true then k1 else 0 }
+            u.If (u.Bool true, u.Var "k1", u.Int 0),
+                QType.Ket [Type.Int],
+                Q.IfClassic (C.BoolLiteral true, Q.Var "k1", Q.Literal (Set [C.IntLiteral 0]))
+            // { if k2.1 then (0, 1) else (0, 0) }
+            u.If (u.Project (u.Var "k2", [u.Int 1]), u.Tuple [u.Int 0; u.Int 1], u.Tuple [u.Int 0; u.Int 0]),
+                QType.Ket [Type.Int; Type.Int],
+                Q.IfQuantum (
+                    Q.Project (Q.Var "k2", [1]), 
+                    Q.Literal (C.Set [C.Tuple [C.IntLiteral 0; C.IntLiteral 1]]), 
+                    Q.Literal (C.Set [C.Tuple [C.IntLiteral 0; C.IntLiteral 0]]))
+            // TODO: QUANTUM OR
+            // // { if b1 or k1.1 then (0, 1) else (0, 0) }
+            // u.If (u.Or [u.Var "b1"; u.Project (u.Var "k1", [u.Int 1])], u.Tuple [u.Int 0; u.Int 1], u.Tuple [u.Int 0; u.Int 0]),
+            //     QType.Ket [Type.Int; Type.Int],
+            //     Q.IfQuantum (
+            //         Q.Or (Q.Join (Q.Literal (C.Var "b1"), Q.Project (Q.Var "k1", [1]))), 
+            //         Q.Literal (C.Tuple [C.IntLiteral 0; C.IntLiteral 1]), 
+            //         Q.Literal (C.Tuple [C.IntLiteral 0; C.IntLiteral 0]))
+        ]
+        |> List.iter (this.TestQuantumExpression ctx)
+
+        [
+            // { if true then 1 else false }
+            u.If (u.Bool true, u.Int 1, u.Bool false), "Both branches of if statement must be of the same type"
+            // { if true then k1 else k2 }
+            u.If (u.Bool true, u.Var "k1", u.Var "k2"), "Both branches of if statement must be of the same type"
+            // { if 42 then 1 else 2 }
+            u.If (u.Int 42, u.Int 1, u.Int 2), "If condition must be a boolean"
+            // { if 42 then |1> else |0> }
+            u.If (u.Int 42, u.Ket [u.Int 1], u.Ket [u.Int 0]), "If condition must be a boolean"
         ]
         |> List.iter (this.TestInvalidExpression ctx)

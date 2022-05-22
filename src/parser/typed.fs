@@ -52,7 +52,8 @@ and Q =
     | Project of source: Q * indices: int list
     | Index of source: Q * indices: C list
     | Block of qstmts: Statement list * Q
-    | If of cond: Q * t : Q * f: Q
+    | IfClassic of cond: C * t : Q * f: Q
+    | IfQuantum of cond: Q * t : Q * f: Q
     | Summarize of id: Id * enumeration : C * operation: C * body: Q
 
     | CallMethod of method: C * arguments: E list
