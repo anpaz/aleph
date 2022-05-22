@@ -122,6 +122,23 @@ module TypeChecker =
         | Expression.Solve _ ->
             $"Expression {e} has not been implemented yet!" |> Error
 
+    // Typechecks an untyped expression list. Receives a callback such that
+    // each expression can be validated. If all the expressions are valid
+    // it returns the list of corresponding typed expressions.
+    and typecheck_expression_list is_valid_expression (values, ctx) =
+        let rec next (items, ctx) =
+            match items with
+            | head :: tail ->
+                typecheck (head, ctx)
+                ==> fun (head, ctx) ->
+                    is_valid_expression head
+                    ==> fun head ->
+                        next (tail, ctx)
+                        ==> fun (tail, ctx) ->
+                            (head :: tail, ctx) |> Ok
+            | [] -> ([], ctx) |> Ok
+        next (values, ctx)
+
     and typecheck_var (id, ctx) =
         match ctx.TryFind id with
         | Some t -> 
@@ -319,7 +336,7 @@ module TypeChecker =
         // typecheck the method name:
         typecheck(method, ctx)
         ==> fun (method, ctx) ->
-            // If the variable is associated with a method:
+            // If the expression is associated with a method:
             match method with
             | Classic (m, Type.Method (argTypes, rType)) ->
                 // typecheck the list of arguments to pass:
@@ -327,9 +344,7 @@ module TypeChecker =
                 ==> fun (args, ctx) ->
                     // verify that the types of the arguments we'll be passing 
                     // match the expected type of the arguments
-                    let argTypes' = args |> List.map (function 
-                        | Classic (_, t) -> AnyType.Type t 
-                        | Quantum (_, t) -> AnyType.QType t)
+                    let argTypes' = args |> List.map (function | Classic (_, t) -> AnyType.Type t | Quantum (_, t) -> AnyType.QType t)
                     if argTypes = argTypes' then
                         // Everything matches. Check the return type
                         // to decide if it's a classical or a quantum method:
@@ -356,23 +371,6 @@ module TypeChecker =
                 (Quantum (Q.KetAll v, QType.Ket [Type.Int]), ctx) |> Ok
             | _ ->
                 $"Ket size must be an int expression, got: {size}" |> Error
-
-    // Typechecks an untyped expression list. Receives a callback such that
-    // each expression can be validated. If all the expressions are valid
-    // it returns the list of corresponding typed expressions.
-    and typecheck_expression_list is_valid_expression (values, ctx) =
-        let rec next (items, ctx) =
-            match items with
-            | head :: tail ->
-                typecheck (head, ctx)
-                ==> fun (head, ctx) ->
-                    is_valid_expression head
-                    ==> fun head ->
-                        next (tail, ctx)
-                        ==> fun (tail, ctx) ->
-                            (head :: tail, ctx) |> Ok
-            | [] -> ([], ctx) |> Ok
-        next (values, ctx)
 
     and typecheck_project (value, indices, ctx) =
         // if all the index expressions match to int literals
