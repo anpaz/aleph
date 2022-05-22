@@ -41,6 +41,8 @@ module TypeChecker =
         | Classic (e, t) -> msg + $"Expected bool or int expression, got: ({e}:{t})" |> Error
         | Quantum (e, t) -> msg + $"Expected bool or int expression, got: ({e}:{t})" |> Error
 
+    let any_expression e = e |> Ok
+
     // For a list of typed Expressions (E), returns two list: one with just the expression
     // elements and a second with just the Types.
     // All must be Classic expressions.
@@ -111,7 +113,7 @@ module TypeChecker =
         | Expression.Join (left, right) -> typecheck_join (left, right, ctx)
 
         | Expression.Project (value, indices) -> typecheck_project (value, indices, ctx)
-        | Expression.Block _
+        | Expression.Block (stmts, r) -> typecheck_block (stmts, r, ctx)
         | Expression.If _
         | Expression.Summarize _
 
@@ -426,4 +428,28 @@ module TypeChecker =
                     | None -> use_index (value, idx_exp, ctx)
 
         
-
+    and typecheck_block (stmts, r, ctx') =
+        let as_typed_stmt previous (next:ast.Statement) =
+            previous 
+            ==> fun (previous, ctx) ->
+                match next with
+                | ast.Statement.Let (id, value) ->
+                    typecheck (value, ctx)
+                    ==> fun (value, ctx) ->
+                        let t = value |> function | Classic (_, t) -> AnyType.Type t | Quantum (_, t) -> AnyType.QType t
+                        let ctx = ctx.Add (id, t)
+                        (previous @ [typed.Statement.Let (id, value)], ctx) |> Ok
+                | ast.Statement.Print (msg, value) ->
+                    typecheck_expression_list any_expression (value, ctx)
+                    ==> fun (value, ctx) ->
+                        (previous @ [typed.Statement.Print (msg, value)], ctx) |> Ok
+        stmts
+        |> List.fold as_typed_stmt (([], ctx') |> Ok)
+        ==> fun (stmts, ctx) ->
+            typecheck (r, ctx)
+            ==> fun (r, ctx) ->
+                match r with
+                | Classic (e, t) ->
+                    (Classic (C.Block (stmts, e), t), ctx) |> Ok
+                | Quantum (e, t) ->
+                    (Quantum (Q.Block (stmts, e), t), ctx) |> Ok

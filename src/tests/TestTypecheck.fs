@@ -405,19 +405,19 @@ type TestCore () =
         let ctx = this.TypeContext
 
         [
-            // |0, 1> + |1, 2, 3>
+            // |0, 1> = |1, 2, 3>
             u.Equals (u.Ket [u.Int 0;u.Int 1], u.Ket [u.Int 1; u.Int 2; u.Int 3]),
                 QType.Ket [Type.Bool],
                 Q.Equals (Q.Join (
                     Q.Literal (C.Set [C.IntLiteral 0; C.IntLiteral 1]), 
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3])))
-            // 1 + |1, 2, 3>
+            // 1 = |1, 2, 3>
             u.Equals (u.Int 1, u.Ket [u.Int 1;u.Int 2;u.Int 3]),
                 QType.Ket [Type.Bool],
                 Q.Equals (Q.Join (
                     Q.Literal (C.Set [C.IntLiteral 1]), 
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3])))
-            // |1, 2, 3> + 1
+            // |1, 2, 3> = 1
             u.Equals (u.Ket [u.Int 1;u.Int 2;u.Int 3], u.Int 1),
                 QType.Ket [Type.Bool],
                 Q.Equals (Q.Join (
@@ -658,5 +658,54 @@ type TestCore () =
             u.Project (u.Set [u.Tuple [Int 1; u.Bool false; Int 3]], [u.Var "i1"]), "Project is only supported on tuples and kets"
             // [1, 2, 3].[false]
             u.Project (u.Set [Int 1; u.Int 2; Int 3], [u.Bool false]), "Invalid projection index. Expected int expression, got: (BoolLiteral false:Bool)"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
+
+
+
+
+    [<TestMethod>]
+    member this.TestBlock() =
+        let ctx = this.TypeContext
+
+        [
+            // { t1 }
+            u.Block ([], (u.Var "t1")),
+                Type.Tuple [Type.Bool; Type.Int],
+                C.Block ([], C.Var "t1")
+            // { let a = 15; print "some msg" a k1; a + i1 }
+            u.Block ([
+                aleph.parser.ast.Statement.Let ("a", u.Int 15)
+                aleph.parser.ast.Statement.Print ("some msg", [u.Var "a"; u.Var "k1"])],
+                (u.Add (u.Var "a", u.Var "i1"))),
+                Type.Int,
+                C.Block ([
+                    Let ("a", Classic (C.IntLiteral 15, Type.Int))
+                    Print ("some msg", [Classic (C.Var "a", Type.Int); (Quantum (Q.Var "k1", QType.Ket [Type.Int]))])],
+                    C.Add (C.Var "a", C.Var "i1"))
+        ]
+        |> List.iter (this.TestClassicExpression ctx)
+
+        [
+            // { t1 }
+            u.Block ([], (u.Var "k1")),
+                QType.Ket [Type.Int],
+                Q.Block ([], Q.Var "k1")
+            // { let a = 15; print "some msg" a k1; a + k1 }
+            u.Block ([
+                aleph.parser.ast.Statement.Let ("a", u.Int 15)
+                aleph.parser.ast.Statement.Print ("some msg", [u.Var "a"; u.Var "k1"])],
+                (u.Add (u.Var "a", u.Var "k1"))),
+                QType.Ket [Type.Int],
+                Q.Block ([
+                    Let ("a", Classic (C.IntLiteral 15, Type.Int))
+                    Print ("some msg", [Classic (C.Var "a", Type.Int); (Quantum (Q.Var "k1", QType.Ket [Type.Int]))])],
+                    Q.Add (Q.Join (Q.Literal (C.Set [C.Var "a"]), Q.Var "k1")))
+        ]
+        |> List.iter (this.TestQuantumExpression ctx)
+
+        [
+            // { let s = 5 == false; a}
+            u.Block ([aleph.parser.ast.Statement.Let ("a", u.Equals (u.Int 5, u.Bool false))], u.Var "a"), "== can only be applied to int expressions"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
