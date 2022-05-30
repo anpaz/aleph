@@ -19,28 +19,6 @@ namespace ket {
         valid: Qubit[] => Bool
     );
 
-
-    operation Print(ket: Ket) : Unit 
-    {
-        let (init, oracle, size,  answers, registers, tracker, _) = ket!;
-
-        use qubits = Qubit[size];
-        
-        Prepare(ket, qubits);
-
-        log.Info($"Ket: {qubits}");
-        mutable ordered = [];
-        for r in registers {
-            log.Info($"  {qubits[r]}");
-            set ordered += qubits[r];
-        }
-
-        DumpRegister((), ordered);
-
-        ResetAll(qubits);
-    }
-
-
     operation Sample(ket: Ket) : Int[]
     {
         let (init, oracle, size,  answers, registers, tracker, _) = ket!;

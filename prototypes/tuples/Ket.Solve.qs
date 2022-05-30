@@ -57,7 +57,7 @@ namespace ket {
         if (original(qubits)) {
             let filter = qubits[r];
             let f = All(IsResultOne, ForEach(M, filter));
-            log.Info($"  * solver filter ({filter}): {f}");
+            log.Debug($"  * solver filter ({filter}): {f}");
             if (f) {
                 return true;
             }

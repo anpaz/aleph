@@ -25,7 +25,7 @@ namespace grover {
         let domain = (1 <<< n);
         let k = Max([1, answers]);
         let iterations = Floor(PI() * Sqrt(IntAsDouble(domain / k)) / 4.0);
-        log.Info($"Grover. iterations:{iterations} (n: {n}, a: {answers})");
+        log.Debug($"Grover. iterations:{iterations} (n: {n}, a: {answers})");
         return iterations;
     }
 

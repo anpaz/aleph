@@ -11,25 +11,29 @@
 
     @EntryPoint()
     operation HelloQ() : Unit {
-        let k1 = ket.Tuple_1([0, 1, 2]);
-        ket.Print(k1);
+        // let k1 = ket.Tuple_1([0, 1, 2]);
+        // ket.Print(k1);
 
         let tuples = [
             (0,0),
+            // (2,0),
+            (2,1),
+            // (1,2),
+            (2,2),
             (0,3),
-            (2,0),
             // (1,3),
-            (1,2),
             // (2,3),
-            // (2,2),
-            (2,3),
-            (2,1)
+            (2,3)
         ];
         let k2 = ket.Tuple_2(tuples);
         ket.Print(k2);
 
+        //ket.Print(ket.Project(k2, [0]));
+        //ket.Print(ket.Project(k2, [1]));
+        // ket.Print(ket.Add(k2));
+
         let k3 = ket.Apply(k2, Addition);
-        ket.Print(k3);
+        // ket.Print(k3);
 
         let k4 = ket.Solve(k3);
         ket.Print(k4);
@@ -37,11 +41,11 @@
         let a1 = ket.Sample(k4);
         Message($"a: {a1}");
 
-        let a2 = ket.Sample(k4);
-        Message($"a: {a2}");
+        // let a2 = ket.Sample(k4);
+        // Message($"a: {a2}");
 
-        let a3 = ket.Sample(k4);
-        Message($"a: {a3}");
+        // let a3 = ket.Sample(k4);
+        // Message($"a: {a3}");
 
         Sign();
     }
