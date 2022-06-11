@@ -355,21 +355,21 @@ type TestCore () =
             // |0, 1> + |1, 2, 3>
             u.Add (u.Ket [u.Int 0;u.Int 1], u.Ket [u.Int 1; u.Int 2; u.Int 3]),
                 QType.Ket [Type.Int],
-                Q.Add (Q.Join (
+                Q.Add (
                     Q.Literal (C.Set [C.IntLiteral 0; C.IntLiteral 1]), 
-                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3])))
+                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // 1 + |1, 2, 3>
             u.Add (u.Int 1, u.Ket [u.Int 1;u.Int 2;u.Int 3]),
                 QType.Ket [Type.Int],
-                Q.Add (Q.Join (
+                Q.Add (
                     Q.Literal (C.Set [C.IntLiteral 1]), 
-                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3])))
+                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // |1, 2, 3> + 1
             u.Add (u.Ket [u.Int 1;u.Int 2;u.Int 3], u.Int 1),
                 QType.Ket [Type.Int],
-                Q.Add (Q.Join (
+                Q.Add (
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]),
-                    Q.Literal (C.Set [C.IntLiteral 1])))
+                    Q.Literal (C.Set [C.IntLiteral 1]))
         ]
         |> List.iter (this.TestQuantumExpression ctx)
 
@@ -408,21 +408,21 @@ type TestCore () =
             // |0, 1> = |1, 2, 3>
             u.Equals (u.Ket [u.Int 0;u.Int 1], u.Ket [u.Int 1; u.Int 2; u.Int 3]),
                 QType.Ket [Type.Bool],
-                Q.Equals (Q.Join (
+                Q.Equals (
                     Q.Literal (C.Set [C.IntLiteral 0; C.IntLiteral 1]), 
-                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3])))
+                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // 1 = |1, 2, 3>
             u.Equals (u.Int 1, u.Ket [u.Int 1;u.Int 2;u.Int 3]),
                 QType.Ket [Type.Bool],
-                Q.Equals (Q.Join (
+                Q.Equals (
                     Q.Literal (C.Set [C.IntLiteral 1]), 
-                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3])))
+                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // |1, 2, 3> = 1
             u.Equals (u.Ket [u.Int 1;u.Int 2;u.Int 3], u.Int 1),
                 QType.Ket [Type.Bool],
-                Q.Equals (Q.Join (
+                Q.Equals (
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]),
-                    Q.Literal (C.Set [C.IntLiteral 1])))
+                    Q.Literal (C.Set [C.IntLiteral 1]))
         ]
         |> List.iter (this.TestQuantumExpression ctx)
 
@@ -460,21 +460,21 @@ type TestCore () =
             // |0, 1> * |1, 2, 3>
             u.Multiply (u.Ket [u.Int 0;u.Int 1], u.Ket [u.Int 1; u.Int 2; u.Int 3]),
                 QType.Ket [Type.Int],
-                Q.Multiply (Q.Join (
+                Q.Multiply (
                     Q.Literal (C.Set [C.IntLiteral 0; C.IntLiteral 1]), 
-                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3])))
+                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // 1 * |1, 2, 3>
             u.Multiply (u.Int 1, u.Ket [u.Int 1;u.Int 2;u.Int 3]),
                 QType.Ket [Type.Int],
-                Q.Multiply (Q.Join (
+                Q.Multiply (
                     Q.Literal (C.Set [C.IntLiteral 1]), 
-                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3])))
+                    Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // |1, 2, 3> * 1
             u.Multiply (u.Ket [u.Int 1;u.Int 2;u.Int 3], u.Int 1),
                 QType.Ket [Type.Int],
-                Q.Multiply (Q.Join (
+                Q.Multiply (
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]),
-                    Q.Literal (C.Set [C.IntLiteral 1])))
+                    Q.Literal (C.Set [C.IntLiteral 1]))
         ]
         |> List.iter (this.TestQuantumExpression ctx)
 
@@ -706,7 +706,7 @@ type TestCore () =
                 Q.Block ([
                     Let ("a", Classic (C.IntLiteral 15, Type.Int))
                     Print ("some msg", [Classic (C.Var "a", Type.Int); (Quantum (Q.Var "k1", QType.Ket [Type.Int]))])],
-                    Q.Add (Q.Join (Q.Literal (C.Set [C.Var "a"]), Q.Var "k1")))
+                    Q.Add (Q.Literal (C.Set [C.Var "a"]), Q.Var "k1"))
         ]
         |> List.iter (this.TestQuantumExpression ctx)
 

@@ -32,7 +32,6 @@ type C =
     | Summarize of id: Id * enumeration : C * operation: C * body: C
 
     | Sample of ket: Q
-    | Measure of ket: Q * shots: C
 
 and Q =
     | Var of Id
@@ -41,23 +40,23 @@ and Q =
     | KetAll of size: C
 
     | Not of Q
-    | And of Q
-    | Or of Q
-    | Equals of Q
+    | And of Q * Q
+    | Or of Q * Q
+    | Equals of Q * Q
 
-    | Add of Q
-    | Multiply of Q
+    | Add of Q * Q
+    | Multiply of Q * Q
 
     | Join of values: Q * Q
     | Project of source: Q * indices: int list
     | Index of source: Q * indices: C list
-    | Block of qstmts: Statement list * Q
+    | Block of stmts: Statement list * Q
     | IfClassic of cond: C * t : Q * f: Q
     | IfQuantum of cond: Q * t : Q * f: Q
     | Summarize of id: Id * enumeration : C * operation: C * body: Q
 
     | CallMethod of method: C * arguments: E list
-    | Solve of ket: Q
+    | Solve of ket: Q * condition: Q
 
 and E =
     | Classic of C * Type
@@ -65,4 +64,4 @@ and E =
 
 and Statement =
     | Let of id: Id * value: E
-    | Print of Id * E list
+    | Print of string * E list

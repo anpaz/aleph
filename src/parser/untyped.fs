@@ -7,7 +7,6 @@ type Type =
     | Int
     | Tuple of Type list
     | Set of Type
-    | Histogram of Type
     | Method of AnyType list * AnyType
 
 and QType =
@@ -47,10 +46,9 @@ type Expression =
     | KetAll of size: Expression
 
     | Sample of ket: Expression
-    | Measure of ket: Expression * shots: Expression
-    | Solve of ket: Expression
+    | Solve of ket: Expression * cond: Expression
 
 and Statement =
     | Let of id: Id * value: Expression
-    | Print of Id * Expression list
+    | Print of string * Expression list
 

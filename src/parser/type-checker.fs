@@ -118,7 +118,6 @@ module TypeChecker =
         | Expression.Summarize _
 
         | Expression.Sample _
-        | Expression.Measure _
         | Expression.Solve _ ->
             $"Expression {e} has not been implemented yet!" |> Error
 
@@ -252,7 +251,7 @@ module TypeChecker =
             make_q right
             ==> fun (r, rt) ->
                 match (lt, rt) with
-                | QType.Ket [Type.Int],  QType.Ket[Type.Int] -> (Quantum (Q.Add (Q.Join (l, r)), QType.Ket [Type.Int]), ctx) |> Ok
+                | QType.Ket [Type.Int],  QType.Ket[Type.Int] -> (Quantum (Q.Add (l, r), QType.Ket [Type.Int]), ctx) |> Ok
                 | _ -> $"Quantum addition can only be applied to int Kets" |> Error
 
     and typecheck_multiply (left, right, ctx) =
@@ -277,7 +276,7 @@ module TypeChecker =
             make_q right
             ==> fun (r, rt) ->
                 match (lt, rt) with
-                | QType.Ket [Type.Int],  QType.Ket[Type.Int] -> (Quantum (Q.Multiply (Q.Join (l, r)), QType.Ket [Type.Int]), ctx) |> Ok
+                | QType.Ket [Type.Int],  QType.Ket[Type.Int] -> (Quantum (Q.Multiply (l, r), QType.Ket [Type.Int]), ctx) |> Ok
                 | _ -> $"Quantum multiplication can only be applied to int Kets" |> Error
 
 
@@ -303,7 +302,7 @@ module TypeChecker =
             make_q right
             ==> fun (r, rt) ->
                 match (lt, rt) with
-                | QType.Ket [Type.Int],  QType.Ket[Type.Int] -> (Quantum (Q.Equals (Q.Join (l, r)), QType.Ket [Type.Bool]), ctx) |> Ok
+                | QType.Ket [Type.Int],  QType.Ket[Type.Int] -> (Quantum (Q.Equals (l, r), QType.Ket [Type.Bool]), ctx) |> Ok
                 | _ -> $"Quantum == can only be applied to int Kets" |> Error
 
     and typecheck_lessthan (left, right, ctx) =
@@ -318,7 +317,6 @@ module TypeChecker =
                 | _ -> $"Both expressions for < must be int. Got {left} < {right}" |> Error
 
     and typecheck_join (left, right, ctx) =
-        // TODO: quantum < ?
         typecheck(left, ctx)
         ==> fun (left, ctx) ->
             typecheck (right, ctx)
