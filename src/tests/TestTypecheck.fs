@@ -771,3 +771,23 @@ type TestCore () =
             u.If (u.Int 42, u.Ket [u.Int 1], u.Ket [u.Int 0]), "If condition must be a boolean"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
+
+
+    [<TestMethod>]
+    member this.TestSolve() =
+        let ctx = this.TypeContext
+
+        [
+            // k2 | k2.[0] == 1
+            u.Solve(u.Var "k2", u.Equals (u.Project (u.Var "k2", [u.Int 0]), u.Int 1)),
+                QType.Ket [Type.Int; Type.Bool],
+                Q.Solve(Q.Var "k2", Q.Equals (Q.Project (Q.Var "k2", [0]), Q.Literal (C.Set [C.IntLiteral 1])))
+        ]
+        |> List.iter (this.TestQuantumExpression ctx)
+
+        [
+            u.Solve (u.Tuple [u.Int 1;u.Int 2], u.Equals (u.Project (u.Var "k2", [u.Int 1]), u.Bool true)), "Solve argument must be a quantum ket, got: Tuple [Int; Int]"
+            u.Solve (u.Var "k2", u.Bool true), "Solve condition must be a quantum boolean expression, got: Bool"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
+

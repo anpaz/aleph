@@ -115,10 +115,13 @@ module TypeChecker =
         | Expression.Project (value, indices) -> typecheck_project (value, indices, ctx)
         | Expression.Block (stmts, r) -> typecheck_block (stmts, r, ctx)
         | Expression.If (c, t, f) -> typecheck_if (c, t, f, ctx)
+
+
+        | Expression.Solve (ket, cond) -> typecheck_solve (ket, cond, ctx)
+        
         | Expression.Summarize _
 
-        | Expression.Sample _
-        | Expression.Solve _ ->
+        | Expression.Sample _ ->
             $"Expression {e} has not been implemented yet!" |> Error
 
     // Typechecks an untyped expression list. Receives a callback such that
@@ -491,3 +494,18 @@ module TypeChecker =
                     $"If condition must be a boolean" |> Error
             else 
                 $"Both branches of if statement must be of the same type" |> Error
+
+    and typecheck_solve (ket, cond, ctx) =
+        typecheck (ket, ctx)
+        ==> fun (ket, ctx) ->
+            match ket with
+            | Quantum (ket, QType.Ket t) ->
+                typecheck (cond, ctx)
+                ==> fun (cond, ctx) ->
+                    match cond with
+                    | Quantum (cond, QType.Ket [Type.Bool]) ->
+                        (Quantum (Q.Solve (ket, cond), QType.Ket t), ctx) |> Ok
+                    | Quantum (_, t) -> $"Solve condition must be a quantum boolean expression, got: {t}" |> Error
+                    | Classic (_, t) -> $"Solve condition must be a quantum boolean expression, got: {t}" |> Error
+            | Classic (_, t) -> $"Solve argument must be a quantum ket, got: {t}" |> Error
+
