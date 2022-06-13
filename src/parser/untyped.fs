@@ -16,6 +16,11 @@ and AnyType =
     | Type of Type
     | QType of QType
 
+type Aggregation =
+    | Sum
+    | And
+    | Or
+
 type Expression =
     | Var of Id
     | Bool of bool
@@ -40,7 +45,7 @@ type Expression =
     | Project of tuple: Expression * index: Expression list
     | Block of Statement list * Expression
     | If of cond: Expression * t : Expression * f: Expression
-    | Summarize of id: Id * enumeration : Expression * operation: Id * body: Expression
+    | Summarize of id: Id * enumeration : Expression * aggregation: Aggregation * body: Expression
 
     | Ket of values: Expression list
     | KetAll of size: Expression

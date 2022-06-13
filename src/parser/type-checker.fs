@@ -73,7 +73,6 @@ module TypeChecker =
         | Classic (l, Type.Tuple t) -> (Literal (C.Set [l]), QType.Ket t) |> Ok
         | _ -> "Cannot create quantum literal from {e}" |> Error 
 
-
     type TypeContext = Map<Id, AnyType>
 
     let QInt = QType.Ket [Type.Int]
@@ -115,12 +114,10 @@ module TypeChecker =
         | Expression.Project (value, indices) -> typecheck_project (value, indices, ctx)
         | Expression.Block (stmts, r) -> typecheck_block (stmts, r, ctx)
         | Expression.If (c, t, f) -> typecheck_if (c, t, f, ctx)
-
+        | Expression.Summarize  (id, enumeration, aggregation, body) -> typecheck_summarize (id, enumeration, aggregation, body, ctx)
 
         | Expression.Solve (ket, cond) -> typecheck_solve (ket, cond, ctx)
         
-        | Expression.Summarize _
-
         | Expression.Sample _ ->
             $"Expression {e} has not been implemented yet!" |> Error
 
@@ -317,7 +314,14 @@ module TypeChecker =
                 match (left, right) with
                 | Classic (left, Type.Int), Classic (right, Type.Int) ->
                     (Classic (C.LessThan (left, right), Type.Bool), ctx) |> Ok
-                | _ -> $"Both expressions for < must be int. Got {left} < {right}" |> Error
+                | Classic (_, lt), Classic (_, rt) ->
+                     $"Both expressions for < must be int. Got {lt} < {rt}" |> Error
+                | Quantum (_, lt), Classic (_, rt) ->
+                     $"Both expressions for < must be int. Got {lt} < {rt}" |> Error
+                | Quantum (_, lt), Quantum (_, rt) ->
+                     $"Both expressions for < must be int. Got {lt} < {rt}" |> Error
+                | Classic (_, lt), Quantum (_, rt) ->
+                     $"Both expressions for < must be int. Got {lt} < {rt}" |> Error
 
     and typecheck_join (left, right, ctx) =
         typecheck(left, ctx)
@@ -467,12 +471,12 @@ module TypeChecker =
             
     and typecheck_if_classic (c, t, f, ctx) =
         match (c, t, f) with 
-        | Classic (c, Type.Bool), Classic (t, tt), Classic (f, tf) when tt = tf->
+        | Classic (c, Type.Bool), Classic (t, tt), Classic (f, tf) when tt = tf ->
             (Classic (C.If (c, t, f), tt), ctx) |> Ok
-        | Classic (c, Type.Bool), Classic _, Classic _->
-            $"Both branches of if statement must be of the same type" |> Error
-        | Classic (c, _), Classic _, Classic _ -> 
-            $"If condition must be a boolean" |> Error
+        | Classic (c, Type.Bool), Classic (_, tt), Classic (_, ft) ->
+            $"Both branches of if statement must be of the same type, got {tt} and {ft}" |> Error
+        | Classic (c, t), Classic _, Classic _ -> 
+            $"If condition must be a boolean, got {t}" |> Error
         | _ ->
             assert false // we should never be here.
             $"Expecting only classical expressions" |> Error
@@ -483,17 +487,49 @@ module TypeChecker =
     // Then, we check if the condition is classical or quantum, as the
     // language offers condition expressions for both: Q.IfClassic and Q.IfQuantum.
     and typecheck_if_quantum (c, t, f, ctx) =
-        make_q t ==> fun (t, tt) -> make_q f ==> fun (f, ff) ->
-            if tt = ff then     // Cheks the result types are the same.
+        make_q t ==> fun (t, tt) -> make_q f ==> fun (f, ft) ->
+            if tt = ft then     // Cheks the result types are the same.
                 match c with
                 | Classic (c, Type.Bool) ->
                     (Quantum (Q.IfClassic (c, t, f), tt), ctx) |> Ok
                 | Quantum (c, QType.Ket [Type.Bool]) ->
                     (Quantum (Q.IfQuantum (c, t, f), tt), ctx) |> Ok
-                | _ ->
-                    $"If condition must be a boolean" |> Error
+                | Classic (_, t) -> $"If condition must be a boolean, got {t}" |> Error
+                | Quantum (_, t) -> $"If condition must be a boolean, got {t}" |> Error
             else 
-                $"Both branches of if statement must be of the same type" |> Error
+                $"Both branches of if statement must be of the same type, got {tt} and {ft}" |> Error
+
+    and typecheck_summarize (varId, enumeration, aggregation, body, ctx) =
+        typecheck (enumeration, ctx)
+        ==> fun (enumeration, ctx) ->
+            // enumeration must be a set ...
+            match enumeration with
+            | Classic (values, (Type.Set t)) ->
+                // and the variable to the context, and typecheck the body:
+                let ctx = add_to_context ctx [varId, AnyType.Type t]
+                typecheck (body, ctx)
+                ==> fun (body, ctx) ->
+                    // the body must match the aggregation:
+                    match aggregation with
+                    | Aggregation.And
+                    | Aggregation.Or ->
+                        match body with
+                        | Classic (body, Type.Bool) ->
+                            (Classic (C.Summarize (varId, values, aggregation, body), Type.Bool), ctx) |> Ok
+                        | Quantum (body, QType.Ket [Type.Bool]) ->
+                            (Quantum (Q.Summarize (varId, values, aggregation, body), QType.Ket [Type.Bool]), ctx) |> Ok
+                        | Classic (_, t) -> $"Summarize body must be a boolean expression when aggregation is 'and' | 'or', got {t}" |> Error
+                        | Quantum (_, t) -> $"Summarize body must be a boolean expression when aggregation is 'and' | 'or', got {t}" |> Error
+                    | Aggregation.Sum ->
+                        match body with
+                        | Classic (body, Type.Int) ->
+                            (Classic (C.Summarize (varId, values, aggregation, body), Type.Int), ctx) |> Ok
+                        | Quantum (body, QType.Ket [Type.Int]) ->
+                            (Quantum (Q.Summarize (varId, values, aggregation, body), QType.Ket [Type.Int]), ctx) |> Ok
+                        | Classic (_, t) -> $"Summarize body must be an Int expression when aggregation is 'sum', got {t}" |> Error
+                        | Quantum (_, t) -> $"Summarize body must be an Int expression when aggregation is 'sum', got {t}" |> Error
+            | Classic (_, t) -> $"Summarize expects a classic set of values, got: {t}" |> Error
+            | Quantum (_, t) -> $"Summarize expects a classic set of values, got: {t}" |> Error
 
     and typecheck_solve (ket, cond, ctx) =
         typecheck (ket, ctx)

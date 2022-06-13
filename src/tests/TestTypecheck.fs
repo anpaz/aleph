@@ -498,7 +498,7 @@ type TestCore () =
         |> List.iter (this.TestClassicExpression ctx)
 
         [
-            u.LessThan (u.Bool true, u.Bool false), "Both expressions for < must be int. Got Classic (BoolLiteral true, Bool) < Classic (BoolLiteral false, Bool)"
+            u.LessThan (u.Bool true, u.Bool false), "Both expressions for < must be int. Got Bool < Bool"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -762,13 +762,61 @@ type TestCore () =
 
         [
             // { if true then 1 else false }
-            u.If (u.Bool true, u.Int 1, u.Bool false), "Both branches of if statement must be of the same type"
+            u.If (u.Bool true, u.Int 1, u.Bool false), "Both branches of if statement must be of the same type, got Int and Bool"
             // { if true then k1 else k2 }
-            u.If (u.Bool true, u.Var "k1", u.Var "k2"), "Both branches of if statement must be of the same type"
+            u.If (u.Bool true, u.Var "k1", u.Var "k2"), "Both branches of if statement must be of the same type, got Ket [Int] and Ket [Int; Bool]"
             // { if 42 then 1 else 2 }
-            u.If (u.Int 42, u.Int 1, u.Int 2), "If condition must be a boolean"
+            u.If (u.Int 42, u.Int 1, u.Int 2), "If condition must be a boolean, got Int"
             // { if 42 then |1> else |0> }
-            u.If (u.Int 42, u.Ket [u.Int 1], u.Ket [u.Int 0]), "If condition must be a boolean"
+            u.If (u.Int 42, u.Ket [u.Int 1], u.Ket [u.Int 0]), "If condition must be a boolean, got Int"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
+
+
+
+    [<TestMethod>]
+    member this.TestSummarize() =
+        let ctx = this.TypeContext
+
+        [
+            // summarize e in s1 with and { e.1 < 10 } 
+            u.Summarize ("e", u.Var "s1", Aggregation.And, u.LessThan (u.Project (u.Var "e", [u.Int 1]), u.Int 10)),
+                Type.Bool,
+                C.Summarize ("e", C.Var "s1", Aggregation.And, C.LessThan (C.Project (C.Var "e", [1]), C.IntLiteral 10))
+            // summarize e in s1 with or { e.1 == 10 } 
+            u.Summarize ("e", u.Var "s1", Aggregation.Or, u.Equals (u.Project (u.Var "e", [u.Int 1]), u.Int 10)),
+                Type.Bool,
+                C.Summarize ("e", C.Var "s1", Aggregation.Or, C.Equals (C.Project (C.Var "e", [1]), C.IntLiteral 10))
+            // summarize e in [true, false] with or { true } 
+            u.Summarize ("e", u.Set [u.Bool true; u.Bool false], Aggregation.Or, u.Bool true),
+                Type.Bool,
+                C.Summarize ("e", C.Set [C.BoolLiteral true; C.BoolLiteral false], Aggregation.Or, C.BoolLiteral true)
+        ]
+        |> List.iter (this.TestClassicExpression ctx)
+
+        [
+            // summarize e in s1 with and { k2.0 == e.1 } 
+            u.Summarize ("e", u.Var "s1", Aggregation.And, u.Equals (u.Project (u.Var "k2", [u.Int 0]), u.Project (u.Var "e", [u.Int 1]))),
+                QType.Ket [Type.Bool],
+                Q.Summarize ("e", C.Var "s1", Aggregation.And, Q.Equals (Q.Project (Q.Var "k2", [0]), (Q.Literal (C.Set [C.Project (C.Var "e", [1])]))))
+        ]
+        |> List.iter (this.TestQuantumExpression ctx)
+
+        [
+            // summarize e in s1 with and { e < 10 } 
+            u.Summarize ("e", u.Var "s1", Aggregation.And, u.LessThan ((u.Var "e"), u.Int 10)), "Both expressions for < must be int. Got Tuple [Bool; Int] < Int"
+            // summarize e in t1 with and { e.0 == true } 
+            u.Summarize ("e", u.Var "t1", Aggregation.And, u.Equals (u.Project (u.Var "e", [u.Int 0]), u.Bool true)), "Summarize expects a classic set of values, got: Tuple [Bool; Int]"
+            // summarize e in k1 with and { e.0 == |1> } 
+            u.Summarize ("e", u.Var "k1", Aggregation.And, u.Equals (u.Project (u.Var "e", [u.Int 0]), u.Ket [u.Int 1])), "Summarize expects a classic set of values, got: Ket [Int]"
+            // summarize e in s1 with and { k2.1 == e.1 } 
+            u.Summarize ("e", u.Var "s1", Aggregation.And, u.Equals (u.Project (u.Var "k2", [u.Int 1]), u.Project (u.Var "e", [u.Int 1]))), "Quantum == can only be applied to int Kets"
+            // summarize e in s1 with sum { true } 
+            u.Summarize ("e", u.Var "s1", Aggregation.Sum, u.Bool true), "Summarize body must be an Int expression when aggregation is 'sum', got Bool"
+            // summarize e in s1 with and { 1 } 
+            u.Summarize ("e", u.Var "s1", Aggregation.And, u.Int 1), "Summarize body must be a boolean expression when aggregation is 'and' | 'or', got Int"
+            // summarize e in s1 with or { 1 } 
+            u.Summarize ("e", u.Var "s1", Aggregation.Or, u.Int 1), "Summarize body must be a boolean expression when aggregation is 'and' | 'or', got Int"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
