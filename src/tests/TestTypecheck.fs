@@ -839,3 +839,28 @@ type TestCore () =
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
+
+    [<TestMethod>]
+    member this.TestSample() =
+        let ctx = this.TypeContext
+
+        [
+            // | |> |
+            u.Sample (u.Ket []),
+                Type.Tuple [],
+                C.Sample(Q.Literal (C.Set []))
+            // | k1 |
+            u.Sample (u.Var "k1"),
+                Type.Tuple [Type.Int],
+                C.Sample(Q.Var "k1")
+            // | k2 |
+            u.Sample (u.Var "k2"),
+                Type.Tuple [Type.Int; Type.Bool],
+                C.Sample(Q.Var "k2")
+        ]
+        |> List.iter (this.TestClassicExpression ctx)
+
+        [
+            u.Sample (u.Tuple [u.Int 1;u.Int 2]), "Sample argument must be a quantum ket, got: Tuple [Int; Int]"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)

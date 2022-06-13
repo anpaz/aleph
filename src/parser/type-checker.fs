@@ -116,10 +116,8 @@ module TypeChecker =
         | Expression.If (c, t, f) -> typecheck_if (c, t, f, ctx)
         | Expression.Summarize  (id, enumeration, aggregation, body) -> typecheck_summarize (id, enumeration, aggregation, body, ctx)
 
-        | Expression.Solve (ket, cond) -> typecheck_solve (ket, cond, ctx)
-        
-        | Expression.Sample _ ->
-            $"Expression {e} has not been implemented yet!" |> Error
+        | Expression.Solve (ket, cond) -> typecheck_solve (ket, cond, ctx)        
+        | Expression.Sample ket -> typecheck_sample (ket, ctx)
 
     // Typechecks an untyped expression list. Receives a callback such that
     // each expression can be validated. If all the expressions are valid
@@ -545,3 +543,9 @@ module TypeChecker =
                     | Classic (_, t) -> $"Solve condition must be a quantum boolean expression, got: {t}" |> Error
             | Classic (_, t) -> $"Solve argument must be a quantum ket, got: {t}" |> Error
 
+    and typecheck_sample (ket, ctx) =
+        typecheck (ket, ctx)
+        ==> fun (ket, ctx) ->
+            match ket with
+            | Quantum (ket, QType.Ket t) -> (Classic (C.Sample ket, Type.Tuple t), ctx) |> Ok
+            | Classic (_, t) -> $"Sample argument must be a quantum ket, got: {t}" |> Error
