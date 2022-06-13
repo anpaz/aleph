@@ -12,8 +12,8 @@ type C =
     | Range of  start: C * stop: C
 
     | Not of C
-    | And of C list
-    | Or of C list
+    | And of C * C
+    | Or of C * C
     | Equals of C * C
     | LessThan of C * C
 

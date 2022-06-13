@@ -8,39 +8,6 @@ module TypeChecker =
     let (==>) (input: Result<'a,'b>) ok  =
         Result.bind ok input
 
-    let is_int msg e = 
-        match e with 
-        | Classic (_, Type.Int) -> e |> Ok
-        | Classic (e, t) -> msg + $"Expected int expression, got: ({e}:{t})" |> Error
-        | Quantum (e, t) -> msg + $"Expected int expression, got: ({e}:{t})" |> Error
-
-    let is_bool msg e = 
-        match e with 
-        | Classic (_, Type.Bool) -> e |> Ok
-        | Classic (e, t) -> msg + $"Expected bool expression, got: ({e}:{t})" |> Error
-        | Quantum (e, t) -> msg + $"Expected bool expression, got: ({e}:{t})" |> Error
-
-    let is_set_element msg e =
-        match e with 
-        | Classic (_, Type.Int _)
-        | Classic (_, Type.Bool _)
-        | Classic (_, Type.Tuple _) -> e |> Ok
-        | Classic (e, t) -> msg + $"Expected int, bool or tuple expression, got: ({e}:{t})" |> Error
-        | Quantum (e, t) -> msg + $"Expected int, bool or tuple expression, got: ({e}:{t})" |> Error
-
-    let is_tuple msg e =
-        match e with 
-        | Classic (_, Type.Tuple _) -> e |> Ok
-        | Classic (e, t) -> msg + $"Expected tuple expression, got: ({e}:{t})" |> Error
-        | Quantum (e, t) -> msg + $"Expected tuple expression, got: ({e}:{t})" |> Error
-
-    let is_bool_or_int msg e = 
-        match e with 
-        | Classic (_, Type.Bool)
-        | Classic (_, Type.Int) -> e |> Ok
-        | Classic (e, t) -> msg + $"Expected bool or int expression, got: ({e}:{t})" |> Error
-        | Quantum (e, t) -> msg + $"Expected bool or int expression, got: ({e}:{t})" |> Error
-
     let any_expression e = e |> Ok
 
     // For a list of typed Expressions (E), returns two list: one with just the expression
@@ -91,8 +58,8 @@ module TypeChecker =
         | Expression.Set values -> typecheck_set (values, ctx)
 
         | Expression.Not value -> typecheck_not (value, ctx)
-        | Expression.Or values -> typecheck_or (values, ctx)
-        | Expression.And values -> typecheck_and (values, ctx)
+        | Expression.Or (left, right) -> (C.Or, Q.Or) |> typecheck_bool_expression (left, right, ctx)
+        | Expression.And (left, right) -> (C.And, Q.And) |> typecheck_bool_expression (left, right, ctx) 
 
         | Expression.Add (left, right) -> typecheck_add (left, right, ctx)
         | Expression.Multiply (left, right) -> typecheck_multiply (left, right, ctx)
@@ -151,6 +118,13 @@ module TypeChecker =
         (Classic (IntLiteral i, Type.Int), ctx) |> Ok
 
     and typecheck_tuple (values, ctx) =
+        let is_bool_or_int msg e = 
+            match e with 
+            | Classic (_, Type.Bool)
+            | Classic (_, Type.Int) -> e |> Ok
+            | Classic (e, t) -> msg + $"Expected bool or int expression, got: ({e}:{t})" |> Error
+            | Quantum (e, t) -> msg + $"Expected bool or int expression, got: ({e}:{t})" |> Error
+
         typecheck_expression_list (is_bool_or_int  "Invalid tuple element. ") (values, ctx)
         ==> fun (values, ctx) ->
             unzip_classic values
@@ -158,6 +132,14 @@ module TypeChecker =
                 (Classic (C.Tuple exps, Type.Tuple types), ctx) |> Ok
 
     and typecheck_set (values, ctx) =
+        let is_set_element msg e =
+            match e with 
+            | Classic (_, Type.Int _)
+            | Classic (_, Type.Bool _)
+            | Classic (_, Type.Tuple _) -> e |> Ok
+            | Classic (e, t) -> msg + $"Expected int, bool or tuple expression, got: ({e}:{t})" |> Error
+            | Quantum (e, t) -> msg + $"Expected int, bool or tuple expression, got: ({e}:{t})" |> Error
+
         match values with
         | [] -> (Classic (C.Set [], Type.Set (Type.Tuple [])), ctx) |> Ok
         | _ ->
@@ -172,31 +154,41 @@ module TypeChecker =
                     else
                         "All elements in a set must be of the same type." |> Error
 
-    and typecheck_and (values, ctx) =
-        // TODO: QUANTUM
-        typecheck_expression_list (is_bool "Invalid And element. ") (values, ctx)
-        ==> fun (values, ctx) ->
-            unzip_classic values
-            ==> fun (exps, _) ->
-                (Classic (C.And exps, Type.Bool), ctx) |> Ok
+    and typecheck_bool_expression (left: Expression, right: Expression, ctx) (classic: C * C -> C, quantum: Q * Q -> Q) =
+        typecheck(left, ctx)
+        ==> fun (left, ctx) ->
+            typecheck (right, ctx)
+            ==> fun (right, ctx) ->
+                match (left, right) with
+                | Classic _, Classic _ -> typecheck_bool_classic(left, right, classic, ctx)
+                | _ -> typecheck_bool_quantum (left, right, quantum, ctx)
 
-    and typecheck_or (values, ctx) =
-        // TODO: QUANTUM
-        typecheck_expression_list (is_bool "Invalid Or element. ") (values, ctx)
-        ==> fun (values, ctx) ->
-            unzip_classic values
-            ==> fun (exps, _) ->
-                (Classic (C.Or exps, Type.Bool), ctx) |> Ok
+    and typecheck_bool_classic (left, right, op, ctx) =
+        match (left, right) with
+        | Classic (l, Type.Bool), Classic (r, Type.Bool) -> (Classic (op (l, r), Type.Bool), ctx) |> Ok
+        | Classic (_, lt), Classic (_, rt) ->  $"Boolean expressions require boolean arguments, got {lt} == {rt}" |> Error
+        | _ -> 
+            assert false // we should never be here.
+            $"Expecting only classical expressions" |> Error
+
+    and typecheck_bool_quantum (left, right, op, ctx) =
+        make_q left
+        ==> fun (l, lt) ->
+            make_q right
+            ==> fun (r, rt) ->
+                match (lt, rt) with
+                | QType.Ket [Type.Bool], QType.Ket[Type.Bool] -> (Quantum (op (l, r), QType.Ket [Type.Bool]), ctx) |> Ok
+                | QType.Ket lt, QType.Ket rt ->  $"Boolean expressions require boolean arguments, got {lt} == {rt}" |> Error
+                
 
     and typecheck_not (value, ctx) =
-        // TODO: quantum
         typecheck(value, ctx)
         ==> fun (value, ctx) ->
             match value with 
-            | Classic (v, Type.Bool) ->
-                (Classic (C.Not v, Type.Bool), ctx) |> Ok
-            | _ ->
-                $"Not expressions require boolean arguments, got: {value}" |> Error
+            | Classic (v, Type.Bool) -> (Classic (C.Not v, Type.Bool), ctx) |> Ok
+            | Quantum (v, QType.Ket [Type.Bool]) -> (Quantum (Q.Not v, QType.Ket [Type.Bool]), ctx) |> Ok
+            | Classic (_, t) -> $"Not must be applied to a boolean expression, got: {t}" |> Error
+            | Quantum (_, t) -> $"Not must be applied to a boolean expression, got: {t}" |> Error
 
     and typecheck_range (start, stop, ctx) =
         typecheck(start, ctx)
@@ -422,6 +414,11 @@ module TypeChecker =
                 else
                     "Indexing of kets is only available on kets of a single type" |> Error
             | _ -> $"Project is only supported on tuples and kets" |> Error
+        let is_int msg e = 
+            match e with 
+            | Classic (_, Type.Int) -> e |> Ok
+            | Classic (e, t) -> msg + $"Expected int expression, got: ({e}:{t})" |> Error
+            | Quantum (e, t) -> msg + $"Expected int expression, got: ({e}:{t})" |> Error
 
         typecheck(value, ctx)
         ==> fun (value, ctx) ->

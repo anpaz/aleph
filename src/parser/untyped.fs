@@ -33,8 +33,8 @@ type Expression =
     | CallMethod of method: Expression * arguments: Expression list
 
     | Not of Expression
-    | And of Expression list
-    | Or of Expression list
+    | And of Expression * Expression
+    | Or of Expression * Expression
     | Equals of Expression * Expression
     | LessThan of Expression * Expression
 

@@ -115,9 +115,9 @@ type TestCore () =
                 C.Tuple [C.Var "i1"; C.Var "b1"; C.IntLiteral 42]
 
             // (true or false, b1)
-            u.Tuple [u.Or [u.Bool true; u.Bool false]; u.Var "b1"], 
+            u.Tuple [u.Or (u.Bool true, u.Bool false); u.Var "b1"], 
                 Type.Tuple [Type.Bool; Type.Bool], 
-                C.Tuple [C.Or [C.BoolLiteral true; C.BoolLiteral false]; C.Var "b1"]
+                C.Tuple [C.Or (C.BoolLiteral true, C.BoolLiteral false); C.Var "b1"]
 
 
             // TODO: JOIN expressions
@@ -153,14 +153,14 @@ type TestCore () =
             u.Set [u.Tuple [u.Int 3; u.Int 5]], 
                 Type.Set (Type.Tuple [Type.Int; Type.Int]),
                 C.Set [C.Tuple [C.IntLiteral 3; C.IntLiteral 5]]
-            // [(f, b1, 4), (b1, true and true and false, 42)]
+            // [(f, b1, 4), (b1, true and false, 42)]
             u.Set [
                     u.Tuple [u.Bool false; u.Var "b1"; u.Int 4]
-                    u.Tuple [u.Var "b1"; u.And [u.Bool true; u.Bool true; u.Bool false]; u.Int 42]],
+                    u.Tuple [u.Var "b1"; u.And (u.Bool true, u.Bool false); u.Int 42]],
                 Type.Set (Type.Tuple [Type.Bool; Type.Bool; Type.Int]), 
                 C.Set [
                     C.Tuple [C.BoolLiteral false; C.Var "b1"; C.IntLiteral 4]
-                    C.Tuple [C.Var "b1"; C.And [C.BoolLiteral true; C.BoolLiteral true; C.BoolLiteral false]; C.IntLiteral 42]]
+                    C.Tuple [C.Var "b1"; C.And (C.BoolLiteral true, C.BoolLiteral false); C.IntLiteral 42]]
             // [t1, (true, 5)]
             u.Set [u.Var "t1"; u.Tuple [u.Bool true; u.Int 5]], 
                 Type.Set (Type.Tuple [Type.Bool; Type.Int]),
@@ -183,30 +183,37 @@ type TestCore () =
         let ctx = this.TypeContext
 
         [
-            // Typechecks, but it should probably fail eval:
-            u.And [], Type.Bool, C.And []
-            u.Or [], Type.Bool, C.Or []
-            // (true)
-            u.And [u.Bool true], Type.Bool, C.And [C.BoolLiteral true]
             // (not true)
             u.Not (u.Bool true), Type.Bool, C.Not (C.BoolLiteral true)
-            // (true or false or false) and (b1)
-            u.And [u.Or [u.Bool true; u.Bool false; u.Bool false]; u.Var "b1"],
+            // (true or false) and (b1)
+            u.And (u.Or (u.Bool true, u.Bool false), u.Var "b1"),
                 Type.Bool,
-                C.And [C.Or [C.BoolLiteral true; C.BoolLiteral false; C.BoolLiteral false]; C.Var "b1"]
+                C.And (C.Or (C.BoolLiteral true, C.BoolLiteral false), C.Var "b1")
             // (not (b1 or false))
-            u.Not (u.Or [u.Var "b1"; u.Bool false]), 
+            u.Not (u.Or (u.Var "b1", u.Bool false)), 
                 Type.Bool, 
-                C.Not (C.Or [C.Var "b1"; C.BoolLiteral false])
+                C.Not (C.Or (C.Var "b1", C.BoolLiteral false))
         ]
         |> List.iter (this.TestClassicExpression ctx)
 
         [
-            u.And [u.Var "foo"], "Unknown variable: foo"
-            u.And [u.Var "qb1"], "Invalid And element. Expected bool expression, got: (Var \"qb1\":Ket [Bool])"
-            u.And [u.Bool true; u.Int 23], "Invalid And element. Expected bool expression, got: (IntLiteral 23:Int)"
-            u.Or [u.Bool true; u.Int 23], "Invalid Or element. Expected bool expression, got: (IntLiteral 23:Int)"
-            u.Not (u.Int 23), "Not expressions require boolean arguments, got: Classic (IntLiteral 23, Int)"
+            // (not | true >)
+            u.Not (u.Ket [u.Bool true]), 
+                QType.Ket [Type.Bool], 
+                Q.Not  (Q.Literal (Set [C.BoolLiteral true]))
+
+            // (qb1 or k2.1) and not | true >
+            u.And (u.Or (u.Var "qb1", u.Project (u.Var "k2", [u.Int 1])), u.Not (u.Ket [u.Bool true])),
+                QType.Ket [Type.Bool],
+                Q.And (Q.Or (Q.Var "qb1", Q.Project (Q.Var "k2", [1])), (Q.Not (Q.Literal (Set [C.BoolLiteral true]))))
+        ]
+        |> List.iter (this.TestQuantumExpression ctx)
+
+        [
+            u.And (u.Var "foo", u.Bool true), "Unknown variable: foo"
+            u.And (u.Bool true, u.Int 23), "Boolean expressions require boolean arguments, got Bool == Int"
+            u.Or (u.Bool true, u.Int 23), "Boolean expressions require boolean arguments, got Bool == Int"
+            u.Not (u.Int 23), "Not must be applied to a boolean expression, got: Int"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -727,9 +734,9 @@ type TestCore () =
                 Type.Int,
                 C.If (C.BoolLiteral true, C.IntLiteral 1, C.IntLiteral 0)
             // { if b1 or t1.0 then (0, 1) else (0, 0) }
-            u.If (u.Or [u.Var "b1"; u.Project (u.Var "t1", [u.Int 0])], u.Tuple [u.Int 0; u.Int 1], u.Tuple [u.Int 0; u.Int 0]),
+            u.If (u.Or (u.Var "b1", u.Project (u.Var "t1", [u.Int 0])), u.Tuple [u.Int 0; u.Int 1], u.Tuple [u.Int 0; u.Int 0]),
                 Type.Tuple [Type.Int; Type.Int],
-                C.If (C.Or [C.Var "b1"; C.Project (C.Var "t1", [0])], C.Tuple [C.IntLiteral 0; C.IntLiteral 1], C.Tuple [C.IntLiteral 0; C.IntLiteral 0])
+                C.If (C.Or (C.Var "b1", C.Project (C.Var "t1", [0])), C.Tuple [C.IntLiteral 0; C.IntLiteral 1], C.Tuple [C.IntLiteral 0; C.IntLiteral 0])
         ]
         |> List.iter (this.TestClassicExpression ctx)
 
