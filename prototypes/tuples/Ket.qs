@@ -34,6 +34,34 @@ namespace ket {
         return result;
     }
 
+    operation Partial(ket: Ket) : Int[]
+    {
+        let (init, oracle, size,  answers, registers, tracker, _) = ket!;
+        use qubits = Qubit[size];
+        
+        Prepare(ket, qubits);
+
+        Message($"All: {qubits}");
+        for r in registers {
+            log.Info($"  {qubits[r]}");
+        }
+
+        Message("Before measure");
+        DumpMachine();
+
+        let measured = registers[0];
+        let result = [ResultArrayAsInt(ForEach(M, qubits[measured]))];
+
+        Message($"Measured {measured}:{result}");
+        Message("After measure");
+        Adjoint grover.Apply(oracle, qubits, answers);
+        DumpMachine();
+
+        ResetAll(qubits);
+
+        return result;
+    }
+
 
     operation AskOracle(ket: Ket) : Unit 
     {
