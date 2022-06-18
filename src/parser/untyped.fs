@@ -1,6 +1,25 @@
 ﻿namespace aleph.parser.ast
 
-type Id = Id
+type Id = string
+
+type Type =
+    | Bool
+    | Int
+    | Tuple of Type list
+    | Set of Type
+    | Method of AnyType list * AnyType
+
+and QType =
+    | Ket of Type list
+
+and AnyType =
+    | Type of Type
+    | QType of QType
+
+type Aggregation =
+    | Sum
+    | And
+    | Or
 
 type Expression =
     | Var of Id
@@ -10,34 +29,31 @@ type Expression =
     | Set of values: Expression list
     | Range of start: Expression * stop: Expression
 
-    | Method of arguments: Id list * body: Expression
-    | CallMethod of name: Id * arguments: Expression list
+    | Method of arguments: (Id * AnyType) list * body: Expression
+    | CallMethod of method: Expression * arguments: Expression list
 
     | Not of Expression
-    | And of Expression list
-    | Or of Expression list
+    | And of Expression * Expression
+    | Or of Expression * Expression
     | Equals of Expression * Expression
     | LessThan of Expression * Expression
 
-    | Add of Expression list
-    | Multiply of Expression list
+    | Add of Expression * Expression
+    | Multiply of Expression * Expression
+    | Join of Expression * Expression
 
     | Project of tuple: Expression * index: Expression list
     | Block of Statement list * Expression
     | If of cond: Expression * t : Expression * f: Expression
-    | Summarize of id: Id * enumeration : Expression * operation: Id * body: Expression
+    | Summarize of id: Id * enumeration : Expression * aggregation: Aggregation * body: Expression
 
     | Ket of values: Expression list
-    | AllKet of size: int
-
-    | QMethod of arguments: Id list * qarguments: Id list * body: Expression
-    | CallQMethod of name: Id * arguments: Expression list * ket: Expression
+    | KetAll of size: Expression
 
     | Sample of ket: Expression
-    | Measure of ket: Expression * shots: Expression
-    | Solve of ket: Expression
+    | Solve of ket: Expression * cond: Expression
 
 and Statement =
     | Let of id: Id * value: Expression
-    | Print of Id * Expression list
+    | Print of string * Expression list
 

@@ -5,8 +5,9 @@
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="TestCore.fs" />
-    <Compile Include="TestClassic.fs" />
+    <Compile Include="TestTypecheck.fs" />
+    <!-- <Compile Include="TestCore.fs" />
+    <Compile Include="TestClassic.fs" /> -->
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
@@ -16,6 +17,7 @@
     <PackageReference Include="coverlet.collector" Version="3.1.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\runtime\aleph.runtime.fsproj" />
+    <ProjectReference Include="../parser/aleph.parser.fsproj" />
+    <!-- <ProjectReference Include="..\runtime\aleph.runtime.fsproj" /> -->
   </ItemGroup>
 </Project>

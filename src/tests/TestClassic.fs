@@ -340,7 +340,10 @@ type TestClassic () =
             (Q (CallUnitary(
                     id="qone-ket",
                     arguments=[Int 1; Int 20],
-                    ket= Ket [Tuple [Int 0; Int 0]; Tuple [Int 1; Int 1]; Tuple [Int 2; Int 2]])), 
+                    ket= Ket [
+                        Tuple [Int 0; Int 0];
+                        Tuple [Int 1; Int 1];
+                        Tuple [Int 2; Int 2]])), 
                 Value.Q (K  (SET [
                     [I 0; I 0; I 2]
                     [I 1; I 1; I 4]
@@ -350,7 +353,10 @@ type TestClassic () =
             (Q (CallUnitary(
                     id="qone-qreg",
                     arguments=[Tuple [Int 20; Int 21]],
-                    ket= Ket [Tuple [Int 0; Bool false; Int 0]; Tuple [Int 1; Bool false; Int 1]; Tuple [Int 2; Bool false; Int 2]])), 
+                    ket= Ket [
+                        Tuple [Int 0; Bool false; Int 0];
+                        Tuple [Int 1; Bool false; Int 1]; 
+                        Tuple [Int 2; Bool false; Int 2]])), 
                 Value.Q (K  (SET [
                     [I 0; B false; I 0; I 21]
                     [I 1; B false; I 1; I 23]
