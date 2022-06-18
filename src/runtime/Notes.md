@@ -58,7 +58,21 @@ with tuples of different types causes an error
 # Kets
 
 Kets are quantum variables.
-Each Ket represents a set of quantum registers. The type of a Ket
+
+During classical evaluation a Ket represents a set of quantum registers *and*
+its state preparation quantum expression. The state preparation can depend on other
+kets, defining a DAG.
+
+A classical value can be obtained from a Ket only by sampling it. Sampling consists
+of doing the quantum evaluation of the Ket's state preparation.
+
+The quantum evaluation consists of recursively applying the state preparation 
+expressions of the kets in the DAG.
+
+
+
+
+The type of a Ket
 is the union of the type of its registers.
 
 > Note: 
@@ -74,6 +88,8 @@ the classical elements are first converted into their Ket representation, e.g.:
 ```
 3 + |1,2> == |3> + |1, 2>
 ```
+
+
 
 > **Background, implementation details**
 > 
@@ -238,6 +254,38 @@ FAQ:
     * (1, 1) : 0.25
     * (1, 2) : 0.25
 
+
+
+## Math model
+
+A quantum program is represented as a dag, in which each node represents a quantum expression, and edges connect an expression with its inputs.
+
+The value of a node is selected from a set of integers. 
+The set and its dimension depends on the input value. 
+The value of the node is randomly selected from the corresponding set, each element with the same probability, specifically:
+
+Let $S_{k | i}$ be the output set of node $k$ given input $i$; let  $m = | S_{k | i} |$ be the dimension of set $S_{k | i}$, then $\forall x \in S_{k | i}, P_k(x | i) = 1 / m$.
+
+The probability of sampling value $x$ from node $k$ is then given by:
+
+$ P_k(x) = \sum_i P_k(x|i) $
+
+
+A ket, is a subset of nodes.
+
+Kets are entangled when they are connected.
+
+Projecting a ket creates a new ket that is a subset of the original one.
+
+Joining kets creates a new ket from the union.
+
+Sampling a ket consists on evaluating each node by traversing the dag. Each node is evaluated only once.
+
+Given Ket $K = \{ k_a, k_b \}$
+
+$P(x) = \prod_ $
+
+$P(a, b) = P_{k_a}(a) P_{k_b}( b | a )$
 
 
 
