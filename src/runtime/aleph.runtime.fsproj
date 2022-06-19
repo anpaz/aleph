@@ -8,6 +8,7 @@
     <!-- <Compile Include="core.fs" /> -->
     <!-- <Compile Include="classic.fs" /> -->
     <Compile Include="eval.fs" />
+    <Compile Include="simulator.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../parser/aleph.parser.fsproj" />

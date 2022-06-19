@@ -28,22 +28,24 @@ module Eval =
             | _ -> failwith "+ only supported for ints, got {l} + {r}"
 
     type QPU =
-        abstract Allocate: Q -> Ket
+        abstract Assign: Q -> Ket
         abstract Reset: Unit -> Unit
         abstract Prepare: Ket * ValueContext -> Result<Ket * ValueContext, string>
         abstract Measure: Ket -> Value
 
     and ValueContext = {
         qpu: QPU
-        assignments: Map<string, Value>
+        heap: Map<string, Value>
+        types: TypeContext
     }
 
     let rec eval (program: Expression, ctx) =
-        typecheck (program, Map.empty)
-        ==> fun (e, _) ->
+        typecheck (program, ctx.types)
+        ==> fun (e, types') ->
+            let ctx = { ctx  with types = types' }
             match e with
             | Quantum (q, QType.Ket _) ->
-                (Value.Ket (ctx.qpu.Allocate q), ctx) |> Ok
+                (Value.Ket (ctx.qpu.Assign q), ctx) |> Ok
             | Classic (c, _) ->
                 eval_classic (c, ctx)
 
@@ -56,7 +58,8 @@ module Eval =
         | C.Tuple values -> eval_tuple (values, ctx)
         | C.Set values -> eval_set (values, ctx)
 
-        | C.Sample _
+        | C.Sample q -> eval_sample (q, ctx)
+
         | C.Range _
         | C.Not _
         | C.And _
@@ -76,7 +79,7 @@ module Eval =
             "Not implemented" |> Error
 
     and eval_var (id, ctx) =
-        match ctx.assignments.TryFind id with
+        match ctx.heap.TryFind id with
         | Some value ->
             (value, ctx) |> Ok
         | _ ->
@@ -110,6 +113,14 @@ module Eval =
             | _ -> "Invalid set value." |> Error
         eval_expression_list single_value (values, ctx)
         ==> fun (values, ctx) -> (Set (Set.ofList values), ctx) |> Ok
+
+    and eval_sample (q, ctx) =
+        let qpu = ctx.qpu
+        let ket = qpu.Assign q
+        qpu.Reset ()
+        qpu.Prepare (ket, ctx)
+        ==> fun (_) ->
+            (qpu.Measure ket, ctx) |> Ok
 
     and eval_expression_list check_item_value (values, ctx) =
         let rec next (items, ctx: ValueContext) =
