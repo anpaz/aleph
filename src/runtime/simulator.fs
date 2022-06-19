@@ -57,7 +57,7 @@ type Simulator() =
         | None ->
             prepare_state (ket.StatePrep, ctx)
             ==> fun (columns, ctx) ->
-                // Assigned to the ket the columns returned by the preparation:
+                // Assign to the ket the columns returned by the preparation:
                 memory <- { memory with allocations = memory.allocations.Add (ket.Id, columns) }
                 (ket, ctx) |> Ok
 
@@ -70,24 +70,25 @@ type Simulator() =
         | Var id -> prepare_var (id, ctx)
         | Literal c -> prepare_literal (c, ctx)
 
+        | Equals (left, right) -> prepare_equals (left, right, ctx)
+        
         | Add (left, right) -> prepare_add (left, right, ctx)
 
         | Project (q, indices) -> prepare_project (q, indices, ctx)
         | Join (left, right) -> prepare_join (left, right, ctx)
+        | Solve (ket, condition) -> prepare_solve (ket, condition, ctx)
 
         | KetAll _
         | Not _
         | And _
         | Or _
-        | Equals _
         | Multiply _
         | Index _
         | Block _
         | IfClassic _
         | IfQuantum _
         | Summarize _
-        | CallMethod _
-        | Solve _ ->
+        | CallMethod _ ->
             $"Not implemented: {q}" |> Error
 
     (*
@@ -118,7 +119,7 @@ type Simulator() =
                 let old_size = if memory.state.IsEmpty then 0 else memory.state.Head.Length
                 let new_state = tensort_product memory.state values
                 let new_size = if new_state.IsEmpty then 0 else new_state.Head.Length
-                let new_columns = seq { old_size .. new_size - 1 } |> Seq.toList
+                let new_columns = [ old_size .. new_size - 1 ]
                 memory <- { memory with state = new_state }
                 (new_columns, ctx) |> Ok
             | _ -> 
@@ -165,6 +166,40 @@ type Simulator() =
             prepare_state (right, ctx)
             ==> fun (right, ctx) ->
                 (left @ right, ctx) |> Ok
+
+    (*
+        Adds a new column to the state, whose value is 
+        true iff the values in the columns from the corresponding input expressions are equal.
+        It returns the new column.
+     *)
+    and prepare_equals (left, right, ctx) =
+        prepare_state (left, ctx)
+        ==> fun (left, ctx) ->
+            prepare_state (right, ctx)
+            ==> fun (right, ctx) ->
+                match (left, right) with
+                | ([l], [r]) ->
+                    let mem_size = memory.state.Head.Length
+                    let new_columns = [ mem_size ] // last column
+                    let new_state = seq { for row in memory.state do row @ [ row.[l] == row.[r] ] } |> Seq.toList
+                    memory <- { memory with state = new_state }
+                    (new_columns, ctx) |> Ok
+                | _ -> 
+                    $"Invalid inputs for ket equals: {left} == {right}" |> Error
+
+    (*
+        Filters the state to only those records that match the given condition.
+        It returns the columns of the specified ket.
+     *)
+    and prepare_solve (ket, condition, ctx) =
+        prepare_state (condition, ctx)
+        ==> fun (cond, ctx) ->
+            prepare_state (ket, ctx)
+            ==> fun (ket, ctx) ->
+                let new_state = List.filter (fun (r : Value list) -> r.[cond.Head] = (Bool true)) memory.state
+                memory <- { memory with state = new_state }
+                (ket, ctx) |> Ok
+
 
     and tensort_product left right : Value list list =
         let as_list = function

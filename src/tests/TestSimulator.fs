@@ -117,6 +117,51 @@ type TestSimulator () =
         ]
         |> List.iter (this.TestExpression ctx)
 
+
+    [<TestMethod>]
+    member this.TestSolveEquals () =
+        let ctx = this.AddToContext this.Context "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (u.Ket [
+            u.Tuple [ u.Int 0; u.Int 0]
+            u.Tuple [ u.Int 0; u.Int 1]
+            u.Tuple [ u.Int 1; u.Int 1]
+        ])
+
+        [
+            // k1.1 == 1
+            u.Equals ( u.Project (u.Var "k1", [u.Int 1]), u.Int 1),
+                [
+                    [ Int 0; Int 0; Int 1; Bool false ]
+                    [ Int 0; Int 1; Int 1; Bool true ]
+                    [ Int 1; Int 1; Int 1; Bool true ]
+                ],
+                [ 3 ]
+            // (Solve k1 | k1.1 == 1)
+            u.Solve (u.Var "k1", u.Equals ( u.Project (u.Var "k1", [u.Int 1]), u.Int 1)),
+                [
+                    [ Int 0; Int 1; Int 1; Bool true ]
+                    [ Int 1; Int 1; Int 1; Bool true ]
+                ],
+                [ 0; 1 ]
+            // (Solve k1 | k1.0 + k1.1 == 1)
+            u.Solve (u.Var "k1", u.Equals ( u.Add( u.Project (u.Var "k1", [u.Int 0]), u.Project (u.Var "k1", [u.Int 1]) ), u.Int 1)),
+                [
+                    [ Int 0; Int 1; Int 1; Int 1; Bool true ]
+                ],
+                [ 0; 1 ]
+            // (Solve k1.0 | k1.1 + | 1, 2, 3 > == |2, 4> )
+            u.Solve (u.Project (u.Var "k1", [u.Int 1]), u.Equals(u.Add(u.Project (u.Var "k1", [u.Int 1]), u.Ket [u.Int 1; u.Int 2; u.Int 3]), u.Ket [u.Int 2; u.Int 4])),
+                [
+                    [ Int 0; Int 0; Int 2; Int 2; Int 2; Bool true ]
+                    [ Int 0; Int 1; Int 1; Int 2; Int 2; Bool true ]
+                    [ Int 0; Int 1; Int 3; Int 4; Int 4; Bool true ]
+                    [ Int 1; Int 1; Int 1; Int 2; Int 2; Bool true ]
+                    [ Int 1; Int 1; Int 3; Int 4; Int 4; Bool true ]
+                ],
+                [ 1 ]
+        ]
+        |> List.iter (this.TestExpression ctx)
+
+
     member this.TestExpression (ctx: ValueContext) (e, state, columns)=
         let qpu = ctx.qpu
         let sim = qpu :?> Simulator
