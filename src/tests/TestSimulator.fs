@@ -34,7 +34,7 @@ type TestSimulator () =
                     [ Int 2 ]
                 ],
                 [ 0 ]
-            // | 0, 1, 2 >
+            // | (0,0), (0,1), (1,1) >
             u.Ket [u.Tuple [u.Int 0; u.Int 0]; u.Tuple [u.Int 0; u.Int 1]; u.Tuple [u.Int 1; u.Int 1]],
                 [
                     [ Int 0; Int 0 ]
@@ -86,6 +86,14 @@ type TestSimulator () =
                     [ Int 1; Int 1; Int 2 ]
                 ],
                 [ 2 ]
+            // k1.0 + 1
+            u.Add( u.Project (u.Var "k1", [u.Int 0]), u.Int 1 ),
+                [
+                    [ Int 0; Int 0; Int 1; Int 1 ]
+                    [ Int 0; Int 1; Int 1; Int 1 ]
+                    [ Int 1; Int 1; Int 1; Int 2 ]
+                ],
+                [ 3 ]
             // k1.0 + | 1, 2, 3 >
             u.Add(u.Project (u.Var "k1", [u.Int 1]), u.Ket [u.Int 1; u.Int 2; u.Int 3]),
                 [
@@ -168,7 +176,7 @@ type TestSimulator () =
 
         qpu.Reset()
 
-        match eval(e, ctx) with
+        match run(e, ctx) with
         | Ok (Ket k, ctx) ->
             match qpu.Prepare (k, ctx) with
             | Ok (k', _) -> 
@@ -185,7 +193,7 @@ type TestSimulator () =
 
 
     member this.TestInvalidExpression ctx (e, error) =
-        match eval (e, ctx) with
+        match run (e, ctx) with
         | Ok (v, _) ->
             Assert.AreEqual($"Expected error: {error}", $"Got Value: {v}")
         | Error msg -> 
@@ -193,7 +201,7 @@ type TestSimulator () =
 
 
     member this.AddToContext ctx id t e =
-        match eval (e, ctx) with
+        match run (e, ctx) with
         | Ok (v, ctx) ->
             { ctx with heap = ctx.heap.Add (id, v); types = ctx.types.Add(id, t)  }
         | Error msg ->

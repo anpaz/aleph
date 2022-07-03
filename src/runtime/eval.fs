@@ -44,15 +44,18 @@ module Eval =
         types: TypeContext
     }
 
-    let rec eval (program: Expression, ctx) =
+    let rec run (program: Expression, ctx) =
         typecheck (program, ctx.types)
         ==> fun (e, types') ->
             let ctx = { ctx  with types = types' }
-            match e with
-            | Quantum (q, QType.Ket _) ->
-                (Value.Ket (ctx.qpu.Assign q), ctx) |> Ok
-            | Classic (c, _) ->
-                eval_classic (c, ctx)
+            eval (e, ctx)
+
+    and eval (e, ctx) =
+        match e with
+        | Quantum (q, QType.Ket _) ->
+            (Value.Ket (ctx.qpu.Assign q), ctx) |> Ok
+        | Classic (c, _) ->
+            eval_classic (c, ctx)
 
     and eval_classic (c, ctx) =
         match c with
@@ -62,6 +65,8 @@ module Eval =
         | C.IntLiteral i -> eval_int (i, ctx)
         | C.Tuple values -> eval_tuple (values, ctx)
         | C.Set values -> eval_set (values, ctx)
+
+        | C.Block (stmts, value) -> eval_block (stmts, value, ctx)
 
         | C.Sample q -> eval_sample (q, ctx)
 
@@ -78,7 +83,6 @@ module Eval =
         | C.Join _
         | C.Project _
         | C.Index _
-        | C.Block _
         | C.If _
         | C.Summarize _ ->
             "Not implemented" |> Error
@@ -119,6 +123,10 @@ module Eval =
         eval_expression_list single_value (values, ctx)
         ==> fun (values, ctx) -> (Set (Set.ofList values), ctx) |> Ok
 
+    and eval_block (stmts,value, ctx) =
+        eval_stmts (stmts, ctx) 
+        ==> fun (ctx) -> eval_classic (value, ctx)
+        
     and eval_sample (q, ctx) =
         let qpu = ctx.qpu
         let ket = qpu.Assign q
@@ -138,3 +146,25 @@ module Eval =
                         (head :: tail, ctx) |> Ok
             | [] -> ([], ctx) |> Ok
         next (values, ctx)
+
+    and eval_stmts (stmts, ctx) =
+        let eval_one ctx' stmt =
+            ctx'
+            ==> fun(ctx') -> 
+                match stmt with 
+                | Let (id, e) ->
+                    eval (e, ctx')
+                    ==> fun (value, ctx') ->
+                        { ctx' with heap = ctx'.heap.Add  (id, value) } |> Ok
+                | Print (msg, expressions) ->
+                    printfn "%s" msg
+                    let print_one ctx' e =
+                        ctx' ==> fun (ctx') -> 
+                        eval (e, ctx') 
+                        ==> fun (value, ctx') ->
+                            printfn "%A" value
+                            ctx' |> Ok
+                    expressions
+                    |> List.fold print_one (ctx' |> Ok)
+        stmts
+        |> List.fold eval_one (ctx |> Ok)

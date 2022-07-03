@@ -40,14 +40,14 @@ module ClassicValueContest =
 type TestEvalClassic () =
 
     member this.TestExpression ctx (e, v)=
-        match eval (e, ctx) with
+        match run (e, ctx) with
         | Ok (v', _) -> 
             Assert.AreEqual(v, v')
         | Error msg -> 
             Assert.AreEqual($"Expecting Value {v}", $"Got Error msg: {msg}")
 
     member this.TestInvalidExpression ctx (e, error) =
-        match eval (e, ctx) with
+        match run (e, ctx) with
         | Ok (v, _) ->
             Assert.AreEqual($"Expected error: {error}", $"Got Value: {v}")
         | Error msg -> 

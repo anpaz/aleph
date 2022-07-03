@@ -9,12 +9,14 @@ open aleph.runtime.Eval
 
 This class implements a classical simulator of a quantum processor.
 
-The simulator works by representing the state of the quantum system as a matrix.
-Each column of the matrix is a quantum register, each row represents a valid
-combination of the tensor product across all registers. 
+The simulator works by representing the state of the quantum system as a table.
+Each column of the table is a quantum register, each row represents a valid
+combination of the tensor product across all registers. That is, each row
+represents one of the possible outcomes that can be observed
+when measuring the quantum state.
 
 For example, preparing the state of two indepdent quantum registers
-in which each can take values [0; 1] creates the matrix [0; 1] * [0; 1], i.e.:
+in which each can take values [0; 1] creates the table [0; 1] * [0; 1], i.e.:
 [
     [ 0; 0 ]
     [ 0; 1 ]
@@ -71,20 +73,20 @@ type Simulator() =
         | Literal c -> prepare_literal (c, ctx)
 
         | Equals (left, right) -> prepare_equals (left, right, ctx)
-        
+
         | Add (left, right) -> prepare_add (left, right, ctx)
 
         | Project (q, indices) -> prepare_project (q, indices, ctx)
         | Join (left, right) -> prepare_join (left, right, ctx)
         | Solve (ket, condition) -> prepare_solve (ket, condition, ctx)
+        | Block (stmts, value) -> prepare_block (stmts, value, ctx)
 
+        | Index _
         | KetAll _
         | Not _
         | And _
         | Or _
         | Multiply _
-        | Index _
-        | Block _
         | IfClassic _
         | IfQuantum _
         | Summarize _
@@ -201,6 +203,11 @@ type Simulator() =
                 (ket, ctx) |> Ok
 
 
+    and prepare_block (stmts, value, ctx) =
+        eval_stmts (stmts, ctx)
+        ==> fun ctx ->
+            prepare_state (value, ctx)
+
     and tensort_product left right : Value list list =
         let as_list = function
             | Value.Bool b -> [ Value.Bool b ]
@@ -254,7 +261,7 @@ type Simulator() =
             | None -> failwith $"Ket: {ket.Id} not found in memory."
 
         (*
-            Prepares the give ket into memory.
+            Prepares the QPU's quantum state based on the given Ket.
          *)
         member this.Prepare (ket : Ket, ctx: ValueContext) = 
             assert (ctx.qpu = this)
