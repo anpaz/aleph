@@ -7,7 +7,7 @@ open aleph.parser.ast.typed
 open aleph.runtime.Eval
 
 
-module ClassicValueContest =
+module ClassicValueContext =
     let ctx =
         {
             qpu = { new QPU with
@@ -55,7 +55,7 @@ type TestEvalClassic () =
 
     [<TestMethod>]
     member this.TestClassicLiterals () =
-        let ctx = ClassicValueContest.ctx
+        let ctx = ClassicValueContext.ctx
 
         [
             // false

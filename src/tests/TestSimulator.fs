@@ -15,7 +15,7 @@ open aleph.runtime.simulator
     from the preparation matches some expected values.
 *)
 type TestSimulator () =
-    member this.Context = { ClassicValueContest.ctx with qpu = Simulator() }
+    member this.Context = { ClassicValueContext.ctx with qpu = Simulator() }
 
     [<TestMethod>]
     member this.TestBasicExpressions () =
@@ -166,6 +166,62 @@ type TestSimulator () =
                     [ Int 1; Int 1; Int 3; Int 4; Int 4; Bool true ]
                 ],
                 [ 1 ]
+        ]
+        |> List.iter (this.TestExpression ctx)
+
+
+    [<TestMethod>]
+    member this.TestBoolOps () =
+        let ctx = this.AddToContext this.Context "k" (AnyType.QType (QType.Ket [Type.Int; Type.Bool])) (u.Ket [
+            u.Tuple [ u.Int 0; u.Bool true]
+            u.Tuple [ u.Int 0; u.Bool false]
+            u.Tuple [ u.Int 1; u.Bool true]
+        ])
+
+        [
+            u.Var "k",
+                [
+                    // Looks like because they are set, they are ordered differently from inputs:
+                    // this might be problematic for tests...
+                    [ Int 0; Bool false; ]
+                    [ Int 0; Bool true; ]
+                    [ Int 1; Bool true; ]
+                ],
+                [ 0; 1 ]
+
+            // not k.1
+            u.Not ( u.Project (u.Var "k", [u.Int 1])),
+                [
+                    [ Int 0; Bool false; Bool true ]
+                    [ Int 0; Bool true; Bool false ]
+                    [ Int 1; Bool true; Bool false ]
+                ],
+                [ 2 ]
+
+            // (false or k.1)
+                u.Or ( 
+                    u.Bool false,
+                    u.Project (u.Var "k", [u.Int 1])),
+                [
+                    [ Bool false; Int 0; Bool false; Bool false ]
+                    [ Bool false; Int 0; Bool true;  Bool true ]
+                    [ Bool false; Int 1; Bool true;  Bool true ]
+                ],
+                [ 3 ]
+
+            // not (k.0 == 0 and k.1)
+            u.Not ( 
+                u.And ( 
+                    u.Equals ( 
+                        u.Project (u.Var "k", [u.Int 0]), 
+                        u.Int 0), 
+                    u.Project (u.Var "k", [u.Int 1])) ),
+                [
+                    [ Int 0; Bool false; Int 0; Bool true; Bool false; Bool true ]
+                    [ Int 0; Bool true;  Int 0; Bool true; Bool true; Bool false ]
+                    [ Int 1; Bool true;  Int 0; Bool false; Bool false; Bool true ]
+                ],
+                [ 5 ]
         ]
         |> List.iter (this.TestExpression ctx)
 

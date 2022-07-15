@@ -76,6 +76,10 @@ type Simulator() =
 
         | Add (left, right) -> prepare_add (left, right, ctx)
 
+        | Not q -> prepare_not (q, ctx)
+        | And (left,right) -> prepare_and (left, right, ctx)
+        | Or (left,right) -> prepare_or (left, right, ctx)
+
         | Project (q, indices) -> prepare_project (q, indices, ctx)
         | Join (left, right) -> prepare_join (left, right, ctx)
         | Solve (ket, condition) -> prepare_solve (ket, condition, ctx)
@@ -83,9 +87,6 @@ type Simulator() =
 
         | Index _
         | KetAll _
-        | Not _
-        | And _
-        | Or _
         | Multiply _
         | IfClassic _
         | IfQuantum _
@@ -169,6 +170,63 @@ type Simulator() =
             ==> fun (right, ctx) ->
                 (left @ right, ctx) |> Ok
 
+    (*
+        Adds a new column to the state, whose value is 
+        the negation of the original column.
+        It returns the new column.
+     *)
+    and prepare_not (q, ctx) =
+        prepare_state (q, ctx)
+        ==> fun (columns, ctx) ->
+            match columns with
+            | [v] ->
+                let mem_size = memory.state.Head.Length
+                let new_columns = [ mem_size ] // last column
+                let new_state = seq { for row in memory.state do row @ [ (Value.Not row.[v]) ] } |> Seq.toList
+                memory <- { memory with state = new_state }
+                (new_columns, ctx) |> Ok
+            | _ -> 
+                $"Invalid inputs for ket not: {q}" |> Error
+
+    (*
+        Adds a new column to the state, whose value is 
+        true iff the values in the columns from the corresponding input expressions are both true.
+        It returns the new column.
+     *)
+    and prepare_and (left, right, ctx) =
+        prepare_state (left, ctx)
+        ==> fun (left, ctx) ->
+            prepare_state (right, ctx)
+            ==> fun (right, ctx) ->
+                match (left, right) with
+                | ([l], [r]) ->
+                    let mem_size = memory.state.Head.Length
+                    let new_columns = [ mem_size ] // last column
+                    let new_state = seq { for row in memory.state do row @ [ Value.And (row.[l], row.[r]) ] } |> Seq.toList
+                    memory <- { memory with state = new_state }
+                    (new_columns, ctx) |> Ok
+                | _ -> 
+                    $"Invalid inputs for ket equals: {left} && {right}" |> Error
+
+    (*
+        Adds a new column to the state, whose value is 
+        true iff the values in the columns from the corresponding input expressions are both true.
+        It returns the new column.
+     *)
+    and prepare_or (left, right, ctx) =
+        prepare_state (left, ctx)
+        ==> fun (left, ctx) ->
+            prepare_state (right, ctx)
+            ==> fun (right, ctx) ->
+                match (left, right) with
+                | ([l], [r]) ->
+                    let mem_size = memory.state.Head.Length
+                    let new_columns = [ mem_size ] // last column
+                    let new_state = seq { for row in memory.state do row @ [ Value.Or(row.[l], row.[r])      ] } |> Seq.toList
+                    memory <- { memory with state = new_state }
+                    (new_columns, ctx) |> Ok
+                | _ -> 
+                    $"Invalid inputs for ket equals: {left} && {right}" |> Error
     (*
         Adds a new column to the state, whose value is 
         true iff the values in the columns from the corresponding input expressions are equal.

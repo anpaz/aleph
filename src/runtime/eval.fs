@@ -32,6 +32,20 @@ module Eval =
             | Value.Int l, Value.Int r -> Value.Bool (l = r)
             | _ -> failwith "= only supported for ints, got {l} == {r}"
 
+        static member Not (l : Value) =
+            match l with
+            | Value.Bool b -> Value.Bool (not b)
+            | _ -> failwith "not only supported for Bools, got {l}"
+
+        static member And (l : Value, r: Value) =
+            match (l, r) with
+            | Value.Bool l, Value.Bool r -> Value.Bool (l && r)
+            | _ -> failwith "= only supported for ints, got {l} && {r}"
+
+        static member Or (l : Value, r: Value) =
+            match (l, r) with
+            | Value.Bool l, Value.Bool r -> Value.Bool (l || r)
+            | _ -> failwith "= only supported for ints, got {l} || {r}"
     type QPU =
         abstract Assign: Q -> Ket
         abstract Reset: Unit -> Unit
