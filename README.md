@@ -94,7 +94,7 @@ let k3 = k1.1
 
 a single universe of 3 columns is created. All `kets` point to this universe, `k1` has a reference to the 3 columns, `k2` has a reference to the first column, and `k1` to the second column 
 
-| k1_0, k2_0 | k1_1, k3_0 | k1_2 |
+| k1_0,<br> k2_0 | k1_1,<br>k3_0 | k1_2 |
 | --- | --- | --- |
 | 0 | 0 | 0 | 0 |
 | 0 | 1 | 1 | 0 |
@@ -122,7 +122,7 @@ let k4 = (k2, k3)
 
 k2 and k3 are projections from the universe created by k1. As such, k4 which is the Join of k2 and k3 points to the same universe:
 
-| k1_0, k2_0, k4_0 | k1_1, k3_0, k4_0 | k1_2 |
+| k1_0<br>k2_0<br>-<br>k4_0 | k1_1<br>-<br>k3_0<br>k4_1 | k1_2<br>-<br>-<br>- |
 | --- | --- | --- |
 | 0 | 0 | 0 | 0 |
 | 0 | 1 | 1 | 0 |
@@ -220,7 +220,7 @@ let k3 = Solve ( (k1.0, k1.2), k2 == |1>)
 
 creates the following universe for k3:
 
-| k3_0 | | k3_1 | | | |
+| k1_0<br>k3_0 | k1_1<br>- | k1_2<br>k3_1 | k2_0 | \|1\> | k2 == \|1\> |
 | --- | --- | --- | --- | --- | --- |
 | 0 | 0 | 1 | 1 | 1 | true |
 | 0 | 1 | 1 | 1 | 1 | true |
@@ -231,9 +231,9 @@ creates the following universe for k3:
 * the literal `|1>` is the source of the next column
 * the `==` in the predicate is the source of the last column
 
-> **Note 1:** that to filter such a table on a classical computer requires iterating through all the rows. On a quantum computer the number of operations depend on the number of columns when using **amplitude amplification**.
+> **Note 1:** to filter such a table on a classical computer requires iterating through all the rows. On a quantum computer the number of operations depend on the number of columns when using **amplitude amplification**.
 
-> **Note 2:** Quantum expressions return a `ket` who keeps a reference to its input arguments thus creating a DAG. This DAG defines dependencies of evaluation creating **entanglement**.
+> **Note 2:** quantum expressions return a `ket` who keeps a reference to its input arguments thus creating a DAG. This DAG defines dependencies of evaluation creating **entanglement**.
 
 ### Estimate
 
@@ -330,7 +330,7 @@ let is_valid_edge_coloring (color1: ket<int>, color2: ket<int>) =
 let classify_coloring (edges: set<int, int>, coloring: ket<int, int, int, int> =
     let valid = summarize e in edges with and
         let (x, y) = e
-        is_valid_edge_coloring | coloring[x, y]
+        is_valid_edge_coloring (coloring[x, y])
     valid
 
 // A ket with the color combination for all nodes. Each node is an item of a tuple.
@@ -338,8 +338,8 @@ let nodes_colors = (colors(), colors(), colors(), colors())
 
 // To find a valid coloring, solve the valid_combination oracle and
 // measure the result
-let all = classify_combinations (edges) nodes_colors
-
+let classification = classify_combinations (edges, nodes_colors)
+let answers = Solve(edges, classification=true)
 | answers |
 ```
 
