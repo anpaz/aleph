@@ -74,7 +74,7 @@ that creates a 3 columns, 2 rows universe:
 | 0 | 0 | false |
 | 1 | 1 | true |
 
-## Expressions
+## Quantum Expressions
 
 Each quantum expression returns a `ket`, i.e. a set of a columns from a quantum universe. Specifically the expression  `| 1, 2, 3, 4 >` creates a one column quantum universe of 4 rows, and returns a `ket` comprised of the first (and only) column.
 
@@ -251,6 +251,10 @@ Estimate ( k2 == |1> )
 
 returns 0.5
 
+### Classic & mixed expressions
+
+
+
 > **Note:** For datasets with large number of elements, Monte Carlo is a common method to calculate the estimated value of a variable, using **amplitude estimation** it is possible to get a quadratic speed up for the same task.
 
 ## Examples
@@ -327,10 +331,10 @@ let is_valid_edge_coloring (color1: ket<int>, color2: ket<int>) =
 
 // A valid color combination oracle.
 // Returns true only if the nodes' color combination is valid for all edges.
-let classify_coloring (edges: set<int, int>, coloring: ket<int, int, int, int> =
+let classify_coloring (edges: set<int, int>, coloring: ket<int, int, int, int>) =
     let valid = summarize e in edges with and
         let (x, y) = e
-        is_valid_edge_coloring (coloring[x, y])
+        is_valid_edge_coloring (coloring.x, coloring.y)
     valid
 
 // A ket with the color combination for all nodes. Each node is an item of a tuple.
@@ -339,7 +343,7 @@ let nodes_colors = (colors(), colors(), colors(), colors())
 // To find a valid coloring, solve the valid_combination oracle and
 // measure the result
 let classification = classify_combinations (edges, nodes_colors)
-let answers = Solve(edges, classification=true)
+let answers = Solve(edges, classification==true)
 | answers |
 ```
 
