@@ -10,11 +10,11 @@ Existing quantum programming languages do not offer real abstractions to remove 
 
 Aleph aims to be a true high-level quantum programming language that leverages quantum specific properties and algorithms -like superposition, quantum parallelism, entanglement, amplitude amplification and amplitude estimation- to achieve scale and speed-up. These are implicitly leveraged by the language, though, as such users don't have to deal with quantum mechanics concepts like probabilities, complex numbers or matrices.
 
-## Universes, Outcomes, Kets
+## Universes, outcomes, kets
 
-In Aleph, all possible outcomes of a single quantum computation are represented as a table, a.k.a quantum universe.
+In Aleph all possible outcomes of a single quantum computation are represented as a table, a.k.a quantum universe.
 
-Each column represents a single register. A register can hold values of two datatypes: `int` and `bool`. Each row in the universe stands for a single distinct outcome.
+Each column represents a register. A register can hold values of two datatypes: `int` and `bool`. Each row in the universe stands for a single distinct outcome.
 
 > *Note: on a quantum device, each column maps to a single quantum register in super position.*
 
@@ -22,7 +22,7 @@ A quantum universe is manipulated via quantum variables, a.k.a `ket`. A `ket` is
 
 ## Literals
 
-Quantum literals are created using the `|>` symbol. A simple one-column quantum universe can be created by listing all the possible outcomes, for example:
+Quantum literals are created between the `|>` symbols. A simple one-column quantum universe can be created by listing all the possible outcomes, for example:
 
 ```fsharp
 |0>
@@ -94,7 +94,7 @@ let k3 = k1.1
 
 a single universe of 3 columns is created. All `kets` point to this universe, `k1` has a reference to the 3 columns, `k2` has a reference to the first column, and `k1` to the second column 
 
-| k1_0,<br> k2_0 | k1_1,<br>k3_0 | k1_2 |
+| k1_0<br>k2_0 | k1_1<br>k3_0 | k1_2<br>- |
 | --- | --- | --- |
 | 0 | 0 | 0 | 0 |
 | 0 | 1 | 1 | 0 |
@@ -301,6 +301,20 @@ The next instruction **joins** the kets from these two quantum universes thus cr
 |  6  |  6  |
 
 On the last instruction, `roll` is sampled and one row from its universe is selected at random and returned as a tuple.
+
+
+### Solving systems of equaltions
+
+```fsharp
+let x = | @ >
+let eq1 = 4 * (x * x) + (5 * x) - 3
+let eq2 = x + 2
+| Prepare (Solve (x, eq1 == eq2)) |
+```
+
+The first instruction prepares a register in full super-position. That is, it takes any integer value from 0..2^n.
+
+We then use aleph to Solve for `x` in the case where `eq1 == eq2`. Solve will return the universe's x values where eq1 == eq2. 
 
 ### Color graphing
 
