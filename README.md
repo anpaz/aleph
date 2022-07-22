@@ -74,6 +74,23 @@ that creates a 3 columns, 2 rows universe:
 | 0 | 0 | false |
 | 1 | 1 | true |
 
+Aleph registers support a special convention for all (`@`):
+
+```fsharp
+| @ >
+```
+
+An `@` register is one that contains all integer values:
+
+| |
+| --- |
+| 0 |
+| 1 |
+| 2 |
+| ... |
+
+
+
 ## Quantum Expressions
 
 Each quantum expression returns a `ket`, i.e. a set of a columns from a quantum universe. Specifically the expression  `| 1, 2, 3, 4 >` creates a one column quantum universe of 4 rows, and returns a `ket` comprised of the first (and only) column.
