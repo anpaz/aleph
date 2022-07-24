@@ -242,7 +242,7 @@ module TypeChecker =
             ==> fun (r, rt) ->
                 match (lt, rt) with
                 | QType.Ket [Type.Int],  QType.Ket[Type.Int] -> (Quantum (Q.Add (l, r), QType.Ket [Type.Int]), ctx) |> Ok
-                | _ -> $"Quantum addition can only be applied to int Kets" |> Error
+                | _ -> $"Quantum addition can only be applied to int Kets, got {lt} + {rt}" |> Error
 
     and typecheck_multiply (left, right, ctx) =
         typecheck(left, ctx)

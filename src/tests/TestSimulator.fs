@@ -71,11 +71,13 @@ type TestSimulator () =
         
     [<TestMethod>]
     member this.TestAdd () =
-        let ctx = this.AddToContext this.Context "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (u.Ket [
-            u.Tuple [ u.Int 0; u.Int 0]
-            u.Tuple [ u.Int 0; u.Int 1]
-            u.Tuple [ u.Int 1; u.Int 1]
-        ])
+        let ctx = 
+            this.Context 
+            |> this.AddToContext "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (u.Ket [
+                u.Tuple [ u.Int 0; u.Int 0]
+                u.Tuple [ u.Int 0; u.Int 1]
+                u.Tuple [ u.Int 1; u.Int 1]
+            ])
 
         [
             // k1.0 + k1.1
@@ -125,14 +127,85 @@ type TestSimulator () =
         ]
         |> List.iter (this.TestExpression ctx)
 
+    [<TestMethod>]
+    member this.TestJoin () =
+        let ctx = 
+            this.Context
+            |> this.AddToContext "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (u.Ket [
+                u.Tuple [ u.Int 0; u.Int 0]
+                u.Tuple [ u.Int 0; u.Int 1]
+                u.Tuple [ u.Int 1; u.Int 1]
+            ])
+            |> this.AddToContext "k2" (AnyType.QType (QType.Ket [Type.Int])) (u.Ket [
+                u.Tuple [ u.Int 1 ]
+                u.Tuple [ u.Int 3 ]
+            ])
+
+        [
+            // Join (k1, k1)
+            u.Join (u.Var "k1", u.Var "k1"),
+                [
+                    [ Int 0; Int 0]
+                    [ Int 0; Int 1]
+                    [ Int 1; Int 1]
+                ],
+                [ 0; 1; 0; 1 ]
+            // Join (k1, k2)
+            u.Join (u.Var "k1", u.Var "k2"),
+                [
+                    [ Int 0; Int 0; Int 1 ]
+                    [ Int 0; Int 0; Int 3 ]
+                    [ Int 0; Int 1; Int 1 ]
+                    [ Int 0; Int 1; Int 3 ]
+                    [ Int 1; Int 1; Int 1 ]
+                    [ Int 1; Int 1; Int 3 ]
+                ],
+                [ 0; 1; 2 ]
+            // (Join k1, |true, false>)
+            u.Join (u.Var "k1", u.Ket [u.Bool true; u.Bool false]),
+                [
+                    [ Int 0; Int 0; Bool false ]
+                    [ Int 0; Int 0; Bool true ]
+                    [ Int 0; Int 1; Bool false ]
+                    [ Int 0; Int 1; Bool true ]
+                    [ Int 1; Int 1; Bool false ]
+                    [ Int 1; Int 1; Bool true ]
+                ],
+                [ 0; 1; 2 ]
+            // let e1 = k1.1 + 10
+            // let e2 = k2 + 10
+            // (Join k1, e2 == e1 )
+            u.Block (
+                [
+                    Let ("e1", u.Add (u.Project (u.Var "k1", [u.Int 1]), u.Int 10))
+                    Let ("e2", u.Add (u.Var "k2", u.Int 10))
+                ], u.Join (u.Var "k1", u.Equals(u.Var "e2", u.Var "e1"))),
+                [
+                    [ Int 0; Int 0; Int 1; Int 10; Int 11; Int 10; Int 10; Bool false ]
+                    [ Int 0; Int 0; Int 3; Int 10; Int 13; Int 10; Int 10; Bool false ]
+                    [ Int 0; Int 1; Int 1; Int 10; Int 11; Int 10; Int 11; Bool true ]
+                    [ Int 0; Int 1; Int 3; Int 10; Int 13; Int 10; Int 11; Bool false ]
+                    [ Int 1; Int 1; Int 1; Int 10; Int 11; Int 10; Int 11; Bool true ]
+                    [ Int 1; Int 1; Int 3; Int 10; Int 13; Int 10; Int 11; Bool false ]
+                ],
+                [ 0; 1; 7 ]
+        ]
+        |> List.iter (this.TestExpression ctx)
+
 
     [<TestMethod>]
     member this.TestSolveEquals () =
-        let ctx = this.AddToContext this.Context "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (u.Ket [
-            u.Tuple [ u.Int 0; u.Int 0]
-            u.Tuple [ u.Int 0; u.Int 1]
-            u.Tuple [ u.Int 1; u.Int 1]
-        ])
+        let ctx = 
+            this.Context
+            |> this.AddToContext "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (u.Ket [
+                u.Tuple [ u.Int 0; u.Int 0]
+                u.Tuple [ u.Int 0; u.Int 1]
+                u.Tuple [ u.Int 1; u.Int 1]
+            ])
+            |> this.AddToContext "k2" (AnyType.QType (QType.Ket [Type.Int])) (u.Ket [
+                u.Tuple [ u.Int 2 ]
+                u.Tuple [ u.Int 3 ]
+            ])
 
         [
             // k1.1 == 1
@@ -143,20 +216,20 @@ type TestSimulator () =
                     [ Int 1; Int 1; Int 1; Bool true ]
                 ],
                 [ 3 ]
-            // (Solve k1 | k1.1 == 1)
+            // (Solve k1, k1.1 == 1)
             u.Solve (u.Var "k1", u.Equals ( u.Project (u.Var "k1", [u.Int 1]), u.Int 1)),
                 [
                     [ Int 0; Int 1; Int 1; Bool true ]
                     [ Int 1; Int 1; Int 1; Bool true ]
                 ],
                 [ 0; 1 ]
-            // (Solve k1 | k1.0 + k1.1 == 1)
+            // (Solve k1, k1.0 + k1.1 == 1)
             u.Solve (u.Var "k1", u.Equals ( u.Add( u.Project (u.Var "k1", [u.Int 0]), u.Project (u.Var "k1", [u.Int 1]) ), u.Int 1)),
                 [
                     [ Int 0; Int 1; Int 1; Int 1; Bool true ]
                 ],
                 [ 0; 1 ]
-            // (Solve k1.0 | k1.1 + | 1, 2, 3 > == |2, 4> )
+            // (Solve k1.0, k1.1 + | 1, 2, 3 > == |2, 4> )
             u.Solve (u.Project (u.Var "k1", [u.Int 1]), u.Equals(u.Add(u.Project (u.Var "k1", [u.Int 1]), u.Ket [u.Int 1; u.Int 2; u.Int 3]), u.Ket [u.Int 2; u.Int 4])),
                 [
                     [ Int 0; Int 0; Int 2; Int 2; Int 2; Bool true ]
@@ -172,11 +245,13 @@ type TestSimulator () =
 
     [<TestMethod>]
     member this.TestBoolOps () =
-        let ctx = this.AddToContext this.Context "k" (AnyType.QType (QType.Ket [Type.Int; Type.Bool])) (u.Ket [
-            u.Tuple [ u.Int 0; u.Bool true]
-            u.Tuple [ u.Int 0; u.Bool false]
-            u.Tuple [ u.Int 1; u.Bool true]
-        ])
+        let ctx = 
+            this.Context 
+            |> this.AddToContext "k" (AnyType.QType (QType.Ket [Type.Int; Type.Bool])) (u.Ket [
+                u.Tuple [ u.Int 0; u.Bool true]
+                u.Tuple [ u.Int 0; u.Bool false]
+                u.Tuple [ u.Int 1; u.Bool true]
+            ])
 
         [
             u.Var "k",
@@ -256,7 +331,7 @@ type TestSimulator () =
             Assert.AreEqual(error, msg)
 
 
-    member this.AddToContext ctx id t e =
+    member this.AddToContext id t e ctx =
         match run (e, ctx) with
         | Ok (v, ctx) ->
             { ctx with heap = ctx.heap.Add (id, v); types = ctx.types.Add(id, t)  }

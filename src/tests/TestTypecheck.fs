@@ -382,7 +382,7 @@ type TestCore () =
 
         [
             u.Add (u.Ket [u.Bool true; u.Int 1], u.Ket [u.Bool false; u.Int 2; u.Int 3]), "All elements in a set must be of the same type."
-            u.Add (u.Ket [u.Bool true], u.Ket [u.Bool false]), "Quantum addition can only be applied to int Kets"
+            u.Add (u.Ket [u.Bool true], u.Ket [u.Bool false]), "Quantum addition can only be applied to int Kets, got Ket [Bool] + Ket [Bool]"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
