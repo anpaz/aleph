@@ -162,7 +162,7 @@ Join takes two kets, and returns a new ket comprised of the union of the columns
 ```fsharp
 let k1 = | (0, 0), (1, 1) > 
 let k2 = | true, false >
-let k3 = (k1, k1)
+let k3 = (k1, k2)
 ```
 
 preparing the universe for `k3` would result in:
