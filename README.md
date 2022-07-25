@@ -8,21 +8,25 @@ This superpower comes at a price: instead of Boolean tables quantum algorithms u
 
 Existing quantum programming languages do not offer real abstractions to remove this complexity. Even languages that are explicitly designed to be high-level like [Silq](https://silq.ethz.ch/) or [Q#](https://github.com/microsoft/qsharp-language/tree/main/Specifications/Language) are more reminiscent of Verilog than C#, or even C.
 
-Aleph aims to be a true high-level quantum programming language that leverages quantum specific properties and algorithms -like superposition, quantum parallelism, entanglement, amplitude amplification and amplitude estimation- to achieve scale and speed-up. These are implicitly leveraged by the language, though, as such users don't have to deal with quantum mechanics concepts like probabilities, complex numbers or matrices.
+Aleph aims to be a true high-level quantum programming language that leverages quantum specific properties and algorithms -like superposition, quantum parallelism, entanglement, amplitude amplification and amplitude estimation- to achieve scale and speed-up. These are implicitly leveraged by the language, as such, users don't have to deal with quantum mechanics concepts like probabilities, complex numbers or matrices.
 
-## Universes, outcomes, kets
+## Universes, kets and outcomes
 
-In Aleph all possible outcomes of a single quantum computation are represented as a table, a.k.a quantum universe.
+In Aleph all outcomes of a computation are calculated simultaneously in a quantum universe. You can think of a quantum universe as a table in which each column contains all the possible values of a register and each row represents a single outcome of the computation.
 
-Each column represents a register. A register can hold values of two datatypes: `int` and `bool`. Each row in the universe stands for a single distinct outcome.
+> *Note: on a quantum device, each column holds the values of a quantum register in super position.*
 
-> *Note: on a quantum device, each column maps to a single quantum register in super position.*
+A quantum universe is defined using quantum expressions. We call the result of a quantum expression a `ket`. Each `ket` points to one or more columns from a quantum universe. 
 
-A quantum universe is manipulated via quantum variables, a.k.a `ket`. A `ket` is a set of registers from a quantum universe.
+A quantum universe must be explicitly prepared using the `Prepare` method. `Prepare` takes a `ket` and prepares the minimum universe needed to calculate the corresponding expression.
 
-## Literals
+Values of the universe can only be retrieved by sampling the universe, which selects values by randomly selecting a single row from the universe. 
 
-Quantum literals are created between the `|>` symbols. A simple one-column quantum universe can be created by listing all the possible outcomes, for example:
+Aleph also provides a method to return the estimated value of a quantum boolean expression.
+
+## Quantum Literals
+
+Quantum literals are created between the `|` `>` symbols. There are two type of values: `int` and `bool`. A simple one-column quantum universe can be created by listing all the possible outcomes, as a basic example:
 
 ```fsharp
 |0>
@@ -32,7 +36,9 @@ Quantum literals are created between the `|>` symbols. A simple one-column quant
 | --- |
 | 0 |
 
-creates a one-column, one row universe that when sampled always has outcome 0. Multiple element can be specified using a comma to separate them, for example:
+creates a one-column, one row universe that when sampled always has outcome 0.
+
+Multiple element can be specified using a comma to separate them, for example:
 
 ```fsharp
 |2,4,6,10>
@@ -64,7 +70,7 @@ Creates a 4 columns, 3 rows universe:
 Tuples can mix data-types, however all values on a given column must have the same type. This is a valid literal:
 
 ```fsharp
-| (0,0,false), (1,1,true) >
+| (0,0,false), (0,1,true), (1,1,true) >
 ```
 
 that creates a 3 columns, 2 rows universe:
@@ -73,14 +79,15 @@ that creates a 3 columns, 2 rows universe:
 | --- | --- | --- |
 | 0 | 0 | false |
 | 1 | 1 | true |
+| 0 | 1 | true |
 
-Aleph registers support a special convention for all (`@`):
+Aleph supports a special type of `int` registers: `@` (all):
 
 ```fsharp
 | @ >
 ```
 
-An `@` register is one that contains all integer values:
+An `@` int register is one that contains all possible integer values (up to the max size of the register):
 
 | |
 | --- |
@@ -88,20 +95,49 @@ An `@` register is one that contains all integer values:
 | 1 |
 | 2 |
 | ... |
-
+| 2^N - 1 |
 
 
 ## Quantum Expressions
 
-Each quantum expression returns a `ket`, i.e. a set of a columns from a quantum universe. Specifically the expression  `| 1, 2, 3, 4 >` creates a one column quantum universe of 4 rows, and returns a `ket` comprised of the first (and only) column.
+Each quantum expression modifies a quantum universe and returns a `ket`, i.e. a set of columns from the corresponding quantum universe, with the result of the expression.
 
-Similarly, the expression `| (0,0,1), (0,2,0), (3,0,0) >` creates a 3 column universe and returns a `ket` comprised of the corresponding 3 columns.
+### Literals 
 
-### Project
+A literal expression adds new registers to a quantum universe and returns the corresponding new columns. The values are added using the cross product of all the existing rows in the universe with the elements of the literal. For example, adding:
+
+```fsharp
+| (0, true), (1, false) >
+```
+
+to the universe:
+
+|  |  |  |  |
+| --- | --- | --- | --- |
+| 0 | 0 | 0 | 0 |
+| 0 | 1 | 1 | 0 |
+| 1 | 1 | 0 | 0 |
+
+prepares the universe:
+
+|  |  |  |  | r_0 | r_1|
+| --- | --- | --- | --- | --- | --- |
+| 0 | 0 | 0 | 0 | 0 | true |
+| 0 | 1 | 1 | 0 | 0 | true |
+| 1 | 1 | 0 | 0 | 0 | true |
+| 0 | 0 | 0 | 0 | 1 | false |
+| 0 | 1 | 1 | 0 | 1 | false |
+| 1 | 1 | 0 | 0 | 1 | false |
+
+and returns the last two columns.
+
+
+### Project 
 
 > `ket.idx`
 
-Receives a `ket` and an index, and returns a new ket pointing to the column given the corresponding index. For example, in:
+
+Receives a `ket` and an index, and returns a new ket pointing to the column given the corresponding index in the source ket. For example, in:
 
 ```fsharp
 let k1 = | (0,0,0), (0,1,1), (1,1,0) > 
@@ -109,9 +145,9 @@ let k2 = k1.0
 let k3 = k1.1
 ```
 
-a single universe of 3 columns is created. All `kets` point to this universe, `k1` has a reference to the 3 columns, `k2` has a reference to the first column, and `k1` to the second column 
+a single universe of 3 columns is prepared for `k1`; `k2` would be a reference to the first column of this universe, and `k3` to the second column.
 
-| k1_0<br>k2_0 | k1_1<br>k3_0 | k1_2<br>- |
+| k1_0<br>k2_0<br>- | k1_1<br>-<br>k3_0 | k1_2<br>-<br>- |
 | --- | --- | --- |
 | 0 | 0 | 0 | 0 |
 | 0 | 1 | 1 | 0 |
@@ -121,93 +157,64 @@ a single universe of 3 columns is created. All `kets` point to this universe, `k
 
 > `(k1, k2)`
 
-Join takes two kets, and returns a new ket comprised of the union of the columns in both the arguments.
-
-The universe the results points to depend on the the inputs:
-
-1. If the input `kets` come from the same universe, the result is a ket pointing to this universe.
-1. If the input `kets` come from different universes, the result is a new universe corresponding to the cross-product of the input universes, with a one-to-one mapping to the columns of the input universes.
-
-For example, in this program:
+Join takes two kets, and returns a new ket comprised of the union of the columns in the arguments. For example, given:
 
 ```fsharp
-let k1 = | (0,0,0), (0,1,1), (1,1,0) > 
-let k2 = k1.0
-let k3 = k1.1
-let k4 = (k2, k3)
+let k1 = | (0, 0), (1, 1) > 
+let k2 = | true, false >
+let k3 = (k1, k1)
 ```
 
-k2 and k3 are projections from the universe created by k1. As such, k4 which is the Join of k2 and k3 points to the same universe:
+preparing the universe for `k3` would result in:
 
-| k1_0<br>k2_0<br>-<br>k4_0 | k1_1<br>-<br>k3_0<br>k4_1 | k1_2<br>-<br>-<br>- |
+| k1_0<br>-<br>k3_0 | k1_1<br>-<br>k3_1 | -<br>k2<br>k3_2 |
 | --- | --- | --- |
-| 0 | 0 | 0 | 0 |
-| 0 | 1 | 1 | 0 |
-| 1 | 1 | 0 | 0 |
-
-On the other hand, in this program:
-
-```fsharp
-let k5 = | 0, 1 > 
-let k6 = | true, false >
-let k7 = (k5, k6)
-```
-
-k5 and k6 are two literals that create their own quantum universe, when joined the resulting ket points to a new universe with the cross-product:
-
-| k7_0 | k7_1 |
-| --- | --- |
-| 0 | true |
-| 0 | false |
-| 1 | true |
-| 1 | false |
+| 0 | 0 | true | 
+| 0 | 0 | false |
+| 1 | 1 | true |
+| 1 | 1 | false |
 
 ### Ket\<int> Expressions
+
+> Note: As opposed to classical computers that would normally have to calculate the result of the expression and store the value of each row, a quantum computer stores all the values in a single register in **superposition** and it's capable of calculating the result of the expression for all rows in a single step by leveraging  **quantum parallelism**.
 
 > * Add (`k1 + k2`)
 > * Multiply (`k1 * k2`)
 > * Equals (`k1 == k2`)
 
-These expressions take two one-column `ket<int>` expressions and add a column to the universe with the result of the corresponding operation. As with `Join`, the resulting universe depends on the input `kets`.
-
-1. If the input `kets` come from the same universe, the result is the same universe with an extra new column with the result of the corresponding operation applied to each row.
-1. If the input `kets` come from different universes, they are first joined then an extra column is appended with the result of the corresponding operation applied to each row.
-
-In both scenarios, the result is a ket pointing to the extra column with the result of the operation.
-
-For example, in this program:
+These expressions take two one-column `ket<int>` expressions and add a column to the universe with the result of the corresponding operation, returning the new column. For example, in this program:
 
 ```fsharp
 let k1 = | (0,0), (0,1), (1,1) > 
 let k2 = k1.0
 let k3 = k1.1
-let k4 = k2 + k3
+k2 + k3
 ```
 
-k2 and k3 are projections from the universe created by k1. As such, k4's universe is a new based on k1's universe with an extra column for the result of the operation
+prepares the following universe and returns the last column:
 
-| |  | k4_0 |
+| k1_0<br>k2<br>- | k1_1<br>k3<br>- | -<br>-<br>r_0 |
 | --- | --- | --- |
 | 0 | 0 | 0 |
 | 0 | 1 | 1 |
 | 1 | 1 | 2 |
 
-In contrast, in this program:
+Similarly this program:
 
 ```fsharp
 let k5 = | 0, 1 > 
 let k6 = | 0, 1 >
-let k7 = k5 + k6
+k5 == k6
 ```
 
-k5 and k6 are two literals that create their own quantum universe, when the expression is applied they are joined and a new column with the operation's result is created:
+prepares the following universe and returns the last column:
 
-|   |   | k7_0 |
+| k5<br>-<br>-  | -<br>k6<br>-  | -<br>-<br>r_0 |
 | --- | --- | --- |
-| 0 | 0 | 0 |
-| 0 | 1 | 1 |
-| 1 | 0 | 1 |
-| 1 | 1 | 2 |
+| 0 | 0 | true |
+| 0 | 1 | false |
+| 1 | 0 | false |
+| 1 | 1 | true |
 
 ### Ket\<bool> Expressions
 
@@ -215,17 +222,35 @@ k5 and k6 are two literals that create their own quantum universe, when the expr
 > * Or (`k1 or k2`)
 > * Not (`not k1`)
 
-These expressions take one or two one-column `ket<bool>` expressions and apply the corresponding boolean expression following the same semantics as `ket<int>` expressions.
+Similar to `ket<int>`, these expressions take one or two one-column `ket<bool>` expressions and add a column to the universe with the result of the corresponding operation, returning the new column.
 
-> Notice that both int and bool expressions can leverage **quantum parallelism** to apply the result of the operation in **one** step. 
->
-> As opposed toa classical computer that would normally have to calculate the result of the expression on each row, a quantum computer is capable of calculating the expression in all rows since they are in **superposition**.
+### If Expressions
+
+`if ket<bool> then ket<T'> else ket<T'> : T'`
+
+A quantum `if` expression, takes a boolean `ket` for condition and two ket expressions of matching type. It adds a new column to the quantum universe and the value will be the first expression if the condition expression is true, or the second otherwise. It returns the new column.
+
+For example:
+```
+let x = | 0,1,2,3 >
+if x == 2 then 10 else f20
+```
+
+prepares the following universe and returns the last column:
+
+| x<br>-<br>-  | -<br>x == 2<br>-  | -<br>-<br>r_0 |
+| --- | --- | --- | 
+| 0 | false | 10 |
+| 1 | false | 10 |
+| 2 | true | 20 |
+| 3 | false | 10 |
+
 
 ### Solve
 
-> `Solve (ket, bool expression)`
+> `Solve (ket<T'>, ket<bool>) : ket<T'>`
 
-Solve takes a `ket` and a `bool quantum expression` and returns a ket from a universe that is equal to the universe of the input ket, with all the rows filtered to only those that satisfy the boolean expression.
+Solve takes a `ket` and a `bool quantum expression` and returns a ket from a universe that is equal to the universe of the input ket, with all the rows filtered to only those that satisfy the boolean expression. It returns the same columns as those from the input ket.
 
 For example:
 
@@ -250,29 +275,116 @@ creates the following universe for k3:
 
 > **Note 1:** to filter such a table on a classical computer requires iterating through all the rows. On a quantum computer the number of operations depend on the number of columns when using **amplitude amplification**.
 
-> **Note 2:** quantum expressions return a `ket` who keeps a reference to its input arguments thus creating a DAG. This DAG defines dependencies of evaluation creating **entanglement**.
+
+## Prepare, sample, estimate
+
+In Aleph, the entire quantum program forms a single direct acyclical graph (DAG). Each quantum expression is a node in the DAG and edges connects each expression with its inputs. A quantum variable is just a label for the corresponding node. For example:
+
+```
+let x = |(0,1), (0,2), (0,3)>
+let y = |0,1,2>
+let z = |true, false>
+let exp1 = 3 - x.0
+let exp2 = y + x.1
+let solution = Solve(x, exp1 == exp2)
+```
+
+generates this graph:
+
+![Program DAG](img/dag.png)
+
+### Prepare
+
+> `Prepare (ket<T'>) : universe<T'>`
+
+The `Prepare` method takes *any* node on the graph and prepares the minimum quantum universe needed to calculate it by recursively traversing every parent in the graph. Nodes are evaluated only once even if the node has multiple input edges.
+
+Prepare returns a quantum universe, whose value type matches the type of the input ket.
+
+
+### Sample
+
+> `| universe<T'> | : T'`
+
+Sample accepts a universe and returns the value for one of the rows it picks at random. For example:
+
+```
+let x = | 1, 2, 3, 4 >
+| Prepare(x) |
+```
+
+will randomly return a value between 1 and 4.
+
+> **Note:**  `Prepare` can also accept a `Ket` as input, in which case `Prepare` is implicitly called.
+
+**A universe can only be sampled once**. One the universe is sampled its state is destroyed and cannot be used again. To get a different sample, a new universe must be prepared.
+
+**Sample always return a value**, even if the resulting universe is empty. Even more, it might also return a wrong value: since quantum algorithms are probabilistic in nature, it is good practice to trust, but verify the answer of the computation.
 
 ### Estimate
 
-> `Estimate (bool expression)`
+> `Estimate (universe<bool>, int) : int`
 
-Estimate returns the percentage of rows in the universe that satisfy the corresponding boolean expression.
+Estimate returns an estimated number of times a `true` row will be selected for `n` tries.
 
 For example:
 
 ```fsharp
 let k1 = | (0,0,0), (0,0,1), (0,1,0), (0,1,1), (1,0,0), (1,0,1) > 
 let k2 = k1.0 + k1.2
-Estimate ( k2 == |1> )
+let u = Prepare( k2 == |1> )
+Estimate (u, 1000)
 ```
 
-returns 0.5
-
-### Classic & mixed expressions
-
-
+returns 500
 
 > **Note:** For datasets with large number of elements, Monte Carlo is a common method to calculate the estimated value of a variable, using **amplitude estimation** it is possible to get a quadratic speed up for the same task.
+
+## Classic & mixed expressions
+
+Aleph supports a similar set of expressions for classical values.
+
+* Literals
+    * **int**
+    * **bool**
+    * **tuples**
+    * **sets** Similar to `kets`, Use brackets `{}` to differentiate them
+    * **ranges**: `start..stop`: shortcut for a set that includes from `start` to `end - 1` 
+* Project
+* Join
+* Unary/Binary expressions
+    * **add**
+    * **multiply**
+    * **equals**
+    * **and**
+    * **or**
+    * **not**
+* **if/else**
+* **summarize**: applies an aggregation operation to all values of a set.
+
+Classical expressions are evaluated eagerly and their values can be used in quantum expressions. When this happens the result of the expression is first converted into a quantum literal so it can be used in a expression. For example:
+
+```
+let x = |1,2,3>
+let y = 5 * 2
+let z = x + y
+```
+
+the expression `5 * 2` is eagerly evaluated and its value assigned to the variable `y`. The expression `x + y` takes both a quantum and a classical value, as such it will first convert the classical value `10` into a quantum literal to evaluate the expression. The quantum universe prepared for `z` is:
+
+| | | z_0 |
+| --- | --- | --- |
+| 1 | 10 | 11 |
+| 2 | 10 | 12 |
+| 3 | 10 | 13 |
+
+
+## Functions
+
+`let name (args) body`
+
+Functions are classical values. They are first class objects, so can be used as arguments for other functions. Their body can include both classical or quantum expressions.
+
 
 ## Examples
 
@@ -292,46 +404,36 @@ The first instruction (`|>`) creates a one-column universe of two values, namely
 | 0 |
 | 1 |
 
-The second instruction (`||`) samples and returns a value from this quantum universe. In this particular case, since there are only two possible outcomes on the universe (0 or 1), it will return either with the same possibility.
+The second instruction (`||`) prepares, samples and returns a value from this quantum universe. In this particular case, since there are only two possible outcomes on the universe (0 or 1), it will return either with the same possibility.
 
 
 ### Rolling two dices
 
 ```aleph
-let dice1 = | 1,2,3,4,5,6 >
-let dice2 = | 1,2,3,4,5,6 >
+let dice1 = | 1..6 >
+let dice2 = | 1..6 >
 
 let roll = (dice1, dice2)
 | roll |
 ```
 
-The first two instructions creates two independent quantum universes, each one comprised of one column with 6 rows.
-
-The next instruction **joins** the kets from these two quantum universes thus creating a new universe comprised of 2 columns and 36 rows:
-
-| roll_0 | roll_1    |
-| --- |:--- |
-|  1  |  1  |
-|  1  |  2  |
-|  1  |  3  |
-| ... |     |
-|  6  |  6  |
-
-On the last instruction, `roll` is sampled and one row from its universe is selected at random and returned as a tuple.
+Roll is the join of two quantum literals. Literals are added to a quantum universe via cross product, therefore the corresponding quantum universe for `roll` is `(1,1), (1,2) ...  (6,6)`. As before the last instruction prepares, samples and return a random value from this universe.
 
 
-### Solving systems of equaltions
+### Solving systems of equations
 
 ```fsharp
 let x = | @ >
-let eq1 = 4 * (x * x) + (5 * x) - 3
-let eq2 = x + 2
-| Prepare (Solve (x, eq1 == eq2)) |
+let y = | @ >
+let eq1 = 4 * x + 5 * y
+let eq2 = -6 * x + 20 * y
+let solution = Solve ((x, y), eq1 == eq2)
+| Prepare (solution) |
 ```
 
-The first instruction prepares a register in full super-position. That is, it takes any integer value from 0..2^n.
+`x` and `y` are some quantum variables that can take any integer value. `eq1` and `eq2` use these kets to calculate all possible values of their corresponding equations. We then use solve to filter the values to only those in which `eq1 == eq2`.
 
-We then use aleph to Solve for `x` in the case where `eq1 == eq2`. Solve will return the universe's x values where eq1 == eq2. 
+Preparing a universe for this expression will return only the values where eq1 == eq2. 
 
 ### Color graphing
 
@@ -364,7 +466,8 @@ let is_valid_edge_coloring (color1: ket<int>, color2: ket<int>) =
 // Returns true only if the nodes' color combination is valid for all edges.
 let classify_coloring (edges: set<int, int>, coloring: ket<int, int, int, int>) =
     let valid = summarize e in edges with and
-        let (x, y) = e
+        let x = e.0
+        let y = e.1
         is_valid_edge_coloring (coloring.x, coloring.y)
     valid
 
