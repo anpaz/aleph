@@ -228,7 +228,7 @@ Similar to `ket<int>`, these expressions take one or two one-column `ket<bool>` 
 
 > `if ket<bool> then ket<T'> else ket<T'> : T'`
 
-A quantum `if` expression, takes a boolean `ket` for condition and two ket expressions of matching type. It adds a new column to the quantum universe and the value will be the first expression if the condition expression is true, or the second otherwise. It returns the new column.
+A quantum `if` expression, takes a boolean `ket` for condition and two ket expressions of matching type. It adds four new columns to the quantum universe as it evaluates all the input expressions: the `condition`, the `then` and the `else`, then it populates the last column based on the value of the condition column: if the condition expression it takes the `then` column, otherwise it takes the `else` column. It returns the last column.
 
 For example:
 ```
@@ -238,12 +238,12 @@ if x == 2 then 10 else f20
 
 prepares the following universe and returns the last column:
 
-| x<br>-<br>-  | -<br>x == 2<br>-  | -<br>-<br>r_0 |
-| --- | --- | --- | 
-| 0 | false | 10 |
-| 1 | false | 10 |
-| 2 | true | 20 |
-| 3 | false | 10 |
+| x<br>-<br>-  | -<br>x == 2<br>- | -<br>10<br>- | -<br>20<br>- | -<br>-<br>r_0 |
+| --- | --- | --- | --- | --- | 
+| 0 | false | 10 | 20 | 10 |
+| 1 | false | 10 | 20 | 10 |
+| 2 | true  | 10 | 20 | 20 |
+| 3 | false | 10 | 20 | 10 |
 
 
 

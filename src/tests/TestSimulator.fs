@@ -192,6 +192,70 @@ type TestSimulator () =
         ]
         |> List.iter (this.TestExpression ctx)
 
+    [<TestMethod>]
+    member this.TestIfQ () =
+        let ctx = 
+            this.Context
+            |> this.AddToContext "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (u.Ket [
+                u.Tuple [ u.Int 0; u.Int 0]
+                u.Tuple [ u.Int 0; u.Int 1]
+                u.Tuple [ u.Int 1; u.Int 1]
+            ])
+            |> this.AddToContext "k2" (AnyType.QType (QType.Ket [Type.Int])) (u.Ket [
+                u.Tuple [ u.Int 2 ]
+                u.Tuple [ u.Int 3 ]
+            ])
+
+        [
+            // if k1.1 == k1.0 then k1.1 else 42
+            u.If (u.Equals ( u.Project (u.Var "k1", [u.Int 1]), u.Project (u.Var "k1", [u.Int 0])),
+                    u.Project (u.Var "k1", [u.Int 1]),
+                    u.Int 42),
+                [
+                    [ Int 0; Int 0; Bool true; Int 42; Int 0 ]
+                    [ Int 0; Int 1; Bool false; Int 42; Int 42 ]
+                    [ Int 1; Int 1; Bool true; Int 42; Int 1 ]
+                ],
+                [ 4 ]
+        ]
+        |> List.iter (this.TestExpression ctx)
+
+    [<TestMethod>]
+    member this.TestIfClassic () =
+        let ctx = 
+            this.Context
+            |> this.AddToContext "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (u.Ket [
+                u.Tuple [ u.Int 0; u.Int 0]
+                u.Tuple [ u.Int 0; u.Int 1]
+                u.Tuple [ u.Int 1; u.Int 1]
+            ])
+            |> this.AddToContext "k2" (AnyType.QType (QType.Ket [Type.Int])) (u.Ket [
+                u.Tuple [ u.Int 2 ]
+                u.Tuple [ u.Int 3 ]
+            ])
+
+        [
+            // if true then k1.1 else 42
+            u.If (u.Bool true,
+                    u.Project (u.Var "k1", [u.Int 1]),
+                    u.Int 42),
+                [
+                    [ Int 0; Int 0 ]
+                    [ Int 0; Int 1 ]
+                    [ Int 1; Int 1 ]
+                ],
+                [ 1 ]
+            // if false then k1.1 else 42
+            u.If (u.Bool false,
+                    u.Project (u.Var "k1", [u.Int 1]),
+                    u.Int 42),
+                [
+                    [ Int 42 ]
+                ],
+                [ 0 ]
+        ]
+        |> List.iter (this.TestExpression ctx)
+
 
     [<TestMethod>]
     member this.TestSolveEquals () =
@@ -313,6 +377,7 @@ type TestSimulator () =
             | Ok (k', _) -> 
                 let memory = sim.Memory
                 let columns' = sim.Memory.allocations.[k'.Id]
+                printfn "columns: %A\nmemory: %A\n" columns' memory
                 Assert.AreEqual(state, memory.state)
                 Assert.AreEqual(columns, columns')
             | Error msg -> 

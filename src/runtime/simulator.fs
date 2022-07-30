@@ -85,11 +85,12 @@ type Simulator() =
         | Solve (ket, condition) -> prepare_solve (ket, condition, ctx)
         | Block (stmts, value) -> prepare_block (stmts, value, ctx)
 
+        | IfQuantum (condition, then_q, else_q) -> prepare_if_q (condition, then_q, else_q, ctx)
+        | IfClassic (condition, then_q, else_q) -> prepare_if_c (condition, then_q, else_q, ctx)
+
         | Index _
         | KetAll _
         | Multiply _
-        | IfClassic _
-        | IfQuantum _
         | Summarize _
         | CallMethod _ ->
             $"Not implemented: {q}" |> Error
@@ -260,7 +261,49 @@ type Simulator() =
                 memory <- { memory with state = new_state }
                 (ket, ctx) |> Ok
 
+    (*
+        Prepares all: the condition, the then_q and the else_q expressions, and returns a new column
+        populated with the then_q value if the condition is true, and the else_q value if the condition is false.
+    *)
+    and prepare_if_q (condition, then_q, else_q, ctx) =
+        prepare_state (condition, ctx)
+        ==> fun (cond, ctx) ->
+            prepare_state (then_q, ctx)
+            ==> fun (then_q, ctx) ->
+                prepare_state (else_q, ctx)
+                ==> fun (else_q, ctx) ->
+                    match cond, then_q, else_q with
+                    | [c], [t], [e] ->
+                        let mem_size = memory.state.Head.Length
+                        let new_columns = [ mem_size ] // last column
+                        let new_state = seq { for row in memory.state do row @ [ if row.[c] = (Bool true) then row.[t] else row.[e] ] } |> Seq.toList
+                        memory <- { memory with state = new_state }
+                        (new_columns, ctx) |> Ok
+                    | _ -> 
+                        $"Invalid inputs for ket if: {cond} then {then_q} else {else_q}" |> Error
 
+    (*
+        First evaluates the condition, if the result is true then it prepares the then_q expression,
+        otherwise it prepares the else_q expression. It returns the new column.
+    *)
+    and prepare_if_c (condition, then_q, else_q, ctx) =
+        eval_classic (condition, ctx)
+        ==> fun (cond, ctx) ->
+            match cond with
+            | (Bool true) ->
+                prepare_state (then_q, ctx)
+                ==> fun (then_q, ctx) ->
+                    (then_q, ctx) |> Ok
+            | (Bool false) ->
+                prepare_state (else_q, ctx)
+                ==> fun (else_q, ctx) ->
+                    (else_q, ctx) |> Ok
+            | _ -> 
+                $"Invalid classical input for if condition. Expecting bool, got {cond}" |> Error
+
+    (*
+        Returns the columns of the specified ket.
+     *)
     and prepare_block (stmts, value, ctx) =
         eval_stmts (stmts, ctx)
         ==> fun ctx ->
