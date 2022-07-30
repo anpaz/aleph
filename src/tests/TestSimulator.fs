@@ -70,7 +70,7 @@ type TestSimulator () =
 
         
     [<TestMethod>]
-    member this.TestAdd () =
+    member this.TestAddMultiply () =
         let ctx = 
             this.Context 
             |> this.AddToContext "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (u.Ket [
@@ -94,6 +94,14 @@ type TestSimulator () =
                     [ Int 0; Int 0; Int 1; Int 1 ]
                     [ Int 0; Int 1; Int 1; Int 1 ]
                     [ Int 1; Int 1; Int 1; Int 2 ]
+                ],
+                [ 3 ]
+            // k1.0 * 5
+            u.Multiply( u.Project (u.Var "k1", [u.Int 0]), u.Int 5 ),
+                [
+                    [ Int 0; Int 0; Int 5; Int 0 ]
+                    [ Int 0; Int 1; Int 5; Int 0 ]
+                    [ Int 1; Int 1; Int 5; Int 5 ]
                 ],
                 [ 3 ]
             // k1.0 + | 1, 2, 3 >
@@ -122,6 +130,20 @@ type TestSimulator () =
                     [ Int 1; Int 1; Int 1; Int 2 ]
                     [ Int 1; Int 1; Int 2; Int 3 ]
                     [ Int 1; Int 1; Int 3; Int 4 ]
+                ],
+                [ 0; 3 ]
+            // Join (k1.0, k1.1 * | 1, 2, 3 >)
+            u.Join (u.Project (u.Var "k1", [u.Int 0]), u.Multiply(u.Project (u.Var "k1", [u.Int 1]), u.Ket [u.Int 1; u.Int 2; u.Int 3])),
+                [
+                    [ Int 0; Int 0; Int 1; Int 0 ]
+                    [ Int 0; Int 0; Int 2; Int 0 ]
+                    [ Int 0; Int 0; Int 3; Int 0 ]
+                    [ Int 0; Int 1; Int 1; Int 1 ]
+                    [ Int 0; Int 1; Int 2; Int 2 ]
+                    [ Int 0; Int 1; Int 3; Int 3 ]
+                    [ Int 1; Int 1; Int 1; Int 1 ]
+                    [ Int 1; Int 1; Int 2; Int 2 ]
+                    [ Int 1; Int 1; Int 3; Int 3 ]
                 ],
                 [ 0; 3 ]
         ]

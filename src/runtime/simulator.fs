@@ -75,6 +75,7 @@ type Simulator() =
         | Equals (left, right) -> prepare_equals (left, right, ctx)
 
         | Add (left, right) -> prepare_add (left, right, ctx)
+        | Multiply (left, right) -> prepare_multiply (left, right, ctx)
 
         | Not q -> prepare_not (q, ctx)
         | And (left,right) -> prepare_and (left, right, ctx)
@@ -90,7 +91,6 @@ type Simulator() =
 
         | Index _
         | KetAll _
-        | Multiply _
         | Summarize _
         | CallMethod _ ->
             $"Not implemented: {q}" |> Error
@@ -144,6 +144,26 @@ type Simulator() =
                     let mem_size = memory.state.Head.Length
                     let new_columns = [ mem_size ] // last column
                     let new_state = seq { for row in memory.state do row @ [ row.[l] + row.[r] ] } |> Seq.toList
+                    memory <- { memory with state = new_state }
+                    (new_columns, ctx) |> Ok
+                | _ -> 
+                    $"Invalid inputs for ket addition: {left} + {right}" |> Error
+
+    (*
+        Adds a new column to the state, whose value is 
+        the multiplication of the values in the columns from the corresponding input expressions.
+        It returns the new column.
+     *)
+    and prepare_multiply (left, right, ctx) =
+        prepare_state (left, ctx)
+        ==> fun (left, ctx) ->
+            prepare_state (right, ctx)
+            ==> fun (right, ctx) ->
+                match (left, right) with
+                | ([l], [r]) ->
+                    let mem_size = memory.state.Head.Length
+                    let new_columns = [ mem_size ] // last column
+                    let new_state = seq { for row in memory.state do row @ [ row.[l] * row.[r] ] } |> Seq.toList
                     memory <- { memory with state = new_state }
                     (new_columns, ctx) |> Ok
                 | _ -> 

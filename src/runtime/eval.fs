@@ -27,6 +27,11 @@ module Eval =
             | Value.Int l, Value.Int r -> Value.Int (l + r)
             | _ -> failwith "+ only supported for ints, got {l} + {r}"
 
+        static member (*) (l : Value, r: Value) =
+            match (l, r) with
+            | Value.Int l, Value.Int r -> Value.Int (l * r)
+            | _ -> failwith "+ only supported for ints, got {l} * {r}"
+
         static member (==) (l : Value, r: Value) =
             match (l, r) with
             | Value.Int l, Value.Int r -> Value.Bool (l = r)
