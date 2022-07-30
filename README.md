@@ -224,9 +224,9 @@ prepares the following universe and returns the last column:
 
 Similar to `ket<int>`, these expressions take one or two one-column `ket<bool>` expressions and add a column to the universe with the result of the corresponding operation, returning the new column.
 
-### If Expressions
+### If/Else
 
-`if ket<bool> then ket<T'> else ket<T'> : T'`
+> `if ket<bool> then ket<T'> else ket<T'> : T'`
 
 A quantum `if` expression, takes a boolean `ket` for condition and two ket expressions of matching type. It adds a new column to the quantum universe and the value will be the first expression if the condition expression is true, or the second otherwise. It returns the new column.
 
@@ -244,6 +244,33 @@ prepares the following universe and returns the last column:
 | 1 | false | 10 |
 | 2 | true | 20 |
 | 3 | false | 10 |
+
+
+
+### Summarize
+
+> `summarize i in enum with and|or|sum expr`
+
+Applies the expression with each value in the enumeration, the resulting values are then aggregated using the corresponding operation.
+
+For example:
+```
+let idx = { 0, 2 }
+let values = | (0,0,0,0), (0,0,1,1), (0,1,0,0), (1,1,1,0) >
+summarize i in values with and values.x == values.[x+1]
+```
+
+Creates the following universe:
+
+| | | | | | | r_0 |
+|---|---|---|---|---|---|-----|
+| 0 | 0 | 0 | 0 | true | true | true |
+| 0 | 0 | 1 | 1 | true | true | true |
+| 0 | 1 | 0 | 0 | false | true | false |
+| 1 | 1 | 1 | 0 | true | false | false |
+
+and returns the last column.
+
 
 
 ### Solve
@@ -348,7 +375,7 @@ Aleph supports a similar set of expressions for classical values.
     * **int**
     * **bool**
     * **tuples**
-    * **sets** Similar to `kets`, Use brackets `{}` to differentiate them
+    * **sets** Similar to `kets`, uses brackets `{}` to differentiate them
     * **ranges**: `start..stop`: shortcut for a set that includes from `start` to `end - 1` 
 * Project
 * Join
@@ -360,7 +387,7 @@ Aleph supports a similar set of expressions for classical values.
     * **or**
     * **not**
 * **if/else**
-* **summarize**: applies an aggregation operation to all values of a set.
+* **summarize**
 
 Classical expressions are evaluated eagerly and their values can be used in quantum expressions. When this happens the result of the expression is first converted into a quantum literal so it can be used in a expression. For example:
 
@@ -476,7 +503,7 @@ let nodes_colors = (colors(), colors(), colors(), colors())
 
 // To find a valid coloring, solve the valid_combination oracle and
 // measure the result
-let classification = classify_combinations (edges, nodes_colors)
+let classification = classify_coloring (edges, nodes_colors)
 let answers = Solve(edges, classification==true)
 | answers |
 ```
