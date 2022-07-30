@@ -4,9 +4,6 @@
     <WarnOn>3390;$(WarnOn)</WarnOn>
   </PropertyGroup>
   <ItemGroup>
-    <!-- <Compile Include="utils.fs" /> -->
-    <!-- <Compile Include="core.fs" /> -->
-    <!-- <Compile Include="classic.fs" /> -->
     <Compile Include="eval.fs" />
     <Compile Include="simulator.fs" />
   </ItemGroup>

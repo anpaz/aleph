@@ -7,8 +7,6 @@
   <ItemGroup>
     <Compile Include="TestTypecheck.fs" />
     <Compile Include="TestEval.fs" />
-    <!-- <Compile Include="TestCore.fs" />
-    <Compile Include="TestClassic.fs" /> -->
     <Compile Include="TestSimulator.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
