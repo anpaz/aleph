@@ -42,7 +42,7 @@ type Expression =
     | Multiply of Expression * Expression
     | Join of Expression * Expression
 
-    | Project of tuple: Expression * index: Expression list
+    | Project of tuple: Expression * index: Expression
     | Block of Statement list * Expression
     | If of cond: Expression * t : Expression * f: Expression
     | Summarize of id: Id * enumeration : Expression * aggregation: Aggregation * body: Expression

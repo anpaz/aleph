@@ -89,7 +89,7 @@ type Simulator() =
         | IfQuantum (condition, then_q, else_q) -> prepare_if_q (condition, then_q, else_q, ctx)
         | IfClassic (condition, then_q, else_q) -> prepare_if_c (condition, then_q, else_q, ctx)
 
-        | Index _
+        | Index _ //(q, indices) ->  prepare_index (q, indices, ctx)
         | KetAll _
         | Summarize _
         | CallMethod _ ->
@@ -173,13 +173,21 @@ type Simulator() =
         Returns the subset of the columns from the input expression given the 
         corresponding indices.
      *)
-    and prepare_project (q, indices, ctx) =
+    and prepare_project (q, index, ctx) =
         prepare_state (q, ctx)
         ==> fun (columns, ctx) ->
-            let projection = 
-                indices
-                |> List.fold (fun result i -> result @ [ columns.[i] ]) []
+            let projection = [ columns.[index] ]
             (projection, ctx) |> Ok
+
+    // and prepare_index (q, indices, ctx) =
+    //     prepare_state (q, ctx)
+    //     ==> fun (columns, ctx) ->
+    //         eval_classic (indices, ctx)
+    //         ==> fun (indices, ctx) ->
+    //             let projection = 
+    //                 indices
+    //                 |> List.fold (fun result i -> result @ [ columns.[i] ]) []
+    //             (projection, ctx) |> Ok
 
     (*
         Returns the concatenation of the results from the input expressions.

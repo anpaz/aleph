@@ -23,6 +23,7 @@ type TestCore () =
             Assert.AreEqual($"Classic {r}:{t}", $"Error msg: {msg}")
 
     member this.TestQuantumExpression ctx (e, t, r)=
+        printfn "e:%A" e
         match typecheck (e, ctx) with
         | Ok (Classic (r', t'), _) -> 
             Assert.AreEqual($"Quantum {r}:{t}", $"Classic {r'}: {t'}")
@@ -203,9 +204,9 @@ type TestCore () =
                 Q.Not  (Q.Literal (Set [C.BoolLiteral true]))
 
             // (qb1 or k2.1) and not | true >
-            u.And (u.Or (u.Var "qb1", u.Project (u.Var "k2", [u.Int 1])), u.Not (u.Ket [u.Bool true])),
+            u.And (u.Or (u.Var "qb1", u.Project (u.Var "k2", u.Int 1)), u.Not (u.Ket [u.Bool true])),
                 QType.Ket [Type.Bool],
-                Q.And (Q.Or (Q.Var "qb1", Q.Project (Q.Var "k2", [1])), (Q.Not (Q.Literal (Set [C.BoolLiteral true]))))
+                Q.And (Q.Or (Q.Var "qb1", Q.Project (Q.Var "k2", 1)), (Q.Not (Q.Literal (Set [C.BoolLiteral true]))))
         ]
         |> List.iter (this.TestQuantumExpression ctx)
 
@@ -616,63 +617,55 @@ type TestCore () =
 
         [
             // (1).0
-            u.Project (u.Tuple [Int 1], [Int 0]),
+            u.Project (u.Tuple [Int 1], Int 0),
                 Type.Int,
-                C.Project (C.Tuple [C.IntLiteral 1], [0])
-            // (1).[0, 2]  --> Note, index in projection is modular, so 2 == 0
-            u.Project (u.Tuple [Int 1], [Int 0; Int 0]),
-                Type.Tuple [Type.Int; Type.Int],
-                C.Project (C.Tuple [C.IntLiteral 1], [0; 0])
+                C.Project (C.Tuple [C.IntLiteral 1], 0)
             // (1, false, 3, true).3
-            u.Project (u.Tuple [Int 1; u.Bool false; Int 3; u.Bool true], [Int 3]),
+            u.Project (u.Tuple [Int 1; u.Bool false; Int 3; u.Bool true], Int 3),
                 Type.Bool,
-                C.Project (C.Tuple [C.IntLiteral 1; C.BoolLiteral false; C.IntLiteral 3; C.BoolLiteral true], [3])
-            // (1, false, 3, true).[1,2]
-            u.Project (u.Tuple [Int 1; u.Bool false; Int 3; u.Bool true], [Int 1; Int 2]),
-                Type.Tuple [Type.Bool; Type.Int],
-                C.Project (C.Tuple [C.IntLiteral 1; C.BoolLiteral false; C.IntLiteral 3; C.BoolLiteral true], [1;2])
-            // (1).[i1, i1, 0]
-            u.Project (u.Tuple [Int 1], [u.Var "i1"; u.Var "i1"; u.Int 0]),
-                Type.Tuple [Type.Int; Type.Int; Type.Int],
-                C.Index (C.Tuple [C.IntLiteral 1], [C.Var "i1";C.Var "i1";C.IntLiteral 0])
+                C.Project (C.Tuple [C.IntLiteral 1; C.BoolLiteral false; C.IntLiteral 3; C.BoolLiteral true], 3)
+            // (1, false, 3, true).2
+            u.Project (u.Tuple [Int 1; u.Bool false; Int 3; u.Bool true], Int 2),
+                Type.Int,
+                C.Project (C.Tuple [C.IntLiteral 1; C.BoolLiteral false; C.IntLiteral 3; C.BoolLiteral true], 2)
+            // (1).i1
+            u.Project (u.Tuple [Int 1], u.Var "i1"),
+                Type.Int,
+                C.Index (C.Tuple [C.IntLiteral 1], C.Var "i1")
         ]
         |> List.iter (this.TestClassicExpression ctx)
 
         [
             // |1>.0
-            u.Project (u.Ket [Int 1], [Int 0]),
+            u.Project (u.Ket [Int 1], Int 0),
                 QType.Ket [Type.Int],
-                Q.Project (Q.Literal (C.Set [C.IntLiteral 1]), [0])
-            // k1.[0, 2]  --> Note, index in projection is modular, so 2 == 0
-            u.Project (u.Var "k1", [Int 0; Int 0]),
-                QType.Ket [Type.Int; Type.Int],
-                Q.Project (Q.Var "k1", [0; 0])
+                Q.Project (Q.Literal (C.Set [C.IntLiteral 1]), 0)
+            // k1.2  --> Note, index in projection is modular, so 2 == 0
+            u.Project (u.Var "k1", Int 2),
+                QType.Ket [Type.Int],
+                Q.Project (Q.Var "k1", 0)
             // k2.1
-            u.Project (u.Var "k2", [Int 1]),
+            u.Project (u.Var "k2", Int 1),
                 QType.Ket [Type.Bool],
-                Q.Project (Q.Var "k2", [1])
-            // |(1, false, 3, true)>.[1,2]
-            u.Project (u.Ket [u.Tuple [Int 1; u.Bool false; Int 3; u.Bool true]], [Int 1; Int 2]),
-                QType.Ket [Type.Bool; Type.Int],
-                Q.Project (Q.Literal (C.Set [Tuple [C.IntLiteral 1; C.BoolLiteral false; C.IntLiteral 3; C.BoolLiteral true]]), [1;2])
-            // k1.[i1, i1, 0]
-            u.Project (u.Var "k1", [u.Var "i1"; u.Var "i1"; u.Int 0]),
-                QType.Ket [Type.Int; Type.Int; Type.Int],
-                Q.Index (Q.Var "k1", [C.Var "i1"; C.Var "i1"; C.IntLiteral 0])
+                Q.Project (Q.Var "k2", 1)
+            // |(1, false, 3, true)>.2
+            u.Project (u.Ket [u.Tuple [Int 1; u.Bool false; Int 3; u.Bool true]], Int 2),
+                QType.Ket [Type.Int],
+                Q.Project (Q.Literal (C.Set [Tuple [C.IntLiteral 1; C.BoolLiteral false; C.IntLiteral 3; C.BoolLiteral true]]), 2)
         ]
         |> List.iter (this.TestQuantumExpression ctx)
 
         [
-            // (1, false, 3).[i1,2]
-            u.Project (u.Tuple [Int 1; u.Bool false; Int 3], [u.Var "i1"; Int 2]), "Indexing of tuples is only available on tuples of a single type"
-            // |(1, false, 3)>.[i1,2]
-            u.Project (u.Ket [u.Tuple [Int 1; u.Bool false; Int 3]], [u.Var "i1"; Int 2]), "Indexing of kets is only available on kets of a single type"
+            // (1, false, 3).i1
+            u.Project (u.Tuple [Int 1; u.Bool false; Int 3], u.Var "i1"), "Indexing of tuples is only available on tuples of a single type"
+            // |(1, false, 3)>.i1
+            u.Project (u.Ket [u.Tuple [Int 1; u.Bool false; Int 3]], u.Var "i1"), "Indexing of kets is only available on kets of a single type"
             // [(1, false, 3)].[0]
-            u.Project (u.Set [u.Tuple [Int 1; u.Bool false; Int 3]], [u.Int 2]), "Project is only supported on tuples and kets"
+            u.Project (u.Set [u.Tuple [Int 1; u.Bool false; Int 3]], u.Int 2), "Project is only supported on tuples and kets"
             // [(1, false, 3)].[i1]
-            u.Project (u.Set [u.Tuple [Int 1; u.Bool false; Int 3]], [u.Var "i1"]), "Project is only supported on tuples and kets"
+            u.Project (u.Set [u.Tuple [Int 1; u.Bool false; Int 3]], u.Var "i1"), "Project is only supported on tuples and kets"
             // [1, 2, 3].[false]
-            u.Project (u.Set [Int 1; u.Int 2; Int 3], [u.Bool false]), "Invalid projection index. Expected int expression, got: (BoolLiteral false:Bool)"
+            u.Project (u.Set [Int 1; u.Int 2; Int 3], u.Bool false), "Invalid projection index. Expected int expression, got: (BoolLiteral false:Bool)"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -734,9 +727,9 @@ type TestCore () =
                 Type.Int,
                 C.If (C.BoolLiteral true, C.IntLiteral 1, C.IntLiteral 0)
             // { if b1 or t1.0 then (0, 1) else (0, 0) }
-            u.If (u.Or (u.Var "b1", u.Project (u.Var "t1", [u.Int 0])), u.Tuple [u.Int 0; u.Int 1], u.Tuple [u.Int 0; u.Int 0]),
+            u.If (u.Or (u.Var "b1", u.Project (u.Var "t1", u.Int 0)), u.Tuple [u.Int 0; u.Int 1], u.Tuple [u.Int 0; u.Int 0]),
                 Type.Tuple [Type.Int; Type.Int],
-                C.If (C.Or (C.Var "b1", C.Project (C.Var "t1", [0])), C.Tuple [C.IntLiteral 0; C.IntLiteral 1], C.Tuple [C.IntLiteral 0; C.IntLiteral 0])
+                C.If (C.Or (C.Var "b1", C.Project (C.Var "t1", 0)), C.Tuple [C.IntLiteral 0; C.IntLiteral 1], C.Tuple [C.IntLiteral 0; C.IntLiteral 0])
         ]
         |> List.iter (this.TestClassicExpression ctx)
 
@@ -750,10 +743,10 @@ type TestCore () =
                 QType.Ket [Type.Int],
                 Q.IfClassic (C.BoolLiteral true, Q.Var "k1", Q.Literal (Set [C.IntLiteral 0]))
             // { if k2.1 then (0, 1) else (0, 0) }
-            u.If (u.Project (u.Var "k2", [u.Int 1]), u.Tuple [u.Int 0; u.Int 1], u.Tuple [u.Int 0; u.Int 0]),
+            u.If (u.Project (u.Var "k2", u.Int 1), u.Tuple [u.Int 0; u.Int 1], u.Tuple [u.Int 0; u.Int 0]),
                 QType.Ket [Type.Int; Type.Int],
                 Q.IfQuantum (
-                    Q.Project (Q.Var "k2", [1]), 
+                    Q.Project (Q.Var "k2", 1), 
                     Q.Literal (C.Set [C.Tuple [C.IntLiteral 0; C.IntLiteral 1]]), 
                     Q.Literal (C.Set [C.Tuple [C.IntLiteral 0; C.IntLiteral 0]]))
             // TODO: QUANTUM OR
@@ -787,13 +780,13 @@ type TestCore () =
 
         [
             // summarize e in s1 with and { e.1 < 10 } 
-            u.Summarize ("e", u.Var "s1", Aggregation.And, u.LessThan (u.Project (u.Var "e", [u.Int 1]), u.Int 10)),
+            u.Summarize ("e", u.Var "s1", Aggregation.And, u.LessThan (u.Project (u.Var "e", u.Int 1), u.Int 10)),
                 Type.Bool,
-                C.Summarize ("e", C.Var "s1", Aggregation.And, C.LessThan (C.Project (C.Var "e", [1]), C.IntLiteral 10))
+                C.Summarize ("e", C.Var "s1", Aggregation.And, C.LessThan (C.Project (C.Var "e", 1), C.IntLiteral 10))
             // summarize e in s1 with or { e.1 == 10 } 
-            u.Summarize ("e", u.Var "s1", Aggregation.Or, u.Equals (u.Project (u.Var "e", [u.Int 1]), u.Int 10)),
+            u.Summarize ("e", u.Var "s1", Aggregation.Or, u.Equals (u.Project (u.Var "e", u.Int 1), u.Int 10)),
                 Type.Bool,
-                C.Summarize ("e", C.Var "s1", Aggregation.Or, C.Equals (C.Project (C.Var "e", [1]), C.IntLiteral 10))
+                C.Summarize ("e", C.Var "s1", Aggregation.Or, C.Equals (C.Project (C.Var "e", 1), C.IntLiteral 10))
             // summarize e in [true, false] with or { true } 
             u.Summarize ("e", u.Set [u.Bool true; u.Bool false], Aggregation.Or, u.Bool true),
                 Type.Bool,
@@ -803,9 +796,9 @@ type TestCore () =
 
         [
             // summarize e in s1 with and { k2.0 == e.1 } 
-            u.Summarize ("e", u.Var "s1", Aggregation.And, u.Equals (u.Project (u.Var "k2", [u.Int 0]), u.Project (u.Var "e", [u.Int 1]))),
+            u.Summarize ("e", u.Var "s1", Aggregation.And, u.Equals (u.Project (u.Var "k2", u.Int 0), u.Project (u.Var "e", u.Int 1))),
                 QType.Ket [Type.Bool],
-                Q.Summarize ("e", C.Var "s1", Aggregation.And, Q.Equals (Q.Project (Q.Var "k2", [0]), (Q.Literal (C.Set [C.Project (C.Var "e", [1])]))))
+                Q.Summarize ("e", C.Var "s1", Aggregation.And, Q.Equals (Q.Project (Q.Var "k2", 0), (Q.Literal (C.Set [C.Project (C.Var "e", 1)]))))
         ]
         |> List.iter (this.TestQuantumExpression ctx)
 
@@ -813,11 +806,11 @@ type TestCore () =
             // summarize e in s1 with and { e < 10 } 
             u.Summarize ("e", u.Var "s1", Aggregation.And, u.LessThan ((u.Var "e"), u.Int 10)), "Both expressions for < must be int. Got Tuple [Bool; Int] < Int"
             // summarize e in t1 with and { e.0 == true } 
-            u.Summarize ("e", u.Var "t1", Aggregation.And, u.Equals (u.Project (u.Var "e", [u.Int 0]), u.Bool true)), "Summarize expects a classic set of values, got: Tuple [Bool; Int]"
+            u.Summarize ("e", u.Var "t1", Aggregation.And, u.Equals (u.Project (u.Var "e", u.Int 0), u.Bool true)), "Summarize expects a classic set of values, got: Tuple [Bool; Int]"
             // summarize e in k1 with and { e.0 == |1> } 
-            u.Summarize ("e", u.Var "k1", Aggregation.And, u.Equals (u.Project (u.Var "e", [u.Int 0]), u.Ket [u.Int 1])), "Summarize expects a classic set of values, got: Ket [Int]"
+            u.Summarize ("e", u.Var "k1", Aggregation.And, u.Equals (u.Project (u.Var "e", u.Int 0), u.Ket [u.Int 1])), "Summarize expects a classic set of values, got: Ket [Int]"
             // summarize e in s1 with and { k2.1 == e.1 } 
-            u.Summarize ("e", u.Var "s1", Aggregation.And, u.Equals (u.Project (u.Var "k2", [u.Int 1]), u.Project (u.Var "e", [u.Int 1]))), "Quantum == can only be applied to int Kets"
+            u.Summarize ("e", u.Var "s1", Aggregation.And, u.Equals (u.Project (u.Var "k2", u.Int 1), u.Project (u.Var "e", u.Int 1))), "Quantum == can only be applied to int Kets"
             // summarize e in s1 with sum { true } 
             u.Summarize ("e", u.Var "s1", Aggregation.Sum, u.Bool true), "Summarize body must be an Int expression when aggregation is 'sum', got Bool"
             // summarize e in s1 with and { 1 } 
@@ -834,14 +827,14 @@ type TestCore () =
 
         [
             // k2 | k2.[0] == 1
-            u.Solve(u.Var "k2", u.Equals (u.Project (u.Var "k2", [u.Int 0]), u.Int 1)),
+            u.Solve(u.Var "k2", u.Equals (u.Project (u.Var "k2", u.Int 0), u.Int 1)),
                 QType.Ket [Type.Int; Type.Bool],
-                Q.Solve(Q.Var "k2", Q.Equals (Q.Project (Q.Var "k2", [0]), Q.Literal (C.Set [C.IntLiteral 1])))
+                Q.Solve(Q.Var "k2", Q.Equals (Q.Project (Q.Var "k2", 0), Q.Literal (C.Set [C.IntLiteral 1])))
         ]
         |> List.iter (this.TestQuantumExpression ctx)
 
         [
-            u.Solve (u.Tuple [u.Int 1;u.Int 2], u.Equals (u.Project (u.Var "k2", [u.Int 1]), u.Bool true)), "Solve argument must be a quantum ket, got: Tuple [Int; Int]"
+            u.Solve (u.Tuple [u.Int 1;u.Int 2], u.Equals (u.Project (u.Var "k2", u.Int 1), u.Bool true)), "Solve argument must be a quantum ket, got: Tuple [Int; Int]"
             u.Solve (u.Var "k2", u.Bool true), "Solve condition must be a quantum boolean expression, got: Bool"
         ]
         |> List.iter (this.TestInvalidExpression ctx)

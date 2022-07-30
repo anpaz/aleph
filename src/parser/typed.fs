@@ -25,8 +25,8 @@ type C =
     | CallMethod of method: C * arguments: E list
 
     | Join of values: C * C
-    | Project of source: C * indices: int list
-    | Index of source: C * indices: C list
+    | Project of source: C * index: int
+    | Index of source: C * index: C
     | Block of stmts: Statement list * value: C
     | If of cond: C * t : C * f: C
     | Summarize of id: Id * enumeration : C * aggregation: Aggregation * body: C
@@ -48,8 +48,8 @@ and Q =
     | Multiply of Q * Q
 
     | Join of values: Q * Q
-    | Project of source: Q * indices: int list
-    | Index of source: Q * indices: C list
+    | Project of source: Q * indices: int
+    | Index of source: Q * indices: C
     | Block of stmts: Statement list * Q
     | IfClassic of cond: C * t : Q * f: Q
     | IfQuantum of cond: Q * t : Q * f: Q

@@ -42,20 +42,20 @@ type TestSimulator () =
                     [ Int 1; Int 1 ]
                 ],
                 [ 0; 1 ]
-            // | (0,0,0), (0,1,1), (1,1,0), (1,1,2) >.[2, 1]
+            // | (0,0,0), (0,1,1), (1,1,0), (1,1,2) >.2
             u.Project (u.Ket [
                     u.Tuple [ u.Int 0; u.Int 0; u.Int 0 ]
                     u.Tuple [ u.Int 0; u.Int 1; u.Int 1 ]
                     u.Tuple [ u.Int 1; u.Int 1; u.Int 0 ]
                     u.Tuple [ u.Int 1; u.Int 1; u.Int 2 ]
-                ], [u.Int 2; u.Int 1]),
+                ], u.Int 2),
                 [
                     [ Int 0; Int 0; Int 0 ]
                     [ Int 0; Int 1; Int 1 ]
                     [ Int 1; Int 1; Int 0 ]
                     [ Int 1; Int 1; Int 2 ]
                 ],
-                [2; 1]
+                [2]
             // ( | 0, 1 >, | 1, 2 > )
             u.Join (u.Ket [u.Int 0; u.Int 1], u.Ket [u.Int 1; u.Int 2]),
                 [
@@ -81,7 +81,7 @@ type TestSimulator () =
 
         [
             // k1.0 + k1.1
-            u.Add( u.Project (u.Var "k1", [u.Int 0]), u.Project (u.Var "k1", [u.Int 1]) ),
+            u.Add( u.Project (u.Var "k1", u.Int 0), u.Project (u.Var "k1", u.Int 1) ),
                 [
                     [ Int 0; Int 0; Int 0 ]
                     [ Int 0; Int 1; Int 1 ]
@@ -89,7 +89,7 @@ type TestSimulator () =
                 ],
                 [ 2 ]
             // k1.0 + 1
-            u.Add( u.Project (u.Var "k1", [u.Int 0]), u.Int 1 ),
+            u.Add( u.Project (u.Var "k1", u.Int 0), u.Int 1),
                 [
                     [ Int 0; Int 0; Int 1; Int 1 ]
                     [ Int 0; Int 1; Int 1; Int 1 ]
@@ -97,7 +97,7 @@ type TestSimulator () =
                 ],
                 [ 3 ]
             // k1.0 * 5
-            u.Multiply( u.Project (u.Var "k1", [u.Int 0]), u.Int 5 ),
+            u.Multiply( u.Project (u.Var "k1", u.Int 0), u.Int 5),
                 [
                     [ Int 0; Int 0; Int 5; Int 0 ]
                     [ Int 0; Int 1; Int 5; Int 0 ]
@@ -105,7 +105,7 @@ type TestSimulator () =
                 ],
                 [ 3 ]
             // k1.0 + | 1, 2, 3 >
-            u.Add(u.Project (u.Var "k1", [u.Int 1]), u.Ket [u.Int 1; u.Int 2; u.Int 3]),
+            u.Add(u.Project (u.Var "k1", u.Int 1), u.Ket [u.Int 1; u.Int 2; u.Int 3]),
                 [
                     [ Int 0; Int 0; Int 1; Int 1 ]
                     [ Int 0; Int 0; Int 2; Int 2 ]
@@ -119,7 +119,7 @@ type TestSimulator () =
                 ],
                 [ 3 ]
             // Join (k1.0, k1.1 + | 1, 2, 3 >)
-            u.Join (u.Project (u.Var "k1", [u.Int 0]), u.Add(u.Project (u.Var "k1", [u.Int 1]), u.Ket [u.Int 1; u.Int 2; u.Int 3])),
+            u.Join (u.Project (u.Var "k1", u.Int 0), u.Add(u.Project (u.Var "k1", u.Int 1), u.Ket [u.Int 1; u.Int 2; u.Int 3])),
                 [
                     [ Int 0; Int 0; Int 1; Int 1 ]
                     [ Int 0; Int 0; Int 2; Int 2 ]
@@ -133,7 +133,7 @@ type TestSimulator () =
                 ],
                 [ 0; 3 ]
             // Join (k1.0, k1.1 * | 1, 2, 3 >)
-            u.Join (u.Project (u.Var "k1", [u.Int 0]), u.Multiply(u.Project (u.Var "k1", [u.Int 1]), u.Ket [u.Int 1; u.Int 2; u.Int 3])),
+            u.Join (u.Project (u.Var "k1", u.Int 0), u.Multiply(u.Project (u.Var "k1", u.Int 1), u.Ket [u.Int 1; u.Int 2; u.Int 3])),
                 [
                     [ Int 0; Int 0; Int 1; Int 0 ]
                     [ Int 0; Int 0; Int 2; Int 0 ]
@@ -199,7 +199,7 @@ type TestSimulator () =
             // (Join k1, e2 == e1 )
             u.Block (
                 [
-                    Let ("e1", u.Add (u.Project (u.Var "k1", [u.Int 1]), u.Int 10))
+                    Let ("e1", u.Add (u.Project (u.Var "k1", u.Int 1), u.Int 10))
                     Let ("e2", u.Add (u.Var "k2", u.Int 10))
                 ], u.Join (u.Var "k1", u.Equals(u.Var "e2", u.Var "e1"))),
                 [
@@ -230,8 +230,8 @@ type TestSimulator () =
 
         [
             // if k1.1 == k1.0 then k1.1 else 42
-            u.If (u.Equals ( u.Project (u.Var "k1", [u.Int 1]), u.Project (u.Var "k1", [u.Int 0])),
-                    u.Project (u.Var "k1", [u.Int 1]),
+            u.If (u.Equals ( u.Project (u.Var "k1", u.Int 1), u.Project (u.Var "k1", u.Int 0)),
+                    u.Project (u.Var "k1", u.Int 1),
                     u.Int 42),
                 [
                     [ Int 0; Int 0; Bool true; Int 42; Int 0 ]
@@ -259,7 +259,7 @@ type TestSimulator () =
         [
             // if true then k1.1 else 42
             u.If (u.Bool true,
-                    u.Project (u.Var "k1", [u.Int 1]),
+                    u.Project (u.Var "k1", u.Int 1),
                     u.Int 42),
                 [
                     [ Int 0; Int 0 ]
@@ -269,7 +269,7 @@ type TestSimulator () =
                 [ 1 ]
             // if false then k1.1 else 42
             u.If (u.Bool false,
-                    u.Project (u.Var "k1", [u.Int 1]),
+                    u.Project (u.Var "k1", u.Int 1),
                     u.Int 42),
                 [
                     [ Int 42 ]
@@ -295,7 +295,7 @@ type TestSimulator () =
 
         [
             // k1.1 == 1
-            u.Equals ( u.Project (u.Var "k1", [u.Int 1]), u.Int 1),
+            u.Equals ( u.Project (u.Var "k1", u.Int 1), u.Int 1),
                 [
                     [ Int 0; Int 0; Int 1; Bool false ]
                     [ Int 0; Int 1; Int 1; Bool true ]
@@ -303,20 +303,20 @@ type TestSimulator () =
                 ],
                 [ 3 ]
             // (Solve k1, k1.1 == 1)
-            u.Solve (u.Var "k1", u.Equals ( u.Project (u.Var "k1", [u.Int 1]), u.Int 1)),
+            u.Solve (u.Var "k1", u.Equals ( u.Project (u.Var "k1", u.Int 1), u.Int 1)),
                 [
                     [ Int 0; Int 1; Int 1; Bool true ]
                     [ Int 1; Int 1; Int 1; Bool true ]
                 ],
                 [ 0; 1 ]
             // (Solve k1, k1.0 + k1.1 == 1)
-            u.Solve (u.Var "k1", u.Equals ( u.Add( u.Project (u.Var "k1", [u.Int 0]), u.Project (u.Var "k1", [u.Int 1]) ), u.Int 1)),
+            u.Solve (u.Var "k1", u.Equals ( u.Add( u.Project (u.Var "k1", u.Int 0), u.Project (u.Var "k1", u.Int 1) ), u.Int 1)),
                 [
                     [ Int 0; Int 1; Int 1; Int 1; Bool true ]
                 ],
                 [ 0; 1 ]
             // (Solve k1.0, k1.1 + | 1, 2, 3 > == |2, 4> )
-            u.Solve (u.Project (u.Var "k1", [u.Int 1]), u.Equals(u.Add(u.Project (u.Var "k1", [u.Int 1]), u.Ket [u.Int 1; u.Int 2; u.Int 3]), u.Ket [u.Int 2; u.Int 4])),
+            u.Solve (u.Project (u.Var "k1", u.Int 1), u.Equals(u.Add(u.Project (u.Var "k1", u.Int 1), u.Ket [u.Int 1; u.Int 2; u.Int 3]), u.Ket [u.Int 2; u.Int 4])),
                 [
                     [ Int 0; Int 0; Int 2; Int 2; Int 2; Bool true ]
                     [ Int 0; Int 1; Int 1; Int 2; Int 2; Bool true ]
@@ -351,7 +351,7 @@ type TestSimulator () =
                 [ 0; 1 ]
 
             // not k.1
-            u.Not ( u.Project (u.Var "k", [u.Int 1])),
+            u.Not ( u.Project (u.Var "k", u.Int 1)),
                 [
                     [ Int 0; Bool false; Bool true ]
                     [ Int 0; Bool true; Bool false ]
@@ -362,7 +362,7 @@ type TestSimulator () =
             // (false or k.1)
                 u.Or ( 
                     u.Bool false,
-                    u.Project (u.Var "k", [u.Int 1])),
+                    u.Project (u.Var "k", u.Int 1)),
                 [
                     [ Bool false; Int 0; Bool false; Bool false ]
                     [ Bool false; Int 0; Bool true;  Bool true ]
@@ -374,9 +374,9 @@ type TestSimulator () =
             u.Not ( 
                 u.And ( 
                     u.Equals ( 
-                        u.Project (u.Var "k", [u.Int 0]), 
+                        u.Project (u.Var "k", u.Int 0), 
                         u.Int 0), 
-                    u.Project (u.Var "k", [u.Int 1])) ),
+                    u.Project (u.Var "k", u.Int 1)) ),
                 [
                     [ Int 0; Bool false; Int 0; Bool true; Bool false; Bool true ]
                     [ Int 0; Bool true;  Int 0; Bool true; Bool true; Bool false ]
@@ -405,8 +405,10 @@ type TestSimulator () =
             | Error msg -> 
                 Assert.AreEqual($"Expecting Prepare Ok.", $"Got Error: {msg}")
         | Ok (v, _) ->
+            printfn "e: %A" e
             Assert.AreEqual($"Expecting Ket value.", $"Got {v}")
         | Error msg ->
+            printfn "e: %A" e
             Assert.AreEqual($"Expecting valid expression.", $"Got Error msg: {msg}")
 
 
