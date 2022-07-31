@@ -399,7 +399,11 @@ type Simulator() =
                     u.State.[0]
                 // Empty universe, collapse to random value
                 | 0 -> 
-                    let row = seq { for i in 0 .. (u.Columns |> List.max) -> (Value.Int (random.Next())) }  |> Seq.toList
+                    let row = 
+                        if u.Columns.IsEmpty then 
+                            []
+                        else 
+                            seq { for i in 0 .. (u.Columns |> List.max) -> (Value.Int (random.Next())) }  |> Seq.toList
                     u.State <- [ row ]
                     row
                 // Select a random row, and collapse to this value:
