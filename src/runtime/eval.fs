@@ -85,6 +85,8 @@ module Eval =
         | C.Tuple values -> eval_tuple (values, ctx)
         | C.Set values -> eval_set (values, ctx)
 
+        | C.Add (left, right) -> eval_add (left, right, ctx)
+
         | C.Block (stmts, value) -> eval_block (stmts, value, ctx)
 
         | C.Sample q -> eval_sample (q, ctx)
@@ -95,7 +97,6 @@ module Eval =
         | C.Or _
         | C.Equals _
         | C.LessThan _
-        | C.Add _
         | C.Multiply _
         | C.Method _
         | C.CallMethod _
@@ -104,7 +105,7 @@ module Eval =
         | C.Index _
         | C.If _
         | C.Summarize _ ->
-            "Not implemented" |> Error
+            $"Not implemented: {c}" |> Error
 
     and eval_var (id, ctx) =
         match ctx.heap.TryFind id with
@@ -141,6 +142,13 @@ module Eval =
             | _ -> "Invalid set value." |> Error
         eval_expression_list single_value (values, ctx)
         ==> fun (values, ctx) -> (Set (Set.ofList values), ctx) |> Ok
+
+    and eval_add (left, right, ctx) =
+        eval_classic (left, ctx)
+        ==> fun (left, ctx) ->
+            eval_classic (right, ctx) 
+            ==> fun (right, ctx) ->
+                (left + right, ctx) |> Ok
 
     and eval_block (stmts,value, ctx) =
         eval_stmts (stmts, ctx) 

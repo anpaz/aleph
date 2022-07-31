@@ -82,6 +82,7 @@ type Simulator() =
         | Or (left,right) -> prepare_or (left, right, ctx)
 
         | Project (q, indices) -> prepare_project (q, indices, ctx)
+        | Index (q, index) ->  prepare_index (q, index, ctx)
         | Join (left, right) -> prepare_join (left, right, ctx)
         | Solve (ket, condition) -> prepare_solve (ket, condition, ctx)
         | Block (stmts, value) -> prepare_block (stmts, value, ctx)
@@ -89,11 +90,10 @@ type Simulator() =
         | IfQuantum (condition, then_q, else_q) -> prepare_if_q (condition, then_q, else_q, ctx)
         | IfClassic (condition, then_q, else_q) -> prepare_if_c (condition, then_q, else_q, ctx)
 
-        | Index _ //(q, indices) ->  prepare_index (q, indices, ctx)
         | KetAll _
         | Summarize _
         | CallMethod _ ->
-            $"Not implemented: {q}" |> Error
+            $"`Not implemented: {q}" |> Error
 
     (*
         Finds the var as a Ket in the heap, and then calls prepare on the corresponding ket.
@@ -179,15 +179,16 @@ type Simulator() =
             let projection = [ columns.[index] ]
             (projection, ctx) |> Ok
 
-    // and prepare_index (q, indices, ctx) =
-    //     prepare_state (q, ctx)
-    //     ==> fun (columns, ctx) ->
-    //         eval_classic (indices, ctx)
-    //         ==> fun (indices, ctx) ->
-    //             let projection = 
-    //                 indices
-    //                 |> List.fold (fun result i -> result @ [ columns.[i] ]) []
-    //             (projection, ctx) |> Ok
+    and prepare_index (q, index, ctx) =
+        prepare_state (q, ctx)
+        ==> fun (columns, ctx) ->
+            eval_classic (index, ctx)
+            ==> fun (index, ctx) ->
+                match index with
+                | Value.Int i ->
+                    let idx = i % columns.Length
+                    ([columns.[idx]], ctx) |> Ok
+                | _ -> $"Invalid index, expecting int value, got {index}" |> Error
 
     (*
         Returns the concatenation of the results from the input expressions.

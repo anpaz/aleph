@@ -214,6 +214,37 @@ type TestSimulator () =
         ]
         |> List.iter (this.TestExpression ctx)
 
+
+    [<TestMethod>]
+    member this.TestIndex () =
+        let ctx = 
+            this.Context 
+            |> this.AddToContext "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (u.Ket [
+                u.Tuple [ u.Int 0; u.Int 0]
+                u.Tuple [ u.Int 0; u.Int 1]
+                u.Tuple [ u.Int 1; u.Int 1]
+            ])
+
+        [
+            // k1.0 + k1.[0 + 1]
+            u.Add( u.Project (u.Var "k1", u.Int 0), u.Project (u.Var "k1", u.Add (u.Int 0, u.Int 1))),
+                [
+                    [ Int 0; Int 0; Int 0 ]
+                    [ Int 0; Int 1; Int 1 ]
+                    [ Int 1; Int 1; Int 2 ]
+                ],
+                [ 2 ]
+            // k1.0 + k1.[0 + 3]        // Index is modular, so 3 == 1
+            u.Add( u.Project (u.Var "k1", u.Int 0), u.Project (u.Var "k1", u.Add (u.Int 0, u.Int 3))),
+                [
+                    [ Int 0; Int 0; Int 0 ]
+                    [ Int 0; Int 1; Int 1 ]
+                    [ Int 1; Int 1; Int 2 ]
+                ],
+                [ 2 ]
+        ]
+        |> List.iter (this.TestExpression ctx)
+
     [<TestMethod>]
     member this.TestIfQ () =
         let ctx = 
@@ -403,6 +434,7 @@ type TestSimulator () =
                 Assert.AreEqual(state, memory.state)
                 Assert.AreEqual(columns, columns')
             | Error msg -> 
+                printfn "e: %A" e
                 Assert.AreEqual($"Expecting Prepare Ok.", $"Got Error: {msg}")
         | Ok (v, _) ->
             printfn "e: %A" e
