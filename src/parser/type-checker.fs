@@ -84,7 +84,8 @@ module TypeChecker =
         | Expression.Summarize  (id, enumeration, aggregation, body) -> typecheck_summarize (id, enumeration, aggregation, body, ctx)
 
         | Expression.Solve (ket, cond) -> typecheck_solve (ket, cond, ctx)        
-        | Expression.Sample ket -> typecheck_sample (ket, ctx)
+        | Expression.Prepare ket -> typecheck_prepare (ket, ctx)
+        | Expression.Sample universe -> typecheck_sample (universe, ctx)        
 
     // Typechecks an untyped expression list. Receives a callback such that
     // each expression can be validated. If all the expressions are valid
@@ -109,6 +110,7 @@ module TypeChecker =
             match t with
             | Type t -> (Classic (C.Var id, t), ctx) |> Ok
             | QType t -> (Quantum (Q.Var id, t), ctx) |> Ok
+            | UType t -> (Universe (U.Var id, t), ctx) |> Ok
         | None -> $"Unknown variable: {id}" |> Error
 
     and typecheck_bool (b, ctx) =
@@ -124,6 +126,7 @@ module TypeChecker =
             | Classic (_, Type.Int) -> e |> Ok
             | Classic (e, t) -> msg + $"Expected bool or int expression, got: ({e}:{t})" |> Error
             | Quantum (e, t) -> msg + $"Expected bool or int expression, got: ({e}:{t})" |> Error
+            | Universe (e, t) -> msg + $"Expected bool or int expression, got: ({e}:{t})" |> Error
 
         typecheck_expression_list (is_bool_or_int  "Invalid tuple element. ") (values, ctx)
         ==> fun (values, ctx) ->
@@ -139,6 +142,7 @@ module TypeChecker =
             | Classic (_, Type.Tuple _) -> e |> Ok
             | Classic (e, t) -> msg + $"Expected int, bool or tuple expression, got: ({e}:{t})" |> Error
             | Quantum (e, t) -> msg + $"Expected int, bool or tuple expression, got: ({e}:{t})" |> Error
+            | Universe (e, t) -> msg + $"Expected int, bool or tuple expression, got: ({e}:{t})" |> Error
 
         match values with
         | [] -> (Classic (C.Set [], Type.Set (Type.Tuple [])), ctx) |> Ok
@@ -189,6 +193,7 @@ module TypeChecker =
             | Quantum (v, QType.Ket [Type.Bool]) -> (Quantum (Q.Not v, QType.Ket [Type.Bool]), ctx) |> Ok
             | Classic (_, t) -> $"Not must be applied to a boolean expression, got: {t}" |> Error
             | Quantum (_, t) -> $"Not must be applied to a boolean expression, got: {t}" |> Error
+            | Universe (_, t) -> $"Not must be applied to a boolean expression, got: {t}" |> Error
 
     and typecheck_range (start, stop, ctx) =
         typecheck(start, ctx)
@@ -218,6 +223,8 @@ module TypeChecker =
                 (Classic (C.Method (argNames, body), Type.Method (argTypes, AnyType.Type t)), ctx) |> Ok
             | Quantum (_, qt) ->
                 (Classic (C.Method (argNames, body), Type.Method (argTypes, AnyType.QType qt)), ctx) |> Ok
+            | Universe (_, t) ->
+                (Classic (C.Method (argNames, body), Type.Method (argTypes, AnyType.UType t)), ctx) |> Ok
 
     and typecheck_add (left, right, ctx) =
         typecheck(left, ctx)
@@ -312,6 +319,8 @@ module TypeChecker =
                      $"Both expressions for < must be int. Got {lt} < {rt}" |> Error
                 | Classic (_, lt), Quantum (_, rt) ->
                      $"Both expressions for < must be int. Got {lt} < {rt}" |> Error
+                | _ ->
+                     $"Both expressions for < must be int. Got {left} < {right}" |> Error
 
     and typecheck_join (left, right, ctx) =
         typecheck(left, ctx)
@@ -339,7 +348,7 @@ module TypeChecker =
                 ==> fun (args, ctx) ->
                     // verify that the types of the arguments we'll be passing 
                     // match the expected type of the arguments
-                    let argTypes' = args |> List.map (function | Classic (_, t) -> AnyType.Type t | Quantum (_, t) -> AnyType.QType t)
+                    let argTypes' = args |> List.map (function | Classic (_, t) -> AnyType.Type t | Quantum (_, t) -> AnyType.QType t | Universe (_, t) -> AnyType.UType t)
                     if argTypes = argTypes' then
                         // Everything matches. Check the return type
                         // to decide if it's a classical or a quantum method:
@@ -348,6 +357,8 @@ module TypeChecker =
                             (Classic (C.CallMethod (m, args), t), ctx) |> Ok
                         | AnyType.QType qt -> 
                             (Quantum (Q.CallMethod (m, args), qt), ctx) |> Ok
+                        | AnyType.UType ut -> 
+                            (Universe (U.CallMethod (m, args), ut), ctx) |> Ok
                     else
                         $"Arguments type missmatch. Expected {argTypes} got {argTypes'}" |> Error
             | _ -> $"Invalid expression: {method}" |> Error
@@ -408,7 +419,7 @@ module TypeChecker =
                 match index with 
                 | Classic ((C.IntLiteral i), Type.Int) -> use_project (value, i, ctx)
                 | Classic (i, Type.Int) -> use_index (value, i, ctx)
-                | _ -> $"Project index must be an in, got: {index}" |> Error
+                | _ -> $"Invalid projection index. Expected int expression, got: {index}" |> Error
         
     and typecheck_block (stmts, r, ctx') =
         let as_typed_stmt previous (next:ast.Statement) =
@@ -418,7 +429,7 @@ module TypeChecker =
                 | ast.Statement.Let (id, value) ->
                     typecheck (value, ctx)
                     ==> fun (value, ctx) ->
-                        let t = value |> function | Classic (_, t) -> AnyType.Type t | Quantum (_, t) -> AnyType.QType t
+                        let t = value |> function | Classic (_, t) -> AnyType.Type t | Quantum (_, t) -> AnyType.QType t | Universe (_, t) -> AnyType.UType t
                         let ctx = ctx.Add (id, t)
                         (previous @ [typed.Statement.Let (id, value)], ctx) |> Ok
                 | ast.Statement.Print (msg, value) ->
@@ -435,6 +446,8 @@ module TypeChecker =
                     (Classic (C.Block (stmts, e), t), ctx) |> Ok
                 | Quantum (e, t) ->
                     (Quantum (Q.Block (stmts, e), t), ctx) |> Ok
+                | Universe (e, t) ->
+                    (Universe (U.Block (stmts, e), t), ctx) |> Ok
 
     and typecheck_if (c, t, f, ctx) =
         typecheck_expression_list any_expression ([c; t; f], ctx)
@@ -470,6 +483,7 @@ module TypeChecker =
                     (Quantum (Q.IfQuantum (c, t, f), tt), ctx) |> Ok
                 | Classic (_, t) -> $"If condition must be a boolean, got {t}" |> Error
                 | Quantum (_, t) -> $"If condition must be a boolean, got {t}" |> Error
+                | Universe (_, t) -> $"If condition must be a boolean, got {t}" |> Error
             else 
                 $"Both branches of if statement must be of the same type, got {tt} and {ft}" |> Error
 
@@ -494,6 +508,7 @@ module TypeChecker =
                             (Quantum (Q.Summarize (varId, values, aggregation, body), QType.Ket [Type.Bool]), ctx) |> Ok
                         | Classic (_, t) -> $"Summarize body must be a boolean expression when aggregation is 'and' | 'or', got {t}" |> Error
                         | Quantum (_, t) -> $"Summarize body must be a boolean expression when aggregation is 'and' | 'or', got {t}" |> Error
+                        | Universe (_, t) -> $"Summarize body must be a boolean expression when aggregation is 'and' | 'or', got {t}" |> Error
                     | Aggregation.Sum ->
                         match body with
                         | Classic (body, Type.Int) ->
@@ -502,8 +517,10 @@ module TypeChecker =
                             (Quantum (Q.Summarize (varId, values, aggregation, body), QType.Ket [Type.Int]), ctx) |> Ok
                         | Classic (_, t) -> $"Summarize body must be an Int expression when aggregation is 'sum', got {t}" |> Error
                         | Quantum (_, t) -> $"Summarize body must be an Int expression when aggregation is 'sum', got {t}" |> Error
+                        | Universe (_, t) -> $"Summarize body must be an Int expression when aggregation is 'sum', got {t}" |> Error
             | Classic (_, t) -> $"Summarize expects a classic set of values, got: {t}" |> Error
             | Quantum (_, t) -> $"Summarize expects a classic set of values, got: {t}" |> Error
+            | Universe (_, t) -> $"Summarize expects a classic set of values, got: {t}" |> Error
 
     and typecheck_solve (ket, cond, ctx) =
         typecheck (ket, ctx)
@@ -517,11 +534,22 @@ module TypeChecker =
                         (Quantum (Q.Solve (ket, cond), QType.Ket t), ctx) |> Ok
                     | Quantum (_, t) -> $"Solve condition must be a quantum boolean expression, got: {t}" |> Error
                     | Classic (_, t) -> $"Solve condition must be a quantum boolean expression, got: {t}" |> Error
+                    | Universe (_, t) -> $"Solve condition must be a quantum boolean expression, got: {t}" |> Error
             | Classic (_, t) -> $"Solve argument must be a quantum ket, got: {t}" |> Error
+            | Universe (_, t) -> $"Solve argument must be a quantum ket, got: {t}" |> Error
 
-    and typecheck_sample (ket, ctx) =
+    and typecheck_prepare (ket, ctx) =
         typecheck (ket, ctx)
         ==> fun (ket, ctx) ->
             match ket with
-            | Quantum (ket, QType.Ket t) -> (Classic (C.Sample ket, Type.Tuple t), ctx) |> Ok
+            | Quantum (ket, QType.Ket t) -> (Universe (U.Prepare ket, UType.Universe t), ctx) |> Ok
+            | Classic (_, t) -> $"Prepare argument must be a quantum ket, got: {t}" |> Error
+            | Universe (_, t) -> $"Prepare argument must be a quantum ket, got: {t}" |> Error
+
+    and typecheck_sample (universe, ctx) =
+        typecheck (universe, ctx)
+        ==> fun (universe, ctx) ->
+            match universe with
+            | Universe (u, UType.Universe t) -> (Classic (C.Sample u, Type.Tuple t), ctx) |> Ok
+            | Quantum (_, t) -> $"Sample argument must be a quantum ket, got: {t}" |> Error
             | Classic (_, t) -> $"Sample argument must be a quantum ket, got: {t}" |> Error

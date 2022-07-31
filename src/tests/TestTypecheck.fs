@@ -19,6 +19,8 @@ type TestCore () =
             Assert.AreEqual(t, t')
         | Ok (Quantum (r', t'), _) -> 
             Assert.AreEqual($"Classic {r}:{t}", $"Quantum {r'}: {t'}")
+        | Ok (Universe (r', t'), _) -> 
+            Assert.AreEqual($"Classic {r}:{t}", $"Quantum {r'}: {t'}")
         | Error msg -> 
             Assert.AreEqual($"Classic {r}:{t}", $"Error msg: {msg}")
 
@@ -30,6 +32,8 @@ type TestCore () =
         | Ok (Quantum (r', t'), _) -> 
             Assert.AreEqual(r, r')
             Assert.AreEqual(t, t')
+        | Ok (Universe (r', t'), _) -> 
+            Assert.AreEqual($"Quantum {r}:{t}", $"Universe {r'}: {t'}")
         | Error msg -> 
             Assert.AreEqual($"Quantum {r}:{t}", $"Error msg: {msg}")
 
@@ -665,7 +669,7 @@ type TestCore () =
             // [(1, false, 3)].[i1]
             u.Project (u.Set [u.Tuple [Int 1; u.Bool false; Int 3]], u.Var "i1"), "Project is only supported on tuples and kets"
             // [1, 2, 3].[false]
-            u.Project (u.Set [Int 1; u.Int 2; Int 3], u.Bool false), "Invalid projection index. Expected int expression, got: (BoolLiteral false:Bool)"
+            u.Project (u.Set [Int 1; u.Int 2; Int 3], u.Bool false), "Invalid projection index. Expected int expression, got: Classic (BoolLiteral false, Bool)"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -846,17 +850,17 @@ type TestCore () =
 
         [
             // | |> |
-            u.Sample (u.Ket []),
+            u.Sample (u.Prepare (u.Ket [])),
                 Type.Tuple [],
-                C.Sample(Q.Literal (C.Set []))
+                C.Sample( U.Prepare( Q.Literal (C.Set [])))
             // | k1 |
-            u.Sample (u.Var "k1"),
+            u.Sample (u.Prepare (u.Var "k1")),
                 Type.Tuple [Type.Int],
-                C.Sample(Q.Var "k1")
+                C.Sample(U.Prepare (Q.Var "k1"))
             // | k2 |
-            u.Sample (u.Var "k2"),
+            u.Sample (u.Prepare (u.Var "k2")),
                 Type.Tuple [Type.Int; Type.Bool],
-                C.Sample(Q.Var "k2")
+                C.Sample(U.Prepare (Q.Var "k2"))
         ]
         |> List.iter (this.TestClassicExpression ctx)
 

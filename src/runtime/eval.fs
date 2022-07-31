@@ -9,10 +9,15 @@ module Eval =
     let (==>) (input: Result<'a,'b>) ok  =
         Result.bind ok input
 
-    type Ket = {
-        Id: int
-        StatePrep: Q
-    }
+    type IKet = 
+        interface
+        inherit System.IComparable
+        end
+
+    type IUniverse = 
+        interface
+        inherit System.IComparable
+        end
 
     type Value =
         | Bool of bool
@@ -20,7 +25,8 @@ module Eval =
         | Tuple of Value list
         | Set of Set<Value>
         | Method of string list * E
-        | Ket of Ket
+        | Ket of IKet
+        | Universe of IUniverse
 
         static member (+) (l : Value, r: Value) =
             match (l, r) with
@@ -40,26 +46,26 @@ module Eval =
         static member Not (l : Value) =
             match l with
             | Value.Bool b -> Value.Bool (not b)
-            | _ -> failwith "not only supported for Bools, got {l}"
+            | _ -> failwith "not only supported for bool values, got {l}"
 
         static member And (l : Value, r: Value) =
             match (l, r) with
             | Value.Bool l, Value.Bool r -> Value.Bool (l && r)
-            | _ -> failwith "= only supported for ints, got {l} && {r}"
+            | _ -> failwith "= only supported for bool values, got {l} && {r}"
 
         static member Or (l : Value, r: Value) =
             match (l, r) with
             | Value.Bool l, Value.Bool r -> Value.Bool (l || r)
-            | _ -> failwith "= only supported for ints, got {l} || {r}"
+            | _ -> failwith "= only supported for bool values, got {l} || {r}"
+            
     type QPU =
-        abstract Assign: Q -> Ket
-        abstract Reset: Unit -> Unit
-        abstract Prepare: Ket * ValueContext -> Result<Ket * ValueContext, string>
-        abstract Measure: Ket -> Value
+        abstract Assign: Q * ValueContext -> Result<Value * ValueContext, string>
+        abstract Prepare: U * ValueContext -> Result<Value * ValueContext, string>
+        abstract Measure: IUniverse -> Result<Value, string>
 
     and ValueContext = {
-        qpu: QPU
         heap: Map<string, Value>
+        qpu: QPU
         types: TypeContext
     }
 
@@ -71,10 +77,12 @@ module Eval =
 
     and eval (e, ctx) =
         match e with
-        | Quantum (q, QType.Ket _) ->
-            (Value.Ket (ctx.qpu.Assign q), ctx) |> Ok
-        | Classic (c, _) ->
+        | E.Classic (c, _) ->
             eval_classic (c, ctx)
+        | E.Quantum (q, QType.Ket _) ->
+            ctx.qpu.Assign (q, ctx)
+        | E.Universe (u, _) ->
+            ctx.qpu.Prepare (u, ctx)
 
     and eval_classic (c, ctx) =
         match c with
@@ -154,13 +162,13 @@ module Eval =
         eval_stmts (stmts, ctx) 
         ==> fun (ctx) -> eval_classic (value, ctx)
         
-    and eval_sample (q, ctx) =
+    and eval_sample (u, ctx) =
         let qpu = ctx.qpu
-        let ket = qpu.Assign q
-        qpu.Reset ()
-        qpu.Prepare (ket, ctx)
-        ==> fun (_) ->
-            (qpu.Measure ket, ctx) |> Ok
+        qpu.Prepare (u, ctx)
+        ==> fun (u, ctx) ->
+            match u with 
+            | Value.Universe u -> qpu.Measure u ==> fun (v) -> (v, ctx) |> Ok
+            | _ -> $"Expecting Prepare to return Universe, got {u}" |> Error
 
     and eval_expression_list check_item_value (values, ctx) =
         let rec next (items, ctx: ValueContext) =

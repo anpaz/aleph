@@ -35,10 +35,25 @@ of each prepare method below...
 
 *)
 
+
 type Memory = {
     allocations: Map<int, int list>
     state: Value list list
 }
+
+type Ket(id: int, statePrep: Q) =
+    interface IKet with
+        member this.CompareTo(obj: obj): int = 
+            failwith "Not Implemented"
+    member this.Id = id
+    member this.StatePrep = statePrep
+
+type Universe(state: Value list list, columns: int list) =
+    interface IUniverse with
+        member this.CompareTo(obj: obj): int = 
+            failwith "Not Implemented"
+    member val State = state with get,set
+    member this.Columns = columns
 
 type Simulator() =
     let random = System.Random()
@@ -52,16 +67,16 @@ type Simulator() =
         otherwise, it prepares the state of the Ket's state prep expression
         and allocates in memory the columns returned by the state prep to this ket.
      *)
-    let rec prepare (ket, ctx: ValueContext) =
+    let rec prepare (ket : Ket, ctx: ValueContext) =
         match memory.allocations.TryFind ket.Id with
-        | Some _ -> 
-            (ket, ctx) |> Ok        // Already prepared...
+        | Some columns -> 
+            (columns, ctx) |> Ok        // Already prepared...
         | None ->
             prepare_state (ket.StatePrep, ctx)
             ==> fun (columns, ctx) ->
                 // Assign to the ket the columns returned by the preparation:
                 memory <- { memory with allocations = memory.allocations.Add (ket.Id, columns) }
-                (ket, ctx) |> Ok
+                (columns, ctx) |> Ok
 
     (*
         Prepares the state with the given expression, and returns the index of the
@@ -69,7 +84,7 @@ type Simulator() =
      *)
     and prepare_state (q, ctx) =
         match q with
-        | Var id -> prepare_var (id, ctx)
+        | Q.Var id -> prepare_var (id, ctx)
         | Literal c -> prepare_literal (c, ctx)
 
         | Equals (left, right) -> prepare_equals (left, right, ctx)
@@ -85,14 +100,14 @@ type Simulator() =
         | Index (q, index) ->  prepare_index (q, index, ctx)
         | Join (left, right) -> prepare_join (left, right, ctx)
         | Solve (ket, condition) -> prepare_solve (ket, condition, ctx)
-        | Block (stmts, value) -> prepare_block (stmts, value, ctx)
+        | Q.Block (stmts, value) -> prepare_block (stmts, value, ctx)
 
         | IfQuantum (condition, then_q, else_q) -> prepare_if_q (condition, then_q, else_q, ctx)
         | IfClassic (condition, then_q, else_q) -> prepare_if_c (condition, then_q, else_q, ctx)
 
         | KetAll _
         | Summarize _
-        | CallMethod _ ->
+        | Q.CallMethod _ ->
             $"`Not implemented: {q}" |> Error
 
     (*
@@ -103,9 +118,9 @@ type Simulator() =
     and prepare_var (id, ctx) =
         match ctx.heap.TryFind id with
         | Some (Value.Ket ket) ->
-            prepare (ket, ctx)
-            ==> fun (ket, ctx) ->
-                (memory.allocations.[ket.Id], ctx) |> Ok
+            prepare (ket :?> Ket, ctx)
+            ==> fun (columns, ctx) ->
+                (columns, ctx) |> Ok
         | _ ->
             $"Invalid variable: {id}. Expecting ket." |> Error
 
@@ -170,8 +185,7 @@ type Simulator() =
                     $"Invalid inputs for ket addition: {left} + {right}" |> Error
 
     (*
-        Returns the subset of the columns from the input expression given the 
-        corresponding indices.
+        Returns the the column from the input expression corresponding to the given index.
      *)
     and prepare_project (q, index, ctx) =
         prepare_state (q, ctx)
@@ -179,6 +193,9 @@ type Simulator() =
             let projection = [ columns.[index] ]
             (projection, ctx) |> Ok
 
+    (*
+        Evaluates the index expression and returns the corresponding column.
+     *)
     and prepare_index (q, index, ctx) =
         prepare_state (q, ctx)
         ==> fun (columns, ctx) ->
@@ -361,38 +378,69 @@ type Simulator() =
         (*
             Associate each expression with a Ket that has a unique id
          *)
-        member this.Assign q =
-            max_ket <- max_ket + 1
-            { Id = max_ket; StatePrep = q }
-
-        (*
-            Resets memory. Cleans all allocations and state.
-         *)
-        member this.Reset(): unit = 
-            memory <- { allocations = Map.empty; state = [] }
-
-        (*
-            Measure works by picking a random value with the same probability
-            from the quantum state, and then projecting (selecting) only the columns
-            associated with the ket.
-         *)
-        member this.Measure (ket: Ket) =
-            let pick_random_value() =
-                let i = int (random.NextDouble() * (double (memory.state.Length)))
-                memory.state.Item i
-            let project_ket_columns columns (all: Value list) =
-                columns 
-                |> List.fold (fun result i -> result @ [ all.[i] ]) []
-                |> Tuple
-            match memory.allocations.TryFind ket.Id with
-            | Some columns ->
-                pick_random_value()
-                |> project_ket_columns columns
-            | None -> failwith $"Ket: {ket.Id} not found in memory."
-
-        (*
-            Prepares the QPU's quantum state based on the given Ket.
-         *)
-        member this.Prepare (ket : Ket, ctx: ValueContext) = 
+        member this.Assign (q, ctx) =
             assert (ctx.qpu = this)
-            prepare (ket, ctx)
+            max_ket <- max_ket + 1
+            (Value.Ket (new Ket(max_ket, q)), ctx) |> Ok
+
+        (*
+            Measure works by randomly picking a row from the universe with the same probability
+            from the universe, and then projecting (selecting) only the columns
+            associated with the ket.
+            Once measured, the universe is collapsed to this value, and next time it is measured
+            it will return the same value.
+         *)
+        member this.Measure (universe: IUniverse) =
+            let u = universe :?> Universe
+            let pick_world() =
+                match u.State.Length with
+                // Universe collapsed:
+                | 1 -> 
+                    u.State.[0]
+                // Empty universe, collapse to random value
+                | 0 -> 
+                    let row = seq { for i in 0 .. (u.Columns |> List.max) -> (Value.Int (random.Next())) }  |> Seq.toList
+                    u.State <- [ row ]
+                    row
+                // Select a random row, and collapse to this value:
+                | n -> 
+                    let i = int (random.NextDouble() * (double (n)))
+                    let row = u.State.Item i
+                    u.State <- [ row ]
+                    row
+            let project_columns (row: Value list) =
+                u.Columns 
+                |> List.fold (fun result i -> result @ [ row.[i] ]) []
+                |> Tuple
+            pick_world()
+            |> project_columns
+            |> Ok
+
+        (*
+            Prepares a Quantum Universe from the given universe expression
+         *)
+        member this.Prepare (u, ctx: ValueContext) = 
+            assert (ctx.qpu = this)
+            memory <- { allocations = Map.empty; state = [] }
+            match u with
+            | U.Prepare q ->
+                (this :> QPU).Assign (q, ctx)
+                ==> fun (ket, ctx) ->
+                    match ket with
+                    | Value.Ket ket -> 
+                        prepare (ket :?> Ket, ctx)
+                        ==> fun (columns, ctx) ->
+                            (Value.Universe (Universe(memory.state, columns)), ctx) |> Ok
+                    | _ -> "" |> Error
+            | U.Var id ->
+                match ctx.heap.TryFind id with
+                | Some (Value.Universe u) ->
+                    (Value.Universe u, ctx) |> Ok
+                | _ ->
+                    $"Invalid variable: {id}. Expecting universe." |> Error
+            | U.Block (stmts, body) ->
+                eval_stmts (stmts, ctx)
+                ==> fun ctx ->
+                    (this :> QPU).Prepare (body, ctx)
+            | U.CallMethod _  -> $"Prepare for {u} not implemented" |> Error
+            

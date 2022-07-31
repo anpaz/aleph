@@ -422,23 +422,17 @@ type TestSimulator () =
         let qpu = ctx.qpu
         let sim = qpu :?> Simulator
 
-        qpu.Reset()
-
-        match run(e, ctx) with
-        | Ok (Ket k, ctx) ->
-            match qpu.Prepare (k, ctx) with
-            | Ok (k', _) -> 
-                let memory = sim.Memory
-                let columns' = sim.Memory.allocations.[k'.Id]
-                printfn "columns: %A\nmemory: %A\n" columns' memory
-                Assert.AreEqual(state, memory.state)
-                Assert.AreEqual(columns, columns')
-            | Error msg -> 
-                printfn "e: %A" e
-                Assert.AreEqual($"Expecting Prepare Ok.", $"Got Error: {msg}")
+        match run(u.Prepare e , ctx) with
+        | Ok (Universe universe, ctx) ->
+            let universe = universe :?> Universe
+            let state' = universe.State
+            let columns' = universe.Columns
+            printfn "columns: %A\nmemory: %A\n" columns' state'
+            Assert.AreEqual(state, state')
+            Assert.AreEqual(columns, columns')
         | Ok (v, _) ->
             printfn "e: %A" e
-            Assert.AreEqual($"Expecting Ket value.", $"Got {v}")
+            Assert.AreEqual($"Expecting Universe value.", $"Got {v}")
         | Error msg ->
             printfn "e: %A" e
             Assert.AreEqual($"Expecting valid expression.", $"Got Error msg: {msg}")

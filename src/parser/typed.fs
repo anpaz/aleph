@@ -31,7 +31,7 @@ type C =
     | If of cond: C * t : C * f: C
     | Summarize of id: Id * enumeration : C * aggregation: Aggregation * body: C
 
-    | Sample of ket: Q
+    | Sample of universe: U
 
 and Q =
     | Var of Id
@@ -58,9 +58,16 @@ and Q =
     | CallMethod of method: C * arguments: E list
     | Solve of ket: Q * condition: Q
 
+and U =
+    | Var of Id
+    | CallMethod of method: C * arguments: E list
+    | Block of stmts: Statement list * U
+    | Prepare of ket: Q
+
 and E =
     | Classic of C * Type
     | Quantum of Q * QType
+    | Universe of U * UType
 
 and Statement =
     | Let of id: Id * value: E

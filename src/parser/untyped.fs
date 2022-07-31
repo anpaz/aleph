@@ -12,9 +12,13 @@ type Type =
 and QType =
     | Ket of Type list
 
+and UType =
+    | Universe of Type list
+
 and AnyType =
     | Type of Type
     | QType of QType
+    | UType of UType
 
 type Aggregation =
     | Sum
@@ -51,6 +55,7 @@ type Expression =
     | KetAll of size: Expression
 
     | Sample of ket: Expression
+    | Prepare of universe: Expression
     | Solve of ket: Expression * cond: Expression
 
 and Statement =
