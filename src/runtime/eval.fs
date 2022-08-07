@@ -24,7 +24,7 @@ module Eval =
         | Int of int
         | Tuple of Value list
         | Set of Set<Value>
-        | Method of string list * E
+        | Method of Id list * E
         | Ket of IKet
         | Universe of IUniverse
 
@@ -42,6 +42,11 @@ module Eval =
             match (l, r) with
             | Value.Int l, Value.Int r -> Value.Bool (l = r)
             | _ -> failwith "= only supported for ints, got {l} == {r}"
+
+        static member LessThan (l : Value, r: Value) =
+            match (l, r) with
+            | Value.Int l, Value.Int r -> Value.Bool (l < r)
+            | _ -> failwith "< only supported for ints, got {l} == {r}"
 
         static member Not (l : Value) =
             match l with
@@ -90,28 +95,29 @@ module Eval =
 
         | C.BoolLiteral b -> eval_bool (b, ctx) 
         | C.IntLiteral i -> eval_int (i, ctx)
+        | C.Method (args, body) -> eval_method (args, body, ctx)
         | C.Tuple values -> eval_tuple (values, ctx)
         | C.Set values -> eval_set (values, ctx)
+        | C.Range (start, stop) -> eval_range (start, stop, ctx)
 
         | C.Add (left, right) -> eval_add (left, right, ctx)
+        | C.Multiply (left, right) -> eval_multiply (left, right, ctx)
+        | C.Equals (left, right) -> eval_equals (left, right, ctx)
+        | C.LessThan (left, right) -> eval_lessthan (left, right, ctx)
+        | C.And (left, right) -> eval_and (left, right, ctx)
+        | C.Or (left, right) -> eval_or (left, right, ctx)
+        | C.Not e -> eval_not (e, ctx)
 
+        | C.Project (value, index) -> eval_project (value, index, ctx)
+        | C.Index (value, index) -> eval_index (value, index, ctx)
+        | C.Join (left, right) -> eval_join (left, right, ctx)
+
+        | C.If (cond, t, e) -> eval_if (cond, t, e, ctx)
         | C.Block (stmts, value) -> eval_block (stmts, value, ctx)
 
         | C.Sample q -> eval_sample (q, ctx)
 
-        | C.Range _
-        | C.Not _
-        | C.And _
-        | C.Or _
-        | C.Equals _
-        | C.LessThan _
-        | C.Multiply _
-        | C.Method _
         | C.CallMethod _
-        | C.Join _
-        | C.Project _
-        | C.Index _
-        | C.If _
         | C.Summarize _ ->
             $"Not implemented: {c}" |> Error
 
@@ -128,6 +134,9 @@ module Eval =
     and eval_int (i, ctx) =
         (Value.Int i, ctx) |> Ok
 
+    and eval_method (args, body, ctx) =
+        (Value.Method (args, body), ctx) |> Ok
+        
     and eval_tuple (values, ctx) =
         let literal_value = function
             | C.BoolLiteral b, ctx -> (Value.Bool b, ctx) |> Ok
@@ -151,12 +160,106 @@ module Eval =
         eval_expression_list single_value (values, ctx)
         ==> fun (values, ctx) -> (Set (Set.ofList values), ctx) |> Ok
 
+    and eval_range (start, stop, ctx) =
+        eval_classic (start, ctx)
+        ==> fun (start, ctx) ->
+            eval_classic (stop, ctx) 
+            ==> fun (stop, ctx) ->
+                match (start, stop) with
+                | Value.Int start, Value.Int stop ->
+                    let values = seq { start .. stop - 1 } |> Seq.map Value.Int
+                    (Set (Set.ofSeq values), ctx) |> Ok
+                | _ -> 
+                    $"Range start..stop must be int, got: {start}..{stop}" |> Error
+
     and eval_add (left, right, ctx) =
         eval_classic (left, ctx)
         ==> fun (left, ctx) ->
             eval_classic (right, ctx) 
             ==> fun (right, ctx) ->
                 (left + right, ctx) |> Ok
+
+    and eval_multiply (left, right, ctx) =
+        eval_classic (left, ctx)
+        ==> fun (left, ctx) ->
+            eval_classic (right, ctx) 
+            ==> fun (right, ctx) ->
+                (left * right, ctx) |> Ok
+
+    and eval_equals (left, right, ctx) =
+        eval_classic (left, ctx)
+        ==> fun (left, ctx) ->
+            eval_classic (right, ctx) 
+            ==> fun (right, ctx) ->
+                (left == right, ctx) |> Ok
+
+    and eval_lessthan (left, right, ctx) =
+        eval_classic (left, ctx)
+        ==> fun (left, ctx) ->
+            eval_classic (right, ctx) 
+            ==> fun (right, ctx) ->
+                (Value.LessThan (left, right), ctx) |> Ok
+
+    and eval_and (left, right, ctx) =
+        eval_classic (left, ctx)
+        ==> fun (left, ctx) ->
+            eval_classic (right, ctx) 
+            ==> fun (right, ctx) ->
+                (Value.And (left, right), ctx) |> Ok
+
+    and eval_or (left, right, ctx) =
+        eval_classic (left, ctx)
+        ==> fun (left, ctx) ->
+            eval_classic (right, ctx) 
+            ==> fun (right, ctx) ->
+                (Value.Or (left, right), ctx) |> Ok
+
+    and eval_not (e, ctx) =
+        eval_classic (e, ctx)
+        ==> fun (e, ctx) ->
+            (Value.Not e, ctx) |> Ok
+
+    and eval_project (value, i, ctx) =
+        eval_classic (value, ctx)
+        ==> fun (value, ctx) ->
+            match value with
+            | Value.Tuple t ->
+                (t.[i], ctx) |> Ok
+            | _ ->
+                $"project only avaiable for tuples, got: {value}" |> Error
+
+    and eval_index (value, i, ctx) =
+        eval_classic (value, ctx)
+        ==> fun (value, ctx) ->
+            eval_classic (i, ctx) 
+            ==> fun (i, ctx) ->
+                match (value, i) with
+                | Value.Tuple t, Value.Int i ->
+                    (t.[i], ctx) |> Ok
+                | _ ->
+                    $"project only avaiable for tuples and int index, got: {value}[{i}]" |> Error
+
+    and eval_join (left, right, ctx) =
+        eval_classic (left, ctx)
+        ==> fun (left, ctx) ->
+            eval_classic (right, ctx) 
+            ==> fun (right, ctx) ->
+                match (left, right) with
+                | Value.Tuple l, Value.Tuple r ->
+                    (Value.Tuple (l @ r), ctx) |> Ok
+                | _ ->
+                    $"Join only avaiable for tuples, got: {left}, {right}" |> Error
+
+    and eval_if (cond, then_e, else_e, ctx) =
+        eval_classic (cond, ctx)
+        ==> fun (cond, ctx) ->
+            match cond with
+            | Value.Bool true ->
+                eval_classic(then_e, ctx)
+            | Value.Bool false ->
+                eval_classic(else_e, ctx)
+            | _ ->
+                $"if condition must be a boolean expression, got: {cond}" |> Error
 
     and eval_block (stmts,value, ctx) =
         eval_stmts (stmts, ctx) 

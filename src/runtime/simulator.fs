@@ -274,6 +274,7 @@ type Simulator() =
                     (new_columns, ctx) |> Ok
                 | _ -> 
                     $"Invalid inputs for ket equals: {left} && {right}" |> Error
+
     (*
         Adds a new column to the state, whose value is 
         true iff the values in the columns from the corresponding input expressions are equal.
