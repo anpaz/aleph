@@ -105,10 +105,12 @@ type Simulator() =
         | IfQuantum (condition, then_q, else_q) -> prepare_if_q (condition, then_q, else_q, ctx)
         | IfClassic (condition, then_q, else_q) -> prepare_if_c (condition, then_q, else_q, ctx)
 
+        | Q.CallMethod (method, args) ->  prepare_callmethod(method, args, ctx)
+
         | KetAll _
-        | Summarize _
-        | Q.CallMethod _ ->
+        | Summarize _ ->
             $"`Not implemented: {q}" |> Error
+
 
     (*
         Finds the var as a Ket in the heap, and then calls prepare on the corresponding ket.
@@ -116,6 +118,7 @@ type Simulator() =
         this method returns the columns associated with the ket accordingly.
      *)
     and prepare_var (id, ctx) =
+        printf "Find %A in %A\n" id ctx.heap
         match ctx.heap.TryFind id with
         | Some (Value.Ket ket) ->
             prepare (ket :?> Ket, ctx)
@@ -136,7 +139,7 @@ type Simulator() =
             match values with
             | Value.Set values ->
                 let old_size = if memory.state.IsEmpty then 0 else memory.state.Head.Length
-                let new_state = tensort_product memory.state values
+                let new_state = tensor_product memory.state values
                 let new_size = if new_state.IsEmpty then 0 else new_state.Head.Length
                 let new_columns = [ old_size .. new_size - 1 ]
                 memory <- { memory with state = new_state }
@@ -356,7 +359,19 @@ type Simulator() =
         ==> fun ctx ->
             prepare_state (value, ctx)
 
-    and tensort_product left right : Value list list =
+    (*
+        Calls the corresponding method, and automatically prepares the resulting Ket
+    *)
+    and prepare_callmethod (method, args, ctx) =
+        eval_callmethod(method, args, ctx)
+        ==> fun (value, ctx) ->
+            match value with
+            | Value.Ket k -> 
+                prepare (k :?> Ket, ctx)
+            | _ ->
+                $"Expecting a Ket result, got {value}" |> Error
+
+    and tensor_product left right : Value list list =
         let as_list = function
             | Value.Bool b -> [ Value.Bool b ]
             | Value.Int i -> [ Value.Int i ]
@@ -447,5 +462,5 @@ type Simulator() =
                 eval_stmts (stmts, ctx)
                 ==> fun ctx ->
                     (this :> QPU).Prepare (body, ctx)
-            | U.CallMethod _  -> $"Prepare for {u} not implemented" |> Error
-            
+            | U.CallMethod (method, args) ->
+                eval_callmethod(method, args, ctx)

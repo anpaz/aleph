@@ -418,6 +418,76 @@ type TestSimulator () =
         ]
         |> List.iter (this.TestExpression ctx)
 
+
+    [<TestMethod>]
+    member this.TestCallMethod () =
+        let ctx = this.Context
+
+        [
+            // let colors() = |1,2,3>
+            // colors()
+            u.Block (
+                [
+                    Let ("colors", u.Method([], u.Ket [u.Int 1; u.Int 2; u.Int 3]))
+                ],
+                u.CallMethod (u.Var "colors", [])),
+                [
+                    [ Int 1 ]
+                    [ Int 2 ]
+                    [ Int 3 ]
+                ],
+                [ 0 ]
+            // let colors() = |1,2,3>
+            // ( colors(), colors() )
+            u.Block (
+                [
+                    Let ("colors", u.Method([], u.Ket [u.Int 1; u.Int 2; u.Int 3]))
+                ],
+                u.Join (u.CallMethod (u.Var "colors", []), u.CallMethod (u.Var "colors", []))),
+                [
+                    [ Int 1; Int 1 ]
+                    [ Int 1; Int 2 ]
+                    [ Int 1; Int 3 ]
+                    [ Int 2; Int 1 ]
+                    [ Int 2; Int 2 ]
+                    [ Int 2; Int 3 ]
+                    [ Int 3; Int 1 ]
+                    [ Int 3; Int 2 ]
+                    [ Int 3; Int 3 ]
+                ],
+                [ 0; 1 ]
+            // let k = |0,1>
+            // let add_one(k: Ket<Int>) = k + 1
+            // add_one(k)
+            u.Block (
+                [
+                    Let ("k1", u.Ket [u.Int 0; u.Int 1])
+                    Let ("add_one", u.Method(["k", (AnyType.QType (QType.Ket [Type.Int]))], u.Add(u.Var "k", u.Int 1)))
+                ],
+                u.CallMethod (u.Var "add_one", [u.Var "k1"])),
+                [
+                    [ Int 0; Int 1; Int 1 ]
+                    [ Int 1; Int 1; Int 2 ]
+                ],
+                [ 2 ]
+            // let prepare_bell(a: int, b: int) = Prepare( |(a,a), (b,b)> )
+            // prepare_bell(2, i1)
+            u.Block (
+                [
+                    Let ("prepare_bell", u.Method(
+                        ["a", AnyType.Type (Type.Int); "b", AnyType.Type (Type.Int)], 
+                        u.Prepare (
+                            u.Ket [ u.Tuple [u.Var "a"; u.Var "a"]; u.Tuple [u.Var "b"; u.Var "b"] ])))
+                ],
+                u.CallMethod (u.Var "prepare_bell", [u.Int 2; u.Var "i1"])),
+                [
+                    [ Int 1; Int 1 ]
+                    [ Int 2; Int 2 ]
+                ],
+                [ 0; 1 ]
+        ]
+        |> List.iter (this.TestExpression ctx)
+
     [<TestMethod>]
     member this.TestMeasure () =
         let ctx = 
@@ -532,8 +602,18 @@ type TestSimulator () =
 
     member this.TestExpression (ctx: ValueContext) (e, state, columns)=
         let qpu = ctx.qpu
-
-        match run(u.Prepare e , ctx) with
+        // If it is not already a Prepare expression, wrap in Prepare...
+        let e = 
+            match typecheck(e, ctx.types) with
+            | Ok (result, _) ->
+                match result with 
+                | typed.E.Universe (_, UType.Universe _) -> e
+                | _ -> u.Prepare e
+            | Error msg ->
+                printfn "e: %A" e
+                Assert.AreEqual($"Expression failed type-checking.", $"Got Error msg: {msg}")
+                e
+        match run(e, ctx) with
         | Ok (Universe universe, ctx) ->
             let universe = universe :?> Universe
             let state' = universe.State

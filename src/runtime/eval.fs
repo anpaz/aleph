@@ -69,7 +69,7 @@ module Eval =
         abstract Measure: IUniverse -> Result<Value, string>
 
     and ValueContext = {
-        heap: Map<string, Value>
+        heap: Map<Id, Value>
         qpu: QPU
         types: TypeContext
     }
@@ -114,10 +114,11 @@ module Eval =
 
         | C.If (cond, t, e) -> eval_if (cond, t, e, ctx)
         | C.Block (stmts, value) -> eval_block (stmts, value, ctx)
-
+        
         | C.Sample q -> eval_sample (q, ctx)
 
-        | C.CallMethod _
+        | C.CallMethod (method, args) -> eval_callmethod(method, args, ctx)
+        
         | C.Summarize _ ->
             $"Not implemented: {c}" |> Error
 
@@ -138,26 +139,11 @@ module Eval =
         (Value.Method (args, body), ctx) |> Ok
         
     and eval_tuple (values, ctx) =
-        let literal_value = function
-            | C.BoolLiteral b, ctx -> (Value.Bool b, ctx) |> Ok
-            | C.IntLiteral i, ctx -> (Value.Int i, ctx) |> Ok
-            | _ -> "Invalid tuple value." |> Error
-        eval_expression_list literal_value (values, ctx)
+        eval_expression_list (values, ctx)
         ==> fun (values, ctx) -> (Tuple values, ctx) |> Ok
 
     and eval_set (values, ctx) =
-        let literal_value = function
-            | C.BoolLiteral b, ctx -> (Value.Bool b, ctx) |> Ok
-            | C.IntLiteral i,ctx -> (Value.Int i, ctx) |> Ok
-            | _ -> "Invalid tuple value." |> Error
-        let single_value = function
-            | C.BoolLiteral b, ctx -> (Value.Bool b, ctx) |> Ok
-            | C.IntLiteral i, ctx -> (Value.Int i, ctx) |> Ok
-            | C.Tuple t, ctx ->
-                eval_expression_list literal_value (t, ctx)
-                ==> fun (t, ctx) -> (Tuple t, ctx) |> Ok
-            | _ -> "Invalid set value." |> Error
-        eval_expression_list single_value (values, ctx)
+        eval_expression_list (values, ctx)
         ==> fun (values, ctx) -> (Set (Set.ofList values), ctx) |> Ok
 
     and eval_range (start, stop, ctx) =
@@ -273,11 +259,29 @@ module Eval =
             | Value.Universe u -> qpu.Measure u ==> fun (v) -> (v, ctx) |> Ok
             | _ -> $"Expecting Prepare to return Universe, got {u}" |> Error
 
-    and eval_expression_list check_item_value (values, ctx) =
+    and eval_callmethod(method, args, ctx) =
+        let add_argument ctx' (id, value) =
+            ctx' ==> fun ctx' ->
+                eval(value, ctx')
+                ==> fun (value, ctx') ->
+                    { ctx' with heap = ctx'.heap.Add (id, value) } |> Ok
+        eval_classic (method, ctx)
+        ==> fun (method, ctx) ->
+            match method with
+            | Value.Method (ids, body) ->
+                args
+                |> List.zip ids
+                |> List.fold add_argument (ctx |> Ok)
+                ==> fun ctx' ->
+                    eval (body, ctx')
+            | _ ->
+                $"Expecting method, got {method}" |> Error
+
+    and eval_expression_list (values, ctx) =
         let rec next (items, ctx: ValueContext) =
             match items with
             | head :: tail ->
-                check_item_value (head, ctx)
+                eval_classic (head, ctx)
                 ==> fun (head, ctx) ->
                     next (tail, ctx)
                     ==> fun (tail, ctx) ->
@@ -293,7 +297,7 @@ module Eval =
                 | Let (id, e) ->
                     eval (e, ctx')
                     ==> fun (value, ctx') ->
-                        { ctx' with heap = ctx'.heap.Add  (id, value) } |> Ok
+                        { ctx' with heap = ctx'.heap.Add (id, value) } |> Ok
                 | Print (msg, expressions) ->
                     printfn "%s" msg
                     let print_one ctx' e =

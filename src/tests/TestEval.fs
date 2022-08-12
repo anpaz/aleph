@@ -26,6 +26,12 @@ module ClassicValueContext =
                     Tuple [Bool false; Int 1]
                     Tuple [Bool false; Int 2]
                 ])
+                // () -> (1, 2)
+                "m0", Method ([], (E.Classic (C.Tuple [C.IntLiteral 1; C.IntLiteral 2], Type.Tuple [Type.Int; Type.Int])))
+                // (a, b) -> a + b
+                "m1", Method (["a"; "b"], (E.Classic (C.Add ((C.Var "a", C.Var "b")), Type.Int)))
+                // (x, y, z) -> y || t1[z]
+                "m2", Method (["x"; "y"; "z"], (E.Classic (C.Or ((C.Var "y", C.Index (C.Var ("t1"), C.Var "z"))), Type.Bool)))
             ]
             types = aleph.parser.TypeChecker.TypeContext [ 
                 "i1", AnyType.Type Type.Int
@@ -34,6 +40,9 @@ module ClassicValueContext =
                 "t2", AnyType.Type (Type.Tuple [Type.Bool; Type.Int])
                 "t3", AnyType.Type (Type.Tuple [Type.Int; Type.Int; Type.Int])
                 "s1", AnyType.Type (Type.Set (Type.Tuple [Type.Bool; Type.Int]))
+                "m0", AnyType.Type (Type.Method ([], (AnyType.Type (Type.Tuple [Type.Int; Type.Int]))))
+                "m1", AnyType.Type (Type.Method ([AnyType.Type Type.Int; AnyType.Type Type.Int], AnyType.Type Type.Int))
+                "m2", AnyType.Type (Type.Method ([AnyType.Type Type.Int; AnyType.Type Type.Bool; AnyType.Type Type.Int], AnyType.Type Type.Bool))
             ]
         }
 
@@ -178,7 +187,6 @@ type TestEvalClassic () =
         |> List.iter (this.TestInvalidExpression ctx)
 
 
-
     [<TestMethod>]
     member this.TestProjectExpressions () =
         let ctx = ClassicValueContext.ctx
@@ -210,5 +218,25 @@ type TestEvalClassic () =
             u.Project (u.Var "t2", u.Project (u.Var "t2", u.Int 0)),  "Invalid projection index. Expected int expression, got: Classic (Project (Var \"t2\", 0), Bool)"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
+
+    [<TestMethod>]
+    member this.TestCallMethodExpressions () =
+        let ctx = ClassicValueContext.ctx
+
+        [
+            // m0 ()
+            u.CallMethod (u.Var "m0", []),
+                Value.Tuple [Value.Int 1; Value.Int 2]
+            // m1 (10, 20)
+            u.CallMethod (u.Var "m1", [u.Int 10; u.Int 20]),
+                Value.Int 30
+            // m2 (10, true, 0)
+            u.CallMethod (u.Var "m2", [u.Int 10; u.Bool true; u.Int 0]),
+                Value.Bool true
+            // m2 (10, false, 0)
+            u.CallMethod (u.Var "m2", [u.Int 10; u.Bool false; u.Int 0]),
+                Value.Bool false
+        ]
+        |> List.iter (this.TestExpression ctx)
 
 
