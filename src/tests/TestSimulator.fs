@@ -6,7 +6,7 @@ open Microsoft.VisualStudio.TestTools.UnitTesting
 open aleph.parser.ast
 open aleph.parser.TypeChecker
 open aleph.runtime.Eval
-open aleph.runtime.simulator
+open aleph.runtime.qpu
 
 [<TestClass>]
 (*

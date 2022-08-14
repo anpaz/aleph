@@ -1,7 +1,7 @@
 
 module Utils
     open aleph.runtime.Eval
-    open aleph.runtime.simulator
+    open aleph.runtime.qpu
 
     let run qpu program =
         let context = { 

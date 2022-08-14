@@ -1,4 +1,4 @@
-namespace aleph.runtime.simulator
+namespace aleph.runtime.qpu
 
 open aleph.parser.ast.typed
 open aleph.runtime.Eval

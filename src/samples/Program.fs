@@ -1,6 +1,6 @@
 //open aleph.runtime.Classic
 
-open aleph.runtime.simulator
+open aleph.runtime.qpu
 
 [<EntryPoint>]
 let main argv =
