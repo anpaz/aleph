@@ -67,22 +67,22 @@ type Simulator() =
         otherwise, it prepares the state of the Ket's state prep expression
         and allocates in memory the columns returned by the state prep to this ket.
      *)
-    let rec prepare (ket : Ket, ctx: ValueContext) =
+    let rec prepare_ket (ket : Ket, ctx: ValueContext) =
         match memory.allocations.TryFind ket.Id with
         | Some columns -> 
             (columns, ctx) |> Ok        // Already prepared...
         | None ->
-            prepare_state (ket.StatePrep, ctx)
+            prepare (ket.StatePrep, ctx)
             ==> fun (columns, ctx) ->
                 // Assign to the ket the columns returned by the preparation:
                 memory <- { memory with allocations = memory.allocations.Add (ket.Id, columns) }
                 (columns, ctx) |> Ok
 
     (*
-        Prepares the state with the given expression, and returns the index of the
+        Prepares the Universe for the given expression, and returns the index of the
         columns corresponding to the return value of the expression.
      *)
-    and prepare_state (q, ctx) =
+    and prepare (q, ctx) =
         match q with
         | Q.Var id -> prepare_var (id, ctx)
         | Literal c -> prepare_literal (c, ctx)
@@ -120,7 +120,7 @@ type Simulator() =
     and prepare_var (id, ctx) =
         match ctx.heap.TryFind id with
         | Some (Value.Ket ket) ->
-            prepare (ket :?> Ket, ctx)
+            prepare_ket (ket :?> Ket, ctx)
             ==> fun (columns, ctx) ->
                 (columns, ctx) |> Ok
         | _ ->
@@ -166,9 +166,9 @@ type Simulator() =
         It returns the new column.
      *)
     and prepare_add (left, right, ctx) =
-        prepare_state (left, ctx)
+        prepare (left, ctx)
         ==> fun (left, ctx) ->
-            prepare_state (right, ctx)
+            prepare (right, ctx)
             ==> fun (right, ctx) ->
                 match (left, right) with
                 | ([l], [r]) ->
@@ -186,9 +186,9 @@ type Simulator() =
         It returns the new column.
      *)
     and prepare_multiply (left, right, ctx) =
-        prepare_state (left, ctx)
+        prepare (left, ctx)
         ==> fun (left, ctx) ->
-            prepare_state (right, ctx)
+            prepare (right, ctx)
             ==> fun (right, ctx) ->
                 match (left, right) with
                 | ([l], [r]) ->
@@ -204,7 +204,7 @@ type Simulator() =
         Returns the the column from the input expression corresponding to the given index.
      *)
     and prepare_project (q, index, ctx) =
-        prepare_state (q, ctx)
+        prepare (q, ctx)
         ==> fun (columns, ctx) ->
             let projection = [ columns.[index] ]
             (projection, ctx) |> Ok
@@ -213,7 +213,7 @@ type Simulator() =
         Evaluates the index expression and returns the corresponding column.
      *)
     and prepare_index (q, index, ctx) =
-        prepare_state (q, ctx)
+        prepare (q, ctx)
         ==> fun (columns, ctx) ->
             eval_classic (index, ctx)
             ==> fun (index, ctx) ->
@@ -227,9 +227,9 @@ type Simulator() =
         Returns the concatenation of the results from the input expressions.
      *)
     and prepare_join (left, right, ctx) =
-        prepare_state (left, ctx)
+        prepare (left, ctx)
         ==> fun (left, ctx) ->
-            prepare_state (right, ctx)
+            prepare (right, ctx)
             ==> fun (right, ctx) ->
                 (left @ right, ctx) |> Ok
 
@@ -239,7 +239,7 @@ type Simulator() =
         It returns the new column.
      *)
     and prepare_not (q, ctx) =
-        prepare_state (q, ctx)
+        prepare (q, ctx)
         ==> fun (columns, ctx) ->
             match columns with
             | [v] ->
@@ -257,9 +257,9 @@ type Simulator() =
         It returns the new column.
      *)
     and prepare_and (left, right, ctx) =
-        prepare_state (left, ctx)
+        prepare (left, ctx)
         ==> fun (left, ctx) ->
-            prepare_state (right, ctx)
+            prepare (right, ctx)
             ==> fun (right, ctx) ->
                 match (left, right) with
                 | ([l], [r]) ->
@@ -277,9 +277,9 @@ type Simulator() =
         It returns the new column.
      *)
     and prepare_or (left, right, ctx) =
-        prepare_state (left, ctx)
+        prepare (left, ctx)
         ==> fun (left, ctx) ->
-            prepare_state (right, ctx)
+            prepare (right, ctx)
             ==> fun (right, ctx) ->
                 match (left, right) with
                 | ([l], [r]) ->
@@ -297,9 +297,9 @@ type Simulator() =
         It returns the new column.
      *)
     and prepare_equals (left, right, ctx) =
-        prepare_state (left, ctx)
+        prepare (left, ctx)
         ==> fun (left, ctx) ->
-            prepare_state (right, ctx)
+            prepare (right, ctx)
             ==> fun (right, ctx) ->
                 match (left, right) with
                 | ([l], [r]) ->
@@ -316,9 +316,9 @@ type Simulator() =
         It returns the columns of the specified ket.
      *)
     and prepare_solve (ket, condition, ctx) =
-        prepare_state (condition, ctx)
+        prepare (condition, ctx)
         ==> fun (cond, ctx) ->
-            prepare_state (ket, ctx)
+            prepare (ket, ctx)
             ==> fun (ket, ctx) ->
                 let new_state = List.filter (fun (r : Value list) -> r.[cond.Head] = (Bool true)) memory.state
                 memory <- { memory with state = new_state }
@@ -329,11 +329,11 @@ type Simulator() =
         populated with the then_q value if the condition is true, and the else_q value if the condition is false.
     *)
     and prepare_if_q (condition, then_q, else_q, ctx) =
-        prepare_state (condition, ctx)
+        prepare (condition, ctx)
         ==> fun (cond, ctx) ->
-            prepare_state (then_q, ctx)
+            prepare (then_q, ctx)
             ==> fun (then_q, ctx) ->
-                prepare_state (else_q, ctx)
+                prepare (else_q, ctx)
                 ==> fun (else_q, ctx) ->
                     match cond, then_q, else_q with
                     | [c], [t], [e] ->
@@ -354,11 +354,11 @@ type Simulator() =
         ==> fun (cond, ctx) ->
             match cond with
             | (Bool true) ->
-                prepare_state (then_q, ctx)
+                prepare (then_q, ctx)
                 ==> fun (then_q, ctx) ->
                     (then_q, ctx) |> Ok
             | (Bool false) ->
-                prepare_state (else_q, ctx)
+                prepare (else_q, ctx)
                 ==> fun (else_q, ctx) ->
                     (else_q, ctx) |> Ok
             | _ -> 
@@ -370,7 +370,7 @@ type Simulator() =
     and prepare_block (stmts, value, ctx) =
         eval_stmts (stmts, ctx)
         ==> fun ctx ->
-            prepare_state (value, ctx)
+            prepare (value, ctx)
 
     (*
         Calls the corresponding method, and automatically prepares the resulting Ket
@@ -380,7 +380,7 @@ type Simulator() =
         ==> fun (value, ctx) ->
             match value with
             | Value.Ket k -> 
-                prepare (k :?> Ket, ctx)
+                prepare_ket (k :?> Ket, ctx)
             | _ ->
                 $"Expecting a Ket result, got {value}" |> Error
 
@@ -461,7 +461,7 @@ type Simulator() =
                 ==> fun (ket, ctx) ->
                     match ket with
                     | Value.Ket ket -> 
-                        prepare (ket :?> Ket, ctx)
+                        prepare_ket (ket :?> Ket, ctx)
                         ==> fun (columns, ctx) ->
                             (Value.Universe (Universe(memory.state, columns)), ctx) |> Ok
                     | _ -> "" |> Error
