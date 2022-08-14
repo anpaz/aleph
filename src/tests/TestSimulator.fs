@@ -66,6 +66,26 @@ type TestSimulator () =
                     [ Int 1; Int 2 ]
                 ],
                 [ 0; 1 ]
+            u.KetAll (u.Int 3),
+                [
+                    [Int 0]
+                    [Int 1]
+                    [Int 2]
+                    [Int 3]
+                    [Int 4]
+                    [Int 5]
+                    [Int 6]
+                    [Int 7]
+                ],
+                [ 0 ]
+            u.Join( u.Ket [ u.Tuple [u.Int 0; u.Int -6]], u.KetAll (u.Int 2)),
+            [
+                    [Int 0; Int -6; Int 0]
+                    [Int 0; Int -6; Int 1]
+                    [Int 0; Int -6; Int 2]
+                    [Int 0; Int -6; Int 3]
+            ],
+            [ 0; 1; 2]
         ]
         |> List.iter (this.TestExpression ctx)
 

@@ -86,6 +86,7 @@ type Simulator() =
         match q with
         | Q.Var id -> prepare_var (id, ctx)
         | Literal c -> prepare_literal (c, ctx)
+        | KetAll size -> prepare_ketall (size, ctx)
 
         | Equals (left, right) -> prepare_equals (left, right, ctx)
 
@@ -107,7 +108,6 @@ type Simulator() =
 
         | Q.CallMethod (method, args) ->  prepare_callmethod(method, args, ctx)
 
-        | KetAll _
         | Summarize _ ->
             $"`Not implemented: {q}" |> Error
 
@@ -138,7 +138,7 @@ type Simulator() =
             match values with
             | Value.Set values ->
                 let old_size = if memory.state.IsEmpty then 0 else memory.state.Head.Length
-                let new_state = tensor_product memory.state values
+                let new_state = tensor_product memory.state (values |> Set.toList)
                 let new_size = if new_state.IsEmpty then 0 else new_state.Head.Length
                 let new_columns = [ old_size .. new_size - 1 ]
                 memory <- { memory with state = new_state }
@@ -146,6 +146,20 @@ type Simulator() =
             | _ -> 
                 $"Invalid classic value for a ket literal: {values}" |> Error
 
+    and prepare_ketall (size, ctx) =
+        eval_classic (size, ctx)
+        ==> fun (size, ctx) ->
+            match size with
+            | Value.Int i ->
+                let values = seq { 0 .. (int(2.0 ** i)) - 1} |> Seq.map (Value.Int) |> Seq.toList
+                let old_size = if memory.state.IsEmpty then 0 else memory.state.Head.Length
+                let new_state = tensor_product memory.state values
+                let new_size = if new_state.IsEmpty then 0 else new_state.Head.Length
+                let new_columns = [ old_size .. new_size - 1 ]
+                memory <- { memory with state = new_state }
+                (new_columns, ctx) |> Ok
+            | _ -> 
+                $"Invalid ket_all size, expected int got: {size}" |> Error
     (*
         Adds a new column to the state, whose value is 
         the addition of the values in the columns from the corresponding input expressions.
