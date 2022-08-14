@@ -6,8 +6,11 @@
     <WarnOn>3390;$(WarnOn)</WarnOn>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Utils.fs" />
+    <Compile Include="CoinFlip.fs" />
+    <Compile Include="DiceRoll.fs" />
+    <Compile Include="SolveEquation.fs" />
     <Compile Include="GraphColoring.fs" />
+    <Compile Include="Utils.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

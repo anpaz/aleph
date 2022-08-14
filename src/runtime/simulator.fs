@@ -118,7 +118,6 @@ type Simulator() =
         this method returns the columns associated with the ket accordingly.
      *)
     and prepare_var (id, ctx) =
-        printf "Find %A in %A\n" id ctx.heap
         match ctx.heap.TryFind id with
         | Some (Value.Ket ket) ->
             prepare (ket :?> Ket, ctx)

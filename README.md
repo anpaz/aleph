@@ -84,10 +84,10 @@ that creates a 3 columns, 2 rows universe:
 Aleph supports a special type of `int` registers: `@` (all):
 
 ```fsharp
-| @ >
+| @, size >
 ```
 
-An `@` int register is one that contains all possible integer values (up to the max size of the register):
+An `@` int register is one that contains all possible integer values from 0 to 2^size - 1 :
 
 | |
 | --- |
@@ -95,7 +95,7 @@ An `@` int register is one that contains all possible integer values (up to the 
 | 1 |
 | 2 |
 | ... |
-| 2^N - 1 |
+| 2^size - 1 |
 
 
 ## Quantum Expressions
@@ -450,8 +450,8 @@ Roll is the join of two quantum literals. Literals are added to a quantum univer
 ### Solving systems of equations
 
 ```fsharp
-let x = | @ >
-let y = | @ >
+let x = | @, 4 >
+let y = | @, 4 >
 let eq1 = 4 * x + 5 * y
 let eq2 = -6 * x + 20 * y
 let solution = Solve ((x, y), eq1 == eq2)
@@ -504,8 +504,8 @@ let nodes_colors = (colors(), colors(), colors(), colors())
 // To find a valid coloring, solve the valid_combination oracle and
 // measure the result
 let classification = classify_coloring (edges, nodes_colors)
-let answers = Solve(edges, classification==true)
-| answers |
+let answers = Solve(nodes_colors, classification)
+| Prepare (answers) |
 ```
 
 ### Numerical Integration
