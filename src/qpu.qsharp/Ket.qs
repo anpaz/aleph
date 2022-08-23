@@ -63,8 +63,8 @@ namespace aleph.qsharp.ket {
             grover.Apply(Wrapper(columns, oracle, _, _), qubits, rows);
         } until ((M(qubits[columns]) == One) or (rows == 0));
 
-        if (log.DEBUG_ON()) {
-            Message($"Final state after Prepare: ");
+        if (log.INFO_ON()) {
+            Message($"[Q#] Final state after Prepare: ");
             DumpMachine();
             Message("");
         }

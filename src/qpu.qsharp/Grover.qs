@@ -18,7 +18,7 @@ namespace aleph.qsharp.grover {
         for i in 1..iterations {
             GroverIteration(_toPhaseOracle(oracle, _), register);
             if (log.DEBUG_ON()) {
-                Message($"-- Grover iteration {i} --");
+                Message($"[Q#] -- Grover iteration {i} --");
                 DumpRegister((), register);
                 Message("");
             }

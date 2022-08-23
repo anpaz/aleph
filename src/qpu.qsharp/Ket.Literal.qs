@@ -33,7 +33,7 @@ namespace aleph.qsharp.ket {
         let oracle = _Literal_oracle(classic, output, oldColumns, start-1, _, _);
         let universe = UniverseInfo(rows, columns, output);
 
-        log.Debug($"Ket Init --> classic: {classic}, output: {output}");
+        log.Info($"Literal Init --> classic: {classic}, output: {output}");
 
         return Ket(oracle,universe);
     }
