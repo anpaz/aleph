@@ -8,6 +8,7 @@
     <Compile Include="TestTypecheck.fs" />
     <Compile Include="TestEval.fs" />
     <Compile Include="TestSimulator.fs" />
+    <Compile Include="TestQsharpCode.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

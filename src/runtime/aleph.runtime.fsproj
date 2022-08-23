@@ -5,9 +5,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="eval.fs" />
+    <Compile Include="qsharp.fs" />
     <Compile Include="simulator.fs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../qpu.qsharp/aleph.qpu.qsharp.csproj" />
     <ProjectReference Include="../parser/aleph.parser.fsproj" />
   </ItemGroup>
 </Project>
