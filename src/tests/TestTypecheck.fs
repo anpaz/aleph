@@ -6,8 +6,6 @@ open aleph.parser.ast
 open aleph.parser.ast.typed
 open aleph.parser.TypeChecker
 
-// alias for untyped expressions
-type u = Expression
 
 [<TestClass>]
 type TestCore () =

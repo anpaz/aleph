@@ -5,6 +5,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Utils.fs" />
     <Compile Include="TestTypecheck.fs" />
     <Compile Include="TestEval.fs" />
     <Compile Include="TestSimulator.fs" />

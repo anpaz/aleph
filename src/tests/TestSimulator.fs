@@ -8,6 +8,8 @@ open aleph.parser.TypeChecker
 open aleph.runtime.Eval
 open aleph.runtime.qpu
 
+open aleph.tests.Utils
+
 [<TestClass>]
 (*
     These test take an untyped quantum (ket) expression, and
@@ -529,15 +531,15 @@ type TestSimulator () =
                 [
                     // Looks like because they are set, they are ordered differently from inputs:
                     // this might be problematic for tests...
-                    [ Int 0; Bool false; ]
-                    [ Int 0; Bool true; ]
-                    [ Int 1; Bool true; ]
+                    Tuple [ Int 0; Bool false; ]
+                    Tuple [ Int 0; Bool true; ]
+                    Tuple [ Int 1; Bool true; ]
                 ]
             // k.1
             u.Project (u.Var "k", u.Int 1),
                 [
-                    [ Bool false ]
-                    [ Bool true ]
+                    Bool false
+                    Bool true
                 ]
 
             // (false, k.1)
@@ -545,8 +547,8 @@ type TestSimulator () =
                     u.Ket [u.Bool false],
                     u.Project (u.Var "k", u.Int 1)),
                 [
-                    [ Bool false; Bool false ]
-                    [ Bool false; Bool true ]
+                    Tuple [ Bool false; Bool false ]
+                    Tuple [ Bool false; Bool true ]
                 ]
 
             // not (k.0 == 0 and k.1)
@@ -557,67 +559,11 @@ type TestSimulator () =
                         u.Int 0), 
                     u.Project (u.Var "k", u.Int 1)) ),
                 [
-                    [ Bool false; ]
-                    [ Bool true; ]
+                    Bool false;
+                    Bool true;
                 ]
         ]
-        |> List.iter (this.TestMeasurements ctx)
-
-    member this.TestMeasurements (ctx: ValueContext) (e, answers)=
-        let qpu = ctx.qpu
-        let prepare() = 
-            match run(u.Prepare e, ctx) with
-            | Ok (Universe universe, ctx) ->
-                universe
-            | Ok (v, _) ->
-                printfn "e: %A" e
-                Assert.AreEqual($"Expecting Universe value.", $"Got {v}")
-                Universe([], []) // not reachable
-            | Error msg ->
-                printfn "e: %A" e
-                Assert.AreEqual($"Expecting valid expression.", $"Got Error msg: {msg}")
-                Universe([], []) // not reachable
-        let measure(u) =
-            match qpu.Measure u with 
-            | Ok (Tuple v) -> v
-            | Ok t ->
-                Assert.AreEqual($"Expecting tuple as measurement value.", $"Got: {t}")
-                [] // not reachable.
-            | Error msg ->
-                printfn "u: %A" u
-                Assert.AreEqual($"Expecting valid measurement.", $"Got Error msg: {msg}")
-                [] // not reachable.
-        let isValidAnswer (v) =
-            if answers.IsEmpty then 
-                true
-            else
-                printfn "Looking for %A in %A" v answers
-                let equalAnswer i =
-                    StructuralComparisons.StructuralEqualityComparer.Equals(v, i)
-                answers |> List.find equalAnswer |> ignore
-                true
-        let checkRepeatMeasurement(u, v) =
-            for i in 1 .. 5 do
-                let v' = measure(u)
-                Assert.AreEqual (v, v')
-
-        let u1 = prepare()
-        let v1 = measure(u1)
-        checkRepeatMeasurement(u1, v1)
-        Assert.IsTrue(isValidAnswer v1)
-
-        let mutable i = 0
-        let mutable u2 = prepare()
-        let mutable v2 = measure(u2)
-        checkRepeatMeasurement(u2, v2)
-        Assert.IsTrue(isValidAnswer v1)
-        while (answers.Length > 0 && v2 = v1) do
-            u2 <- prepare()
-            v2 <- measure(u2)
-            checkRepeatMeasurement(u2, v2)
-            Assert.IsTrue(isValidAnswer v1)
-            Assert.IsTrue(i < 100)
-            i <- i + 1
+        |> List.iter (verify_expression ctx)
 
 
     member this.TestExpression (ctx: ValueContext) (e, state, columns)=

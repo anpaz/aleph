@@ -8,6 +8,7 @@ open Microsoft.Quantum.Simulation.Core
 
 open aleph.runtime.Eval
 open aleph.qsharp.ket
+open aleph.tests.Utils
 
 [<TestClass>]
 type TestQsharpCode () =
@@ -53,16 +54,6 @@ type TestQsharpCode () =
         else
             Tuple (result |> Seq.map one |> Seq.toList)
 
-    let isValidResult (values: Value list) result =
-        if values.IsEmpty then 
-            true
-        else
-            printfn "Looking for %A in %A" result values
-            let equalAnswer i =
-                StructuralComparisons.StructuralEqualityComparer.Equals(result, i)
-            values |> List.find equalAnswer |> ignore
-            true
-
     [<TestMethod>]
     member this.TestLiteral () =
         let sim = new QuantumSimulator()
@@ -77,7 +68,7 @@ type TestQsharpCode () =
 
             let r = Sample.Run(sim, ket).Result |> toValue
             printfn "result = %A" r
-            Assert.IsTrue(isValidResult values r)
+            Assert.IsTrue(is_valid_answer values r)
 
         [ 
             [
@@ -105,4 +96,3 @@ type TestQsharpCode () =
             ], INT_REGISTER_SIZE + BOOL_REGISTER_SIZE + INT_REGISTER_SIZE
         ]
         |> List.iter test_one
-
