@@ -9,7 +9,7 @@
     <Compile Include="qpu.qsharp.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../qpu.qsharp/aleph.qpu.qsharp.csproj" />
+    <ProjectReference Include="../qsharp/aleph.qsharp.csproj" />
     <ProjectReference Include="../parser/aleph.parser.fsproj" />
   </ItemGroup>
 </Project>

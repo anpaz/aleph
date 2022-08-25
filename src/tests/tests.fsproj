@@ -20,6 +20,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../parser/aleph.parser.fsproj" />
-    <ProjectReference Include="..\runtime\aleph.runtime.fsproj" />
+    <ProjectReference Include="../runtime/aleph.runtime.fsproj" />
   </ItemGroup>
 </Project>
