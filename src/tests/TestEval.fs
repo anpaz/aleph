@@ -11,7 +11,6 @@ module ClassicValueContext =
     let ctx =
         {
             qpu = { new QPU with
-                member this.Assign(arg1: Q, ctx): Result<(Value * ValueContext),string> = failwith "Not Implemented"
                 member this.Measure(arg1: IUniverse): Result<Value,string> = failwith "Not Implemented"
                 member this.Prepare(arg1: U, arg2: ValueContext): Result<(Value * ValueContext),string> =  failwith "Not Implemented"
             }

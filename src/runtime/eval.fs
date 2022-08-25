@@ -9,10 +9,9 @@ module Eval =
     let (==>) (input: Result<'a,'b>) ok  =
         Result.bind ok input
 
-    type IKet = 
-        interface
-        inherit System.IComparable
-        end
+    type Ket =
+        { Id : int
+          StatePrep: Q }
 
     type IUniverse = 
         interface
@@ -25,7 +24,7 @@ module Eval =
         | Tuple of Value list
         | Set of Set<Value>
         | Method of Id list * E
-        | Ket of IKet
+        | Ket of Ket
         | Universe of IUniverse
 
         static member (+) (l : Value, r: Value) =
@@ -64,7 +63,6 @@ module Eval =
             | _ -> failwith "= only supported for bool values, got {l} || {r}"
             
     type QPU =
-        abstract Assign: Q * ValueContext -> Result<Value * ValueContext, string>
         abstract Prepare: U * ValueContext -> Result<Value * ValueContext, string>
         abstract Measure: IUniverse -> Result<Value, string>
 
@@ -74,6 +72,8 @@ module Eval =
         types: TypeContext
     }
 
+    let mutable max_ket = 0
+
     let rec run (program: Expression, ctx) =
         typecheck (program, ctx.types)
         ==> fun (e, types') ->
@@ -82,12 +82,16 @@ module Eval =
 
     and eval (e, ctx) =
         match e with
+        | E.Quantum (q, QType.Ket _) ->
+            eval_quantum(q, ctx)
         | E.Classic (c, _) ->
             eval_classic (c, ctx)
-        | E.Quantum (q, QType.Ket _) ->
-            ctx.qpu.Assign (q, ctx)
         | E.Universe (u, _) ->
             ctx.qpu.Prepare (u, ctx)
+
+    and eval_quantum( q, ctx) =
+        max_ket <- max_ket + 1
+        (Value.Ket {Id= max_ket; StatePrep = q}, ctx) |> Ok
 
     and eval_classic (c, ctx) =
         match c with

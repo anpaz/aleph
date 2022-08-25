@@ -1,13 +1,14 @@
 namespace aleph.tests
 
 open Microsoft.VisualStudio.TestTools.UnitTesting
-open System.Collections
 
 open Microsoft.Quantum.Simulation.Simulators
 open Microsoft.Quantum.Simulation.Core
 
 open aleph.runtime.Eval
 open aleph.qsharp.ket
+open aleph.runtime.qpu.qsharp
+
 open aleph.tests.Utils
 
 [<TestClass>]

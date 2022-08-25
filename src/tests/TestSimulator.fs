@@ -1,12 +1,11 @@
 namespace aleph.tests
 
-open System.Collections
 open Microsoft.VisualStudio.TestTools.UnitTesting
 
 open aleph.parser.ast
 open aleph.parser.TypeChecker
 open aleph.runtime.Eval
-open aleph.runtime.qpu
+open aleph.runtime.qpu.classic
 
 open aleph.tests.Utils
 

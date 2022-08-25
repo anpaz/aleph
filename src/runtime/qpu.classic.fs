@@ -1,4 +1,4 @@
-namespace aleph.runtime.qpu
+namespace aleph.runtime.qpu.classic
 
 open aleph.parser.ast.typed
 open aleph.runtime.Eval
@@ -41,13 +41,6 @@ type Memory = {
     state: Value list list
 }
 
-type Ket(id: int, statePrep: Q) =
-    interface IKet with
-        member this.CompareTo(obj: obj): int = 
-            failwith "Not Implemented"
-    member this.Id = id
-    member this.StatePrep = statePrep
-
 type Universe(state: Value list list, columns: int list) =
     interface IUniverse with
         member this.CompareTo(obj: obj): int = 
@@ -57,7 +50,6 @@ type Universe(state: Value list list, columns: int list) =
 
 type Simulator() =
     let random = System.Random()
-    let mutable max_ket = 0
 
     let mutable memory = { allocations = Map.empty; state = [] }
 
@@ -120,7 +112,7 @@ type Simulator() =
     and prepare_var (id, ctx) =
         match ctx.heap.TryFind id with
         | Some (Value.Ket ket) ->
-            prepare_ket (ket :?> Ket, ctx)
+            prepare_ket (ket, ctx)
             ==> fun (columns, ctx) ->
                 (columns, ctx) |> Ok
         | _ ->
@@ -380,7 +372,7 @@ type Simulator() =
         ==> fun (value, ctx) ->
             match value with
             | Value.Ket k -> 
-                prepare_ket (k :?> Ket, ctx)
+                prepare_ket (k, ctx)
             | _ ->
                 $"Expecting a Ket result, got {value}" |> Error
 
@@ -404,14 +396,6 @@ type Simulator() =
         expressions.
      *)
     interface QPU with
-        (*
-            Associate each expression with a Ket that has a unique id
-         *)
-        member this.Assign (q, ctx) =
-            assert (ctx.qpu = this)
-            max_ket <- max_ket + 1
-            (Value.Ket (new Ket(max_ket, q)), ctx) |> Ok
-
         (*
             Measure works by randomly picking a row from the universe with the same probability
             from the universe, and then projecting (selecting) only the columns
@@ -460,11 +444,11 @@ type Simulator() =
             memory <- { allocations = Map.empty; state = [] }
             match u with
             | U.Prepare q ->
-                (this :> QPU).Assign (q, ctx)
+                eval_quantum (q, ctx)
                 ==> fun (ket, ctx) ->
                     match ket with
                     | Value.Ket ket -> 
-                        prepare_ket (ket :?> Ket, ctx)
+                        prepare_ket (ket, ctx)
                         ==> fun (columns, ctx) ->
                             (Value.Universe (Universe(memory.state, columns)), ctx) |> Ok
                     | _ -> "" |> Error

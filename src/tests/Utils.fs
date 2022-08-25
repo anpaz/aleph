@@ -5,7 +5,6 @@ open Microsoft.VisualStudio.TestTools.UnitTesting
 
 open aleph.parser.ast
 open aleph.runtime.Eval
-open aleph.runtime.qpu
 
 // alias for untyped expressions
 type u = Expression
@@ -19,11 +18,13 @@ module Utils =
         | Ok (v, _) ->
             printfn "e: %A" e
             Assert.AreEqual($"Expecting Universe value.", $"Got {v}")
-            Universe([], []) // not reachable
+            { new IUniverse with
+                  member this.CompareTo(obj) = failwith "Not Implemented" } // not reachable
         | Error msg ->
             printfn "e: %A" e
             Assert.AreEqual($"Expecting valid expression.", $"Got Error msg: {msg}")
-            Universe([], []) // not reachable
+            { new IUniverse with
+                  member this.CompareTo(obj) = failwith "Not Implemented" } // not reachable
 
 
     let measure(u, ctx) =
