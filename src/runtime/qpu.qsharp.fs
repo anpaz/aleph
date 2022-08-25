@@ -1,16 +1,16 @@
 namespace aleph.runtime.qpu.qsharp
 
+open aleph.qsharp
+
 open aleph.parser.ast.typed
 open aleph.runtime.Eval
-open aleph.qsharp.ket
 
-type QsharpKet = Ket
+type QUniverse = aleph.qsharp.Universe
+type QValue = aleph.qsharp.Value
 
 type Memory = {
-    allocations: Map<int, QsharpKet>
+    allocations: Map<int, QUniverse>
 }
-
-    
 
 type Simulator() =
     let random = System.Random()

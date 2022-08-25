@@ -5,11 +5,12 @@ open Microsoft.VisualStudio.TestTools.UnitTesting
 open Microsoft.Quantum.Simulation.Simulators
 open Microsoft.Quantum.Simulation.Core
 
+open aleph.qsharp
 open aleph.runtime.Eval
-open aleph.qsharp.ket
 open aleph.runtime.qpu.qsharp
 
 open aleph.tests.Utils
+
 
 [<TestClass>]
 type TestQsharpCode () =
@@ -17,7 +18,7 @@ type TestQsharpCode () =
     let BOOL_REGISTER_SIZE = 1
     let INT_REGISTER_SIZE = 2
 
-    let emptyUniverse = new UniverseInfo((0,0, new QArray<QRange>()))
+    let emptyUniverse = new Universe((0,0, new QArray<QRange>(), null))
 
     let toQValue = function
         | Bool b -> new QValue((if b then (1,BOOL_REGISTER_SIZE) else (0,BOOL_REGISTER_SIZE)))
@@ -61,13 +62,12 @@ type TestQsharpCode () =
 
         let test_one (values: Value list, qubits: int) = 
             let v = Set (new Set<Value>(values)) |> toQSet
-            let ket = Literal.Run(sim, v, emptyUniverse).Result
-            let u = ket.universe
-            printfn "ket = %A" ket
+            let u = ket.Literal.Run(sim, v, emptyUniverse).Result
+            printfn "Universe = %A" u
             Assert.AreEqual(int64(values.Length), u.rows)
             Assert.AreEqual(int64(qubits), u.columns)
 
-            let r = Sample.Run(sim, ket).Result |> toValue
+            let r = Sample.Run(sim, u).Result |> toValue
             printfn "result = %A" r
             Assert.IsTrue(is_valid_answer values r)
 

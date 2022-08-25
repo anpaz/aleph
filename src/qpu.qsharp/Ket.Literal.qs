@@ -1,5 +1,5 @@
 namespace aleph.qsharp.ket {
-
+    open aleph.qsharp;
     open aleph.qsharp.log as log;
 
     open Microsoft.Quantum.Convert;
@@ -7,14 +7,10 @@ namespace aleph.qsharp.ket {
     open Microsoft.Quantum.Canon;
     open Microsoft.Quantum.Arrays;
 
-    newtype QValue = (
-        value: Int,
-        size: Int
-    );
 
-    function Literal(classic: QValue[][], oldUniverse: UniverseInfo) : Ket
+    function Literal(classic: Value[][], oldUniverse: Universe) : Universe
     {
-        let (oldRows, oldColumns, _) = oldUniverse!;
+        let (oldRows, oldColumns, _, _) = oldUniverse!;
         let tupleSize = Length(classic[0]);
 
         mutable start = oldColumns;
@@ -31,15 +27,14 @@ namespace aleph.qsharp.ket {
         let columns = start;
 
         let oracle = _Literal_oracle(classic, output, oldColumns, start-1, _, _);
-        let universe = UniverseInfo(rows, columns, output);
+        let universe = Universe(rows, columns, output, oracle);
 
         log.Info($"Literal Init --> classic: {classic}, output: {output}");
-
-        return Ket(oracle,universe);
+        return universe;
     }
 
     operation _Literal_oracle(
-        classic: QValue[][],
+        classic: Value[][],
         registers: Range[],
         first: Int,
         last: Int,

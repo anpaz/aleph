@@ -1,4 +1,4 @@
-namespace aleph.qsharp.ket {
+namespace aleph.qsharp {
 
     open Microsoft.Quantum.Measurement;
     open Microsoft.Quantum.Math;
@@ -12,30 +12,30 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.grover as grover;
     open aleph.qsharp.log as log;
 
-    newtype Ket = (
-        oracle: (Qubit[], Qubit) => Unit is Adj + Ctl,
-        universe: UniverseInfo
-    );
-
-    newtype UniverseInfo = (
+    newtype Universe = (
         rows: Int,
         columns: Int,
-        output: Range[]
+        output: Range[],
+        oracle: (Qubit[], Qubit) => Unit is Adj + Ctl
     );
 
-    operation Sample(ket: Ket) : QValue[] {
-        let (oracle, universe) = ket!;
-        let (_, columns, output) = universe!;
+    newtype Value = (
+        value: Int,
+        size: Int
+    );
+    
+    operation Sample(universe: Universe) : Value[] {
+        let (_, columns, output, oracle) = universe!;
 
         use qubits = Qubit[columns + 1]; // One extra for tracker
 
-        Prepare(ket, qubits);
+        Prepare(universe, qubits);
 
         mutable result = [];
         for r in output {
             let value = ResultArrayAsInt(ForEach(M, qubits[r]));
             let size = Length(RangeAsIntArray(r));
-            set result += [ QValue(value, size) ];
+            set result += [ Value(value, size) ];
         }
 
         ResetAll(qubits);
@@ -53,9 +53,8 @@ namespace aleph.qsharp.ket {
         }
     }
 
-    operation Prepare(ket: Ket, qubits: Qubit[]) : Unit {
-        let (oracle, universe) = ket!;
-        let (rows, columns, _output) = universe!;
+    operation Prepare(universe: Universe, qubits: Qubit[]) : Unit {
+        let (rows, columns, _, oracle) = universe!;
 
         repeat {
             ResetAll(qubits);
