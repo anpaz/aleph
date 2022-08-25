@@ -442,9 +442,12 @@ type Simulator() =
                     u.State <- [ row ]
                     row
             let project_columns (row: Value list) =
-                u.Columns 
-                |> List.fold (fun result i -> result @ [ row.[i] ]) []
-                |> Tuple
+                if u.Columns.Length = 1 then
+                    row.[u.Columns.[0]]
+                else
+                    u.Columns 
+                    |> List.fold (fun result i -> result @ [ row.[i] ]) []
+                    |> Tuple
             pick_world()
             |> project_columns
             |> Ok
