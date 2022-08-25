@@ -12,7 +12,7 @@ module ClassicValueContext =
         {
             qpu = { new QPU with
                 member this.Measure(arg1: IUniverse): Result<Value,string> = failwith "Not Implemented"
-                member this.Prepare(arg1: U, arg2: ValueContext): Result<(Value * ValueContext),string> =  failwith "Not Implemented"
+                member this.Prepare(arg1: U, arg2: EvalContext): Result<(Value * EvalContext),string> =  failwith "Not Implemented"
             }
             heap =  Map [
                 "i1", Int 1
@@ -32,7 +32,7 @@ module ClassicValueContext =
                 // (x, y, z) -> y || t1[z]
                 "m2", Method (["x"; "y"; "z"], (E.Classic (C.Or ((C.Var "y", C.Index (C.Var ("t1"), C.Var "z"))), Type.Bool)))
             ]
-            types = aleph.parser.TypeChecker.TypeContext [ 
+            typeCtx = aleph.parser.TypeChecker.TypeContext [ 
                 "i1", AnyType.Type Type.Int
                 "b1", AnyType.Type Type.Bool
                 "t1", AnyType.Type (Type.Tuple [Type.Bool; Type.Int])

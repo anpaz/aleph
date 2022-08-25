@@ -10,11 +10,15 @@
     <Compile Include="DiceRoll.fs" />
     <Compile Include="SolveEquation.fs" />
     <Compile Include="GraphColoring.fs" />
+    <Compile Include="Sandbox.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../parser/aleph.parser.fsproj" />
     <ProjectReference Include="../runtime/aleph.runtime.fsproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Quantum.IQSharp.ExecutionPathTracer" Version="0.22.187631" />
   </ItemGroup>
 </Project>

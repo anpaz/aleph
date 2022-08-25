@@ -63,21 +63,21 @@ module Eval =
             | _ -> failwith "= only supported for bool values, got {l} || {r}"
             
     type QPU =
-        abstract Prepare: U * ValueContext -> Result<Value * ValueContext, string>
+        abstract Prepare: U * EvalContext -> Result<Value * EvalContext, string>
         abstract Measure: IUniverse -> Result<Value, string>
 
-    and ValueContext = {
+    and EvalContext = {
         heap: Map<Id, Value>
         qpu: QPU
-        types: TypeContext
+        typeCtx: TypeContext
     }
 
     let mutable max_ket = 0
 
     let rec run (program: Expression, ctx) =
-        typecheck (program, ctx.types)
+        typecheck (program, ctx.typeCtx)
         ==> fun (e, types') ->
-            let ctx = { ctx  with types = types' }
+            let ctx = { ctx  with typeCtx = types' }
             eval (e, ctx)
 
     and eval (e, ctx) =
@@ -282,7 +282,7 @@ module Eval =
                 $"Expecting method, got {method}" |> Error
 
     and eval_expression_list (values, ctx) =
-        let rec next (items, ctx: ValueContext) =
+        let rec next (items, ctx: EvalContext) =
             match items with
             | head :: tail ->
                 eval_classic (head, ctx)

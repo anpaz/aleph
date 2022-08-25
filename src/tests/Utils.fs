@@ -11,6 +11,13 @@ type u = Expression
 
 module Utils =
 
+    let add_to_context id t e ctx =
+        match run (e, ctx) with
+        | Ok (v, ctx) ->
+            { ctx with heap = ctx.heap.Add (id, v); typeCtx = ctx.typeCtx.Add(id, t)  }
+        | Error msg ->
+            failwith msg
+
     let prepare (e, ctx) = 
         match run(u.Prepare e, ctx) with
         | Ok (Universe universe, _) ->
@@ -46,30 +53,37 @@ module Utils =
             printfn "Looking for %A in %A" value answers
             let equalAnswer i =
                 StructuralComparisons.StructuralEqualityComparer.Equals(value, i)
-            answers |> List.find equalAnswer |> ignore
-            true
+            match answers |> List.tryFind equalAnswer with
+            | Some _ -> true
+            | None -> false
 
-    let verify_expression (ctx: ValueContext) (e: Expression, answers: Value list) =
-        let qpu = ctx.qpu
+    let verify_expression (ctx: EvalContext) (e: Expression, answers: Value list) =
         let checkRepeatMeasurement(u, v) =
             for i in 1 .. 5 do
                 let v' = measure(u, ctx)
                 Assert.AreEqual (v, v')
-
-        let u1 = prepare(e, ctx)
-        let v1 = measure(u1, ctx)
-        checkRepeatMeasurement(u1, v1)
-        Assert.IsTrue(is_valid_answer answers v1)
+        // samples the universe exactly once, doesn't check the answer
+        let one() =
+            let u = prepare(e, ctx)
+            let v = measure(u, ctx)
+            checkRepeatMeasurement(u, v)
+            v
+        // tries to get a valid sample by verifying the measurement.
+        // if the measurement is invalid, tries one more time since
+        // quantum programs can return random values.
+        let sample() =
+            let v = one()
+            if is_valid_answer answers v then
+                v
+            else
+                let v = one()
+                Assert.IsTrue(is_valid_answer answers v)
+                v
 
         let mutable i = 0
-        let mutable u2 = prepare(e, ctx)
-        let mutable v2 = measure(u2, ctx)
-        checkRepeatMeasurement(u2, v2)
-        Assert.IsTrue(is_valid_answer answers v1)
-        while (answers.Length > 0 && v2 = v1) do
-            u2 <- prepare(e, ctx)
-            v2 <- measure(u2, ctx)
-            checkRepeatMeasurement(u2, v2)
-            Assert.IsTrue(is_valid_answer answers v1)
+        let mutable v1 = sample()
+        let mutable v2 = sample()
+        while (answers.Length > 1 && v2 = v1) do
+            v2 <- sample()
             Assert.IsTrue(i < 100)
             i <- i + 1
