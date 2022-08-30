@@ -49,6 +49,8 @@ type Expression =
     | Project of tuple: Expression * index: Expression
     | Block of Statement list * Expression
     | If of cond: Expression * t : Expression * f: Expression
+    
+    // Maybe add a classical for statement?
     | Summarize of id: Id * enumeration : Expression * aggregation: Aggregation * body: Expression
 
     | Ket of values: Expression list
