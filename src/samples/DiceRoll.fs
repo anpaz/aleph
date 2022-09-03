@@ -8,8 +8,8 @@ let program = Block ([
     Let ("dice1", Ket [Int 1; Int 2; Int 3; Int 4; Int 5; Int 6])
     Let ("dice2", Ket [Int 1; Int 2; Int 3; Int 4; Int 5; Int 6])
 
-    // let roll = (dice1, dice2)
-    Let ("roll", Join (Var "dice1", Var "dice2"))
+    // let roll = dice1 + dice2
+    Let ("roll", Add (Var "dice1", Var "dice2"))
 ],
     // | Prepare coin |
     Sample (Prepare (Var "roll")))
