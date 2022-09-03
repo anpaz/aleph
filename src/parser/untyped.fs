@@ -51,7 +51,7 @@ type Expression =
     | If of cond: Expression * t : Expression * f: Expression
     | Summarize of id: Id * enumeration : Expression * aggregation: Aggregation * body: Expression
 
-    | Ket of values: Expression list
+    | Ket of values: Expression
     | KetAll of size: Expression
 
     | Sample of ket: Expression

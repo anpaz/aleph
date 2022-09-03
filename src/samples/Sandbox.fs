@@ -3,8 +3,8 @@ module Sandbox
 open aleph.parser.ast
 
 let program = Block ([
-    Let ("a", Ket [Bool false; Bool true])
-    Let ("b", Ket [Bool false; Bool true])
+    Let ("a", Ket (Set [Bool false; Bool true]))
+    Let ("b", Ket (Set [Bool false; Bool true]))
     Let ("result", Not (Or (Var "a", Var "b")))
 
     // Let ("a", KetAll (Int 2))

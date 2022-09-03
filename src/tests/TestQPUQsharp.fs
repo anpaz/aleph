@@ -65,47 +65,47 @@ type TestQPUQsharp () =
     member this.TestLiteral () =
         let ctx = 
             this.Context
-            |> add_to_context "k" (AnyType.QType (QType.Ket [Type.Int; Type.Bool])) (u.Ket [
+            |> add_to_context "k" (AnyType.QType (QType.Ket [Type.Int; Type.Bool])) (u.Ket (u.Set [
                 u.Tuple [ u.Int 0; u.Bool true]
                 u.Tuple [ u.Int 0; u.Bool false]
                 u.Tuple [ u.Int 1; u.Bool true]
-            ])
+            ]))
 
         [
             // |>
-            u.Ket [],
+            u.Ket (u.Set []),
                 []
             //| false >
-            u.Ket [
+            u.Ket (
                 u.Bool false
-            ], [
+            ), [
                 Bool false
             ]
             // | 1; 2; 3 >
-            u.Ket [
+            u.Ket (u.Set [
                 u.Int 1
                 u.Int 2
                 u.Int 3
-            ], [
+            ]), [
                 Int 1
                 Int 2
                 Int 3
             ]
             // | (false, false), (false, true) >
-            u.Ket [
+            u.Ket (u.Set [
                 u.Tuple [ u.Bool false; u.Bool false ]
                 u.Tuple [ u.Bool false; u.Bool true ]
-            ], [
+            ]), [
                 Tuple [ Bool false; Bool false ]
                 Tuple [ Bool false; Bool true ]
             ]
             // | (0, false, 0), (0, true, 1), (0, true, 2), (0, true, 3) >
-            u.Ket [
+            u.Ket (u.Set [
                 u.Tuple [ u.Int 0; u.Bool false; u.Int 0 ]
                 u.Tuple [ u.Int 0; u.Bool true; u.Int 1 ]
                 u.Tuple [ u.Int 0; u.Bool true; u.Int 2 ]
                 u.Tuple [ u.Int 2; u.Bool true; u.Int 3 ]
-            ], [
+            ]), [
                 Tuple [ Int 0; Bool false; Int 0 ]
                 Tuple [ Int 0; Bool true; Int 1 ]
                 Tuple [ Int 0; Bool true; Int 2 ]
@@ -141,34 +141,34 @@ type TestQPUQsharp () =
     member this.TestJoinLiterals () =
         let ctx = 
             this.Context 
-            |> add_to_context "k" (AnyType.QType (QType.Ket [Type.Int; Type.Bool])) (u.Ket [
+            |> add_to_context "k" (AnyType.QType (QType.Ket [Type.Int; Type.Bool])) (u.Ket (u.Set [
                 u.Tuple [ u.Int 0; u.Bool true]
                 u.Tuple [ u.Int 0; u.Bool false]
                 u.Tuple [ u.Int 1; u.Bool true]
-            ])
+            ]))
             |> add_to_context "all_1" (AnyType.QType (QType.Ket [Type.Int])) (u.KetAll (u.Int 2))
             |> add_to_context "all_2" (AnyType.QType (QType.Ket [Type.Int])) (u.KetAll (u.Int 2))
 
         [
-            u.Join(u.Ket [],u.Ket []),
+            u.Join(u.Ket (u.Set []),u.Ket (u.Set [])),
                 []
             // (| false >, | true> )
-            u.Join (u.Ket [u.Bool false], u.Ket [u.Bool true]),
+            u.Join (u.Ket (u.Set [u.Bool false]), u.Ket (u.Set [u.Bool true])),
             [
                 Tuple [ Bool false; Bool true ]
             ]
             // Join (| 1; 2 >, | true >)
-            u.Join (u.Ket [u.Int 1; u.Int 2], u.Ket [u.Bool true]),
+            u.Join (u.Ket (u.Set [u.Int 1; u.Int 2]), u.Ket (u.Set [u.Bool true])),
             [
                 Tuple [ Int 1; Bool true ]
                 Tuple [ Int 2; Bool true ]
             ]
             // Join( | (false, false), (false, true) >, |1, 3> )
             u.Join (
-                u.Ket [
+                u.Ket (u.Set [
                     u.Tuple [ u.Bool false; u.Bool false ]
-                    u.Tuple [ u.Bool false; u.Bool true ]],
-                u.Ket [ u.Int 1; u.Int 3]),
+                    u.Tuple [ u.Bool false; u.Bool true ]]),
+                u.Ket (u.Set [ u.Int 1; u.Int 3])),
             [
                 Tuple [ Bool false; Bool false; Int 1 ]
                 Tuple [ Bool false; Bool true; Int 1 ]
@@ -176,7 +176,7 @@ type TestQPUQsharp () =
                 Tuple [ Bool false; Bool true; Int 3 ]
             ]
             // ( |@,3>, |1,3> )
-            u.Join(u.KetAll (u.Int 3), u.Ket [u.Int 1; u.Int 3]),
+            u.Join(u.KetAll (u.Int 3), u.Ket (u.Set [u.Int 1; u.Int 3])),
             [
                 Tuple [ Int 0; Int 1 ]
                 Tuple [ Int 0; Int 3 ]
@@ -202,10 +202,10 @@ type TestQPUQsharp () =
                 Tuple [ Int 1; Bool true; Int 1; Bool true ]
             ]
             // ( |@,4>, |1, 3> ).[3 - 3]
-            u.Project(u.Join(u.KetAll (u.Int 3), u.Ket [u.Int 1; u.Int 3]), u.Add (u.Int 3, u.Int -3)),
+            u.Project(u.Join(u.KetAll (u.Int 3), u.Ket (u.Set [u.Int 1; u.Int 3])), u.Add (u.Int 3, u.Int -3)),
             seq { 0..15 } |> Seq.toList |> List.map Int
             // ( |@,4>, |1, 3> ).[0 + 1]
-            u.Project(u.Join(u.KetAll (u.Int 3), u.Ket [u.Int 1; u.Int 3]), u.Add (u.Int 0, u.Int 1)),
+            u.Project(u.Join(u.KetAll (u.Int 3), u.Ket (u.Set [u.Int 1; u.Int 3])), u.Add (u.Int 0, u.Int 1)),
             [ 
                 Int 1
                 Int 3
@@ -228,19 +228,19 @@ type TestQPUQsharp () =
     member this.TestBoolExpressions () =
         let ctx = 
             this.Context
-            |> add_to_context "k1" (AnyType.QType (QType.Ket [Type.Bool])) (u.Ket [
+            |> add_to_context "k1" (AnyType.QType (QType.Ket [Type.Bool])) (u.Ket (u.Set [
                 u.Bool true
                 u.Bool false
-            ])
-            |> add_to_context "k2" (AnyType.QType (QType.Ket [Type.Bool])) (u.Ket [
+            ]))
+            |> add_to_context "k2" (AnyType.QType (QType.Ket [Type.Bool])) (u.Ket (u.Set [
                 u.Bool true
                 u.Bool false
-            ])
-            |> add_to_context "k3" (AnyType.QType (QType.Ket [Type.Int; Type.Bool; Type.Bool])) (u.Ket [
+            ]))
+            |> add_to_context "k3" (AnyType.QType (QType.Ket [Type.Int; Type.Bool; Type.Bool])) (u.Ket (u.Set [
                 u.Tuple [u.Int 0; u.Bool true; u.Bool true ]
                 u.Tuple [u.Int 1; u.Bool false; u.Bool true ]
                 u.Tuple [u.Int 2; u.Bool true; u.Bool false ]
-            ])
+            ]))
 
         [
             // ((k1, k2), (k1 && k2))
@@ -300,7 +300,7 @@ type TestQPUQsharp () =
             // colors()
             u.Block (
                 [
-                    Let ("colors", u.Method([], u.Ket [u.Int 1; u.Int 2; u.Int 3]))
+                    Let ("colors", u.Method([], u.Ket (u.Set [u.Int 1; u.Int 2; u.Int 3])))
                 ],
                 u.CallMethod (u.Var "colors", [])),
             [
@@ -312,7 +312,7 @@ type TestQPUQsharp () =
             // ( colors(), colors() )
             u.Block (
                 [
-                    Let ("colors", u.Method([], u.Ket [u.Int 1; u.Int 2; u.Int 3]))
+                    Let ("colors", u.Method([], u.Ket (u.Set [u.Int 1; u.Int 2; u.Int 3])))
                 ],
                 u.Join (u.CallMethod (u.Var "colors", []), u.CallMethod (u.Var "colors", []))),
             [
