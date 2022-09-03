@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>quantum-viz.js visualization</title>
+</head>
+<body>
+  <div id="msg" style="font-size: large; font-weight: bolder;">
+    There was some error with the script
+  </div>
+  <script src="https://unpkg.com/@microsoft/quantum-viz.js"></script>
+  <textarea id="circuit" rows="25" cols="150">
+    {
+        qubits: [{ id: 0 }, { id: 1, numChildren: 1 }],
+        operations: [
+            {
+                gate: 'H',
+                targets: [{ qId: 0 }],
+            },
+            {
+                gate: 'X',
+                isControlled: true,
+                controls: [{ qId: 0 }],
+                targets: [{ qId: 1 }],
+            },
+            {
+                gate: 'Measure',
+                isMeasurement: true,
+                controls: [{ qId: 1 }],
+                targets: [{ type: 1, qId: 1, cId: 0 }],
+            },
+        ],
+    }
+  </textarea>
+  <button onclick="updateCircuit()">Update Circuit</button>
+  <div id="circuit_div"></div>
+  <script type="text/javascript">
+    document.getElementById('msg').style.display = 'none';
+    var displayDiv = document.getElementById('circuit_div');
+    function updateCircuit() {
+        var c2 = eval('(' + circuit.value + ')');
+        qviz.draw(c2, displayDiv);
+
+    }
+  </script>
+</body>
+</html>

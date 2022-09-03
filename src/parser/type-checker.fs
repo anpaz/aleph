@@ -364,7 +364,7 @@ module TypeChecker =
             | _ -> $"Invalid expression: {method}" |> Error
 
     and typecheck_ket (value, ctx) =
-        typecheck (Expression.Set value, ctx)
+        typecheck (value, ctx)
         ==> fun (value, ctx) ->
             make_q value
             ==> fun value -> (Quantum value, ctx) |> Ok

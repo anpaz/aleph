@@ -17,7 +17,7 @@ let program = Block ([
     //     | RED, BLUE, GREEN >
     Let ("colors", Method (
         arguments = List.empty, 
-        body = Ket [Var "RED"; Var "BLUE"; Var"GREEN"]))
+        body = Ket (Set [Var "RED"; Var "BLUE"; Var"GREEN"])))
 
     // // Edges are listed classically, so we can iterate through them
     // let edges = {

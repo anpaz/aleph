@@ -201,12 +201,12 @@ type TestCore () =
 
         [
             // (not | true >)
-            u.Not (u.Ket [u.Bool true]), 
+            u.Not (u.Ket (u.Bool true)), 
                 QType.Ket [Type.Bool], 
                 Q.Not  (Q.Literal (Set [C.BoolLiteral true]))
 
             // (qb1 or k2.1) and not | true >
-            u.And (u.Or (u.Var "qb1", u.Project (u.Var "k2", u.Int 1)), u.Not (u.Ket [u.Bool true])),
+            u.And (u.Or (u.Var "qb1", u.Project (u.Var "k2", u.Int 1)), u.Not (u.Ket (u.Bool true))),
                 QType.Ket [Type.Bool],
                 Q.And (Q.Or (Q.Var "qb1", Q.Project (Q.Var "k2", 1)), (Q.Not (Q.Literal (Set [C.BoolLiteral true]))))
         ]
@@ -286,31 +286,31 @@ type TestCore () =
 
         [
             // |>
-            u.Ket [],
+            u.Ket (u.Set []),
                 QType.Ket [],
                 Q.Literal (C.Set [])
             // |1>
-            u.Ket [u.Int 1],
+            u.Ket (u.Int 1),
                 QType.Ket [Type.Int],
                 Q.Literal (C.Set [C.IntLiteral 1])
             // |true, false>
-            u.Ket [u.Bool true; u.Bool false],
+            u.Ket (u.Set [u.Bool true; u.Bool false]),
                 QType.Ket [Type.Bool],
                 Q.Literal (C.Set [C.BoolLiteral true; C.BoolLiteral false])
             // |(1,2), (3,4)>
-            u.Ket [u.Tuple [u.Int 1; u.Int 2]; u.Tuple [u.Int 3; u.Int 4]],
+            u.Ket (u.Set [u.Tuple [u.Int 1; u.Int 2]; u.Tuple [u.Int 3; u.Int 4]]),
                 QType.Ket [Type.Int; Type.Int],
                 Q.Literal (C.Set [C.Tuple [C.IntLiteral 1; C.IntLiteral 2]; C.Tuple [C.IntLiteral 3; C.IntLiteral 4]])
             // |(1,false), (3,true)>
-            u.Ket [u.Tuple [u.Int 1; u.Bool false]; u.Tuple [u.Int 3; u.Bool true]],
+            u.Ket (u.Set [u.Tuple [u.Int 1; u.Bool false]; u.Tuple [u.Int 3; u.Bool true]]),
                 QType.Ket [Type.Int; Type.Bool],
                 Q.Literal (C.Set [C.Tuple [C.IntLiteral 1; C.BoolLiteral false]; C.Tuple [C.IntLiteral 3; C.BoolLiteral true]])
         ]
         |> List.iter (this.TestQuantumExpression ctx)
 
         [
-            u.Ket [u.Bool true; u.Int 12], "All elements in a set must be of the same type."
-            u.Ket [u.Tuple [u.Int 1; u.Bool false]; u.Tuple [u.Int 3; u.Int 4]], "All elements in a set must be of the same type."
+            u.Ket (u.Set [u.Bool true; u.Int 12]), "All elements in a set must be of the same type."
+            u.Ket (u.Set [u.Tuple [u.Int 1; u.Bool false]; u.Tuple [u.Int 3; u.Int 4]]), "All elements in a set must be of the same type."
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -363,19 +363,19 @@ type TestCore () =
 
         [
             // |0, 1> + |1, 2, 3>
-            u.Add (u.Ket [u.Int 0;u.Int 1], u.Ket [u.Int 1; u.Int 2; u.Int 3]),
+            u.Add (u.Ket (u.Set [u.Int 0;u.Int 1]), u.Ket (u.Set [u.Int 1; u.Int 2; u.Int 3])),
                 QType.Ket [Type.Int],
                 Q.Add (
                     Q.Literal (C.Set [C.IntLiteral 0; C.IntLiteral 1]), 
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // 1 + |1, 2, 3>
-            u.Add (u.Int 1, u.Ket [u.Int 1;u.Int 2;u.Int 3]),
+            u.Add (u.Int 1, u.Ket (u.Set [u.Int 1;u.Int 2;u.Int 3])),
                 QType.Ket [Type.Int],
                 Q.Add (
                     Q.Literal (C.Set [C.IntLiteral 1]), 
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // |1, 2, 3> + 1
-            u.Add (u.Ket [u.Int 1;u.Int 2;u.Int 3], u.Int 1),
+            u.Add (u.Ket (u.Set [u.Int 1;u.Int 2;u.Int 3]), u.Int 1),
                 QType.Ket [Type.Int],
                 Q.Add (
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]),
@@ -384,8 +384,8 @@ type TestCore () =
         |> List.iter (this.TestQuantumExpression ctx)
 
         [
-            u.Add (u.Ket [u.Bool true; u.Int 1], u.Ket [u.Bool false; u.Int 2; u.Int 3]), "All elements in a set must be of the same type."
-            u.Add (u.Ket [u.Bool true], u.Ket [u.Bool false]), "Quantum addition can only be applied to int Kets, got Ket [Bool] + Ket [Bool]"
+            u.Add (u.Ket (u.Set [u.Bool true; u.Int 1]), u.Ket (u.Set [u.Bool false; u.Int 2; u.Int 3])), "All elements in a set must be of the same type."
+            u.Add (u.Ket (u.Set [u.Bool true]), u.Ket (u.Set [u.Bool false])), "Quantum addition can only be applied to int Kets, got Ket [Bool] + Ket [Bool]"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -416,19 +416,19 @@ type TestCore () =
 
         [
             // |0, 1> = |1, 2, 3>
-            u.Equals (u.Ket [u.Int 0;u.Int 1], u.Ket [u.Int 1; u.Int 2; u.Int 3]),
+            u.Equals (u.Ket (u.Set [u.Int 0;u.Int 1]), u.Ket (u.Set [u.Int 1; u.Int 2; u.Int 3])),
                 QType.Ket [Type.Bool],
                 Q.Equals (
                     Q.Literal (C.Set [C.IntLiteral 0; C.IntLiteral 1]), 
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // 1 = |1, 2, 3>
-            u.Equals (u.Int 1, u.Ket [u.Int 1;u.Int 2;u.Int 3]),
+            u.Equals (u.Int 1, u.Ket (u.Set [u.Int 1;u.Int 2;u.Int 3])),
                 QType.Ket [Type.Bool],
                 Q.Equals (
                     Q.Literal (C.Set [C.IntLiteral 1]), 
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // |1, 2, 3> = 1
-            u.Equals (u.Ket [u.Int 1;u.Int 2;u.Int 3], u.Int 1),
+            u.Equals (u.Ket (u.Set [u.Int 1;u.Int 2;u.Int 3]), u.Int 1),
                 QType.Ket [Type.Bool],
                 Q.Equals (
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]),
@@ -437,8 +437,8 @@ type TestCore () =
         |> List.iter (this.TestQuantumExpression ctx)
 
         [
-            u.Equals (u.Ket [u.Bool true; u.Int 1], u.Ket [u.Bool false; u.Int 2; u.Int 3]), "All elements in a set must be of the same type."
-            u.Equals (u.Ket [u.Bool true], u.Ket [u.Bool false]), "Quantum == can only be applied to int Kets"
+            u.Equals (u.Ket (u.Set [u.Bool true; u.Int 1]), u.Ket (u.Set [u.Bool false; u.Int 2; u.Int 3])), "All elements in a set must be of the same type."
+            u.Equals (u.Ket (u.Set [u.Bool true]), u.Ket (u.Set [u.Bool false])), "Quantum == can only be applied to int Kets"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -468,19 +468,19 @@ type TestCore () =
 
         [
             // |0, 1> * |1, 2, 3>
-            u.Multiply (u.Ket [u.Int 0;u.Int 1], u.Ket [u.Int 1; u.Int 2; u.Int 3]),
+            u.Multiply (u.Ket (u.Set [u.Int 0;u.Int 1]), u.Ket (u.Set [u.Int 1; u.Int 2; u.Int 3])),
                 QType.Ket [Type.Int],
                 Q.Multiply (
                     Q.Literal (C.Set [C.IntLiteral 0; C.IntLiteral 1]), 
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // 1 * |1, 2, 3>
-            u.Multiply (u.Int 1, u.Ket [u.Int 1;u.Int 2;u.Int 3]),
+            u.Multiply (u.Int 1, u.Ket (u.Set [u.Int 1;u.Int 2;u.Int 3])),
                 QType.Ket [Type.Int],
                 Q.Multiply (
                     Q.Literal (C.Set [C.IntLiteral 1]), 
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // |1, 2, 3> * 1
-            u.Multiply (u.Ket [u.Int 1;u.Int 2;u.Int 3], u.Int 1),
+            u.Multiply (u.Ket (u.Set [u.Int 1;u.Int 2;u.Int 3]), u.Int 1),
                 QType.Ket [Type.Int],
                 Q.Multiply (
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]),
@@ -489,8 +489,8 @@ type TestCore () =
         |> List.iter (this.TestQuantumExpression ctx)
 
         [
-            u.Multiply (u.Ket [u.Bool true; u.Int 1], u.Ket [u.Bool false; u.Int 2; u.Int 3]), "All elements in a set must be of the same type."
-            u.Multiply (u.Ket [u.Bool true], u.Ket [u.Bool false]), "Quantum multiplication can only be applied to int Kets"
+            u.Multiply (u.Ket (u.Set [u.Bool true; u.Int 1]), u.Ket (u.Set [u.Bool false; u.Int 2; u.Int 3])), "All elements in a set must be of the same type."
+            u.Multiply (u.Ket (u.Set [u.Bool true]), u.Ket (u.Set [u.Bool false])), "Quantum multiplication can only be applied to int Kets"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -532,7 +532,7 @@ type TestCore () =
                 Type.Int,
                 C.CallMethod (C.Var ("m1"), [])
             // m2(Ket<Int>, Tuple<Int, Bool>) : Tuple<Int, Int>
-            u.CallMethod (u.Var "m2", [u.Ket [u.Int 1]; u.Tuple [u.Int 2; u.Bool false]]),
+            u.CallMethod (u.Var "m2", [u.Ket (u.Int 1); u.Tuple [u.Int 2; u.Bool false]]),
                 Type.Tuple [Type.Int; Type.Int],
                 C.CallMethod (C.Var ("m2"),  [
                     Quantum (Q.Literal (C.Set [C.IntLiteral 1]), QType.Ket [Type.Int]); 
@@ -546,7 +546,7 @@ type TestCore () =
                 QType.Ket [Type.Int],
                 Q.CallMethod (C.Var ("q1"), [])
             // m2(Ket<Int>, (Int, Bool) : Ket<Bool>
-            u.CallMethod (u.Var "q2", [u.Ket [u.Int 1]; u.Tuple [u.Int 2; u.Bool false]]),
+            u.CallMethod (u.Var "q2", [u.Ket (u.Int 1); u.Tuple [u.Int 2; u.Bool false]]),
                 QType.Ket [Type.Bool],
                 Q.CallMethod (C.Var ("q2"),  [
                     Quantum (Q.Literal (C.Set [C.IntLiteral 1]), QType.Ket[Type.Int]); 
@@ -584,21 +584,21 @@ type TestCore () =
 
         [
             // (|>|), |>)
-            u.Join (u.Ket [], u.Ket []),
+            u.Join (u.Ket (u.Set []), u.Ket (u.Set [])),
                 QType.Ket [],
                 Q.Join (Q.Literal (C.Set []), Q.Literal (C.Set []))
             // (t1, |>)
-            u.Join (u.Var "k1", u.Ket []),
+            u.Join (u.Var "k1", u.Ket (u.Set [])),
                 QType.Ket [Type.Int],
                 Q.Join (Q.Var "k1", Q.Literal (C.Set []))
             // (t1, |1,2,3>)
-            u.Join (u.Var "k1", u.Ket [u.Int 1; u.Int 2; u.Int 3]),
+            u.Join (u.Var "k1", u.Ket (u.Set [u.Int 1; u.Int 2; u.Int 3])),
                 QType.Ket [Type.Int; Type.Int],
                 Q.Join (
                     Q.Var "k1", 
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // (|(1,1)>, |(0,0,false)>)
-            u.Join (u.Ket [u.Tuple [u.Int 1; u.Int 1]], u.Ket [u.Tuple [u.Int 0; u.Int 0; u.Bool true]]),
+            u.Join (u.Ket (u.Set [u.Tuple [u.Int 1; u.Int 1]]), u.Ket (u.Set [u.Tuple [u.Int 0; u.Int 0; u.Bool true]])),
                 QType.Ket [Type.Int; Type.Int; Type.Int; Type.Int; Type.Bool],
                 Q.Join (
                     Q.Literal (C.Set [C.Tuple [C.IntLiteral 1; C.IntLiteral 1]]),
@@ -639,7 +639,7 @@ type TestCore () =
 
         [
             // |1>.0
-            u.Project (u.Ket [Int 1], Int 0),
+            u.Project (u.Ket (u.Set [Int 1]), Int 0),
                 QType.Ket [Type.Int],
                 Q.Project (Q.Literal (C.Set [C.IntLiteral 1]), 0)
             // k1.2  --> Note, index in projection is modular, so 2 == 0
@@ -651,7 +651,7 @@ type TestCore () =
                 QType.Ket [Type.Bool],
                 Q.Project (Q.Var "k2", 1)
             // |(1, false, 3, true)>.2
-            u.Project (u.Ket [u.Tuple [Int 1; u.Bool false; Int 3; u.Bool true]], Int 2),
+            u.Project (u.Ket (u.Set [u.Tuple [Int 1; u.Bool false; Int 3; u.Bool true]]), Int 2),
                 QType.Ket [Type.Int],
                 Q.Project (Q.Literal (C.Set [Tuple [C.IntLiteral 1; C.BoolLiteral false; C.IntLiteral 3; C.BoolLiteral true]]), 2)
         ]
@@ -661,7 +661,7 @@ type TestCore () =
             // (1, false, 3).i1
             u.Project (u.Tuple [Int 1; u.Bool false; Int 3], u.Var "i1"), "Indexing of tuples is only available on tuples of a single type"
             // |(1, false, 3)>.i1
-            u.Project (u.Ket [u.Tuple [Int 1; u.Bool false; Int 3]], u.Var "i1"), "Indexing of kets is only available on kets of a single type"
+            u.Project (u.Ket (u.Set [u.Tuple [Int 1; u.Bool false; Int 3]]), u.Var "i1"), "Indexing of kets is only available on kets of a single type"
             // [(1, false, 3)].[0]
             u.Project (u.Set [u.Tuple [Int 1; u.Bool false; Int 3]], u.Int 2), "Project is only supported on tuples and kets"
             // [(1, false, 3)].[i1]
@@ -737,7 +737,7 @@ type TestCore () =
 
         [
             // { if true then k1 else |0> }
-            u.If (u.Bool true, u.Var "k1", u.Ket [u.Int 0]),
+            u.If (u.Bool true, u.Var "k1", u.Ket (u.Set [u.Int 0])),
                 QType.Ket [Type.Int],
                 Q.IfClassic (C.BoolLiteral true, Q.Var "k1", Q.Literal (Set [C.IntLiteral 0]))
             // { if true then k1 else 0 }
@@ -770,7 +770,7 @@ type TestCore () =
             // { if 42 then 1 else 2 }
             u.If (u.Int 42, u.Int 1, u.Int 2), "If condition must be a boolean, got Int"
             // { if 42 then |1> else |0> }
-            u.If (u.Int 42, u.Ket [u.Int 1], u.Ket [u.Int 0]), "If condition must be a boolean, got Int"
+            u.If (u.Int 42, u.Ket (u.Set [u.Int 1]), u.Ket (u.Int 0)), "If condition must be a boolean, got Int"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -810,7 +810,7 @@ type TestCore () =
             // summarize e in t1 with and { e.0 == true } 
             u.Summarize ("e", u.Var "t1", Aggregation.And, u.Equals (u.Project (u.Var "e", u.Int 0), u.Bool true)), "Summarize expects a classic set of values, got: Tuple [Bool; Int]"
             // summarize e in k1 with and { e.0 == |1> } 
-            u.Summarize ("e", u.Var "k1", Aggregation.And, u.Equals (u.Project (u.Var "e", u.Int 0), u.Ket [u.Int 1])), "Summarize expects a classic set of values, got: Ket [Int]"
+            u.Summarize ("e", u.Var "k1", Aggregation.And, u.Equals (u.Project (u.Var "e", u.Int 0), u.Ket (u.Int 1))), "Summarize expects a classic set of values, got: Ket [Int]"
             // summarize e in s1 with and { k2.1 == e.1 } 
             u.Summarize ("e", u.Var "s1", Aggregation.And, u.Equals (u.Project (u.Var "k2", u.Int 1), u.Project (u.Var "e", u.Int 1))), "Quantum == can only be applied to int Kets"
             // summarize e in s1 with sum { true } 
@@ -848,7 +848,7 @@ type TestCore () =
 
         [
             // | |> |
-            u.Sample (u.Prepare (u.Ket [])),
+            u.Sample (u.Prepare (u.Ket (u.Set []))),
                 Type.Tuple [],
                 C.Sample( U.Prepare( Q.Literal (C.Set [])))
             // | k1 |

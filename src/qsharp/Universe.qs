@@ -1,8 +1,5 @@
 namespace aleph.qsharp {
 
-    open Microsoft.Quantum.Measurement;
-    open Microsoft.Quantum.Math;
-    open Microsoft.Quantum.Characterization;
     open Microsoft.Quantum.Canon;
     open Microsoft.Quantum.Arrays;
     open Microsoft.Quantum.Convert;
@@ -12,29 +9,21 @@ namespace aleph.qsharp {
     open aleph.qsharp.grover as grover;
     open aleph.qsharp.log as log;
 
-    newtype Universe = (
-        rows: Int,
-        columns: Int,
-        output: Range[],
-        oracle: (Qubit[], Qubit) => Unit is Adj + Ctl
-    );
-
-    newtype Value = (
-        value: Int,
-        size: Int
-    );
+    function BigBang(): Universe {
+        return Universe(1, 1, _tracker(_, _));
+    }
     
-    operation Sample(universe: Universe) : Value[] {
-        let (_, columns, output, oracle) = universe!;
+    operation Sample(universe: Universe, register: Register[]) : Value[] {
+        let (_, columns, oracle) = universe!;
 
-        use qubits = Qubit[columns + 1]; // One extra for tracker
+        use qubits = Qubit[columns]; // One extra for tracker
 
         Prepare(universe, qubits);
 
         mutable result = [];
-        for r in output {
-            let value = ResultArrayAsInt(ForEach(M, qubits[r]));
-            let size = Length(RangeAsIntArray(r));
+        for r in register {
+            let value = ResultArrayAsInt(ForEach(M, qubits[r!]));
+            let size = Length(RangeAsIntArray(r!));
             set result += [ Value(value, size) ];
         }
 
@@ -42,29 +31,27 @@ namespace aleph.qsharp {
         return result;
     }
 
-    operation Wrapper (trackerIdx: Int, oracle: (Qubit[], Qubit) => Unit is Adj, qubits: Qubit[], target: Qubit) : Unit
+    operation _tracker (qubits: Qubit[], target: Qubit) : Unit
     is Adj + Ctl {
-        use a = Qubit();
-
-        within {
-            oracle(qubits, a);
-        } apply {
-            Controlled X([qubits[trackerIdx], a], target);
-        }
+        log.Debug($".tracker.");
+        CNOT(qubits[0], target);
     }
 
     operation Prepare(universe: Universe, qubits: Qubit[]) : Unit {
-        let (rows, columns, _, oracle) = universe!;
+        let (rows, columns, oracle) = universe!;
+        let tracker = qubits[0];
 
         repeat {
             ResetAll(qubits);
             ApplyToEachA(H, qubits);
-            grover.Apply(Wrapper(columns, oracle, _, _), qubits, rows);
-        } until ((M(qubits[columns]) == One) or (rows == 0));
+            grover.Apply(oracle, qubits, rows);
+        } until ((M(tracker) == One) or (rows == 0));
 
         if (log.INFO_ON()) {
             Message($"[Q#] Final state after Prepare: ");
-            DumpMachine();
+            if (Length(qubits) > 1) {
+                DumpRegister((), qubits[1..Length(qubits)-1]);
+            }
             Message("");
         }
     }
