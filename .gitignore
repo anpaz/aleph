@@ -360,4 +360,3 @@ MigrationBackup/
 metals.sbt
 
 .ipynb_checkpoints/
-src/samples/circuit.json
