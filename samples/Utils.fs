@@ -12,12 +12,17 @@ module Utils
         }
 
         match run (program, context) with
-        | Ok (v, _) ->  printfn $"\nresult: {v}"
-        | Error msg -> printfn $"\n!! Failed: {msg} !!"
+        | Ok (v, _) ->
+            printfn $"\nresult: {v}"
+            0
+        | Error msg ->
+            printfn $"\n!! Failed: {msg} !!"
+            1
 
+    let wrapup code =
         printfn ""
-        printfn "ℵ:aleph (v0.3)"
-        0
+        printfn ":ℵ: (0.3)"
+        code
 
     let simulate program = program |> run (aleph.runtime.qpu.classic.Processor())
 
