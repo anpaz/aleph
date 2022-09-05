@@ -21,7 +21,7 @@ module Utils
 
     let wrapup code =
         printfn ""
-        printfn ":ℵ: (0.3)"
+        printfn ":ℵ-0.4:"
         code
 
     let simulate program = program |> run (aleph.runtime.qpu.classic.Processor())

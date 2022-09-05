@@ -29,8 +29,8 @@ module ClassicValueContext =
                 "m0", Method ([], (E.Classic (C.Tuple [C.IntLiteral 1; C.IntLiteral 2], Type.Tuple [Type.Int; Type.Int])))
                 // (a, b) -> a + b
                 "m1", Method (["a"; "b"], (E.Classic (C.Add ((C.Var "a", C.Var "b")), Type.Int)))
-                // (x, y, z) -> y || t1[z]
-                "m2", Method (["x"; "y"; "z"], (E.Classic (C.Or ((C.Var "y", C.Index (C.Var ("t1"), C.Var "z"))), Type.Bool)))
+                // (x, y, z) -> y || x[z]
+                "m2", Method (["x"; "y"; "z"], (E.Classic (C.Or ((C.Var "y", C.Index (C.Var ("x"), C.Var "z"))), Type.Bool)))
             ]
             typeCtx = aleph.parser.TypeChecker.TypeContext [ 
                 "i1", AnyType.Type Type.Int
@@ -41,12 +41,12 @@ module ClassicValueContext =
                 "s1", AnyType.Type (Type.Set (Type.Tuple [Type.Bool; Type.Int]))
                 "m0", AnyType.Type (Type.Method ([], (AnyType.Type (Type.Tuple [Type.Int; Type.Int]))))
                 "m1", AnyType.Type (Type.Method ([AnyType.Type Type.Int; AnyType.Type Type.Int], AnyType.Type Type.Int))
-                "m2", AnyType.Type (Type.Method ([AnyType.Type Type.Int; AnyType.Type Type.Bool; AnyType.Type Type.Int], AnyType.Type Type.Bool))
+                "m2", AnyType.Type (Type.Method ([AnyType.Type Type.Tuple[Type.Int; Type.Bool; Type.Bool]; AnyType.Type Type.Bool; AnyType.Type Type.Int], AnyType.Type Type.Bool))
             ]
         }
 
 [<TestClass>]
-type TestEvalClassic () =
+type TestEval () =
 
     member this.TestExpression ctx (e, v)=
         printfn "e: %A" e
@@ -230,12 +230,141 @@ type TestEvalClassic () =
             u.CallMethod (u.Var "m1", [u.Int 10; u.Int 20]),
                 Value.Int 30
             // m2 (10, true, 0)
-            u.CallMethod (u.Var "m2", [u.Int 10; u.Bool true; u.Int 0]),
+            u.CallMethod (u.Var "m2", [u.Tuple [u.Int 10; u.Bool false; u.Bool true]; u.Bool false; u.Int 2]),
                 Value.Bool true
             // m2 (10, false, 0)
-            u.CallMethod (u.Var "m2", [u.Int 10; u.Bool false; u.Int 0]),
+            u.CallMethod (u.Var "m2", [u.Tuple [u.Int 10; u.Bool false; u.Bool true]; u.Bool false; u.Int 1]),
                 Value.Bool false
         ]
         |> List.iter (this.TestExpression ctx)
 
 
+
+    [<TestMethod>]
+    member this.TestVariableScope () =
+        let ctx = ClassicValueContext.ctx
+
+        [
+            // let x = 10
+            // x
+            u.Block ([
+                aleph.parser.ast.Statement.Let ("x", u.Tuple [u.Int 1; u.Int 2])
+            ], (u.Var "x")),
+                Value.Tuple [Value.Int 1; Value.Int 2]
+            
+            // let x =
+            //    if true then 
+            //      let y = 10
+            //      y
+            //    else
+            //      let z = 20
+            //      z
+            // x
+            u.Block ([
+                s.Let ("x",
+                    u.If (u.Bool true, 
+                        u.Block ([
+                            s.Let ("y", u.Int 10)
+                        ], u.Var "y"),
+                        u.Block ([
+                            s.Let ("z", u.Int 20)
+                        ], u.Var "z")))
+            ], u.Var "x"),
+                Value.Int 10
+
+            // let foo = 100
+            // let x =
+            //    if false then 
+            //      let y = 10
+            //      y
+            //    else
+            //      foo
+            // x
+            u.Block ([
+                s.Let ("foo", u.Int 100)
+                s.Let ("x",
+                    u.If (u.Bool false, 
+                        u.Block ([
+                            s.Let ("y", u.Int 10)
+                        ], u.Var "y"),
+                        u.Var "foo"))
+            ], u.Var "x"),
+                Value.Int 100
+
+            // let alpha = 1
+            // let x =
+            //    if true then 
+            //      let alpha = 10
+            //      alpha
+            //    else
+            //      let alpha = 20
+            //      alpha
+            // (alpha, x)
+            u.Block ([
+                s.Let ("alpha", u.Int 1)
+                s.Let ("x",
+                    u.If (u.Bool true, 
+                        u.Block ([
+                            s.Let ("alpha", u.Int 10)
+                        ], u.Var "alpha"),
+                        u.Block ([
+                            s.Let ("alpha", u.Int 20)
+                        ], u.Var "alpha")))
+            ], u.Tuple [u.Var "alpha"; u.Var "x"]),
+                Value.Tuple [Value.Int 1; Value.Int 10]
+
+            // let alpha = 1
+            // let x =
+            //    if false then 
+            //      let alpha = 10
+            //      alpha
+            //    else
+            //      let alpha = 20
+            //      alpha
+            // (alpha, x)
+            u.Block ([
+                s.Let ("alpha", u.Int 1)
+                s.Let ("x",
+                    u.If (u.Bool false, 
+                        u.Block ([
+                            s.Let ("alpha", u.Int 10)
+                        ], u.Var "alpha"),
+                        u.Block ([
+                            s.Let ("alpha", u.Int 20)
+                        ], u.Var "alpha")))
+            ], u.Tuple [u.Var "alpha"; u.Var "x"]),
+                Value.Tuple [Value.Int 1; Value.Int 20]
+
+        ]
+        |> List.iter (this.TestExpression ctx)
+
+
+        [
+            // let x =
+            //    if true then 
+            //      let y = 10
+            //      y
+            //    else
+            //      let z = 20
+            //      z
+            // (x, y)
+            u.Block ([
+                s.Let ("x",
+                    u.If (u.Bool true, 
+                        u.Block ([
+                            s.Let ("y", u.Int 10)
+                        ], u.Var "y"),
+                        u.Block ([
+                            s.Let ("z", u.Int 20)
+                        ], u.Var "z")))
+            ], u.Tuple [u.Var "x"; u.Var "y"]), "Variable not found: y"
+
+            // let alpha = 1
+            // let x() = alpha
+            // x()
+            u.Block ([
+                s.Let ("alpha", u.Int 1)
+                s.Let ("x", u.Method([], u.Var "alpha"))
+            ], u.CallMethod (u.Var "x", [])), "Variable not found: alpha"
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)

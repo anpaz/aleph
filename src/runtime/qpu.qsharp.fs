@@ -79,11 +79,17 @@ type Processor(sim: IOperationFactory) =
         | Some registers -> 
             (registers, ctx) |> Ok
         | None ->
-            prepare (ket.StatePrep, ctx)
-            ==> fun (registers, ctx) ->
-                let ctx = { ctx with allocations = ctx.allocations.Add (ket.Id, registers) }
+            // need to prepare using the heap when the ket was created:
+            let ctx' = { ctx with evalCtx = { ctx.evalCtx with heap = ket.Heap } }
+            prepare (ket.StatePrep, ctx')
+            ==> fun (registers, ctx') ->
+                // Assign to the ket the columns returned by the preparation:
+                // return the original heap
+                let ctx = { 
+                    ctx' with 
+                        allocations = ctx'.allocations.Add (ket.Id, registers) 
+                        evalCtx = ctx.evalCtx  }
                 (registers, ctx) |> Ok
-            
 
     and prepare (q, ctx) =
         match q with
@@ -223,14 +229,20 @@ type Processor(sim: IOperationFactory) =
             prepare (value, ctx)
 
     and prepare_callmethod (method, args, ctx) =
-        eval_callmethod(method, args, ctx.evalCtx)
-        ==> fun (value, evalCtx) ->
-            match value with
-            | Value.Ket k -> 
-                let ctx = { ctx with evalCtx = evalCtx }
-                prepare_ket (k, ctx)
-            | _ ->
-                $"Expecting a Ket result, got {value}" |> Error
+        prepare_method (method, args, ctx.evalCtx)
+        ==> fun (body, argsCtx) ->
+            eval (body, argsCtx)
+            ==> fun (value, argsCtx) ->
+                match value with
+                | Value.Ket k -> 
+                    let ctx' = { ctx with evalCtx = argsCtx }
+                    prepare_ket (k, ctx')
+                    ==> fun (value, ctx') ->
+                        // return the heap back to the original state
+                        let ctx = { ctx' with evalCtx = ctx.evalCtx }
+                        (value, ctx) |> Ok
+                | _ ->
+                    $"Expecting a Ket result, got {value}" |> Error
 
     and qsharp_result ctx value =
         let struct (u, r) = value

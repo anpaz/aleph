@@ -8,6 +8,7 @@ open aleph.runtime.Eval
 
 // alias for untyped expressions
 type u = Expression
+type s = Statement
 
 module Utils =
 

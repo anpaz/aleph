@@ -31,10 +31,8 @@ type Expression =
     | Int of int
     | Tuple of values: Expression list
     | Set of values: Expression list
-    | Range of start: Expression * stop: Expression
-
     | Method of arguments: (Id * AnyType) list * body: Expression
-    | CallMethod of method: Expression * arguments: Expression list
+    | Range of start: Expression * stop: Expression
 
     | Not of Expression
     | And of Expression * Expression
@@ -53,6 +51,8 @@ type Expression =
 
     | Ket of values: Expression
     | KetAll of size: Expression
+
+    | CallMethod of method: Expression * arguments: Expression list
 
     | Sample of ket: Expression
     | Prepare of universe: Expression

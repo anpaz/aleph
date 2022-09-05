@@ -446,8 +446,8 @@ type TestQPUClassic () =
         let ctx = this.Context
 
         [
-            // let colors() = |1,2,3>
-            // colors()
+            // // let colors() = |1,2,3>
+            // // colors()
             u.Block (
                 [
                     Let ("colors", u.Method([], u.Ket (u.Set [u.Int 1; u.Int 2; u.Int 3])))
@@ -478,15 +478,49 @@ type TestQPUClassic () =
                     [ Int 3; Int 3 ]
                 ],
                 [ 0; 1 ]
-            // let k = |0,1>
+            // let k1 = |0,1>
             // let add_one(k: Ket<Int>) = k + 1
-            // add_one(k)
+            // add_one(k1)
             u.Block (
                 [
                     Let ("k1", u.Ket (u.Set [u.Int 0; u.Int 1]))
                     Let ("add_one", u.Method(["k", (AnyType.QType (QType.Ket [Type.Int]))], u.Add(u.Var "k", u.Int 1)))
                 ],
                 u.CallMethod (u.Var "add_one", [u.Var "k1"])),
+                [
+                    [ Int 0; Int 1; Int 1 ]
+                    [ Int 1; Int 1; Int 2 ]
+                ],
+                [ 2 ]
+            // let k = |0,1>
+            // let add_one(k: Ket<Int>) = k + 1
+            // let k = add_one(k)
+            // k
+            u.Block (
+                [
+                    Let ("k", u.Ket (u.Set [u.Int 0; u.Int 1]))
+                    Let ("add_one", u.Method(["k", (AnyType.QType (QType.Ket [Type.Int]))], u.Add(u.Var "k", u.Int 1)))
+                    Let ("k", u.CallMethod (u.Var "add_one", [u.Var "k"]))
+                ],
+                u.Var "k"),
+                [
+                    [ Int 0; Int 1; Int 1 ]
+                    [ Int 1; Int 1; Int 2 ]
+                ],
+                [ 2 ]
+            // let k1 = |0,1>
+            // let add_one(k: Ket<Int>) = k + 1
+            // let k2 = add_one(k1)
+            // let k1 = | 2,3 >
+            // k2
+            u.Block (
+                [
+                    Let ("k1", u.Ket (u.Set [u.Int 0; u.Int 1]))
+                    Let ("add_one", u.Method(["k", (AnyType.QType (QType.Ket [Type.Int]))], u.Add(u.Var "k", u.Int 1)))
+                    Let ("k2", u.CallMethod (u.Var "add_one", [u.Var "k1"]))
+                    Let ("k1", u.Ket (u.Set [u.Int 2; u.Int 3]))
+                ],
+                u.Var "k2"),
                 [
                     [ Int 0; Int 1; Int 1 ]
                     [ Int 1; Int 1; Int 2 ]

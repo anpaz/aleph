@@ -9,16 +9,17 @@ module Eval =
     let (==>) (input: Result<'a,'b>) ok  =
         Result.bind ok input
 
-    type Ket =
-        { Id : int
-          StatePrep: Q }
-
     type IUniverse = 
         interface
         inherit System.IComparable
         end
 
-    type Value =
+    type Ket =
+        { Id : int
+          StatePrep: Q
+          Heap: Map<Id, Value> }
+
+    and Value =
         | Bool of bool
         | Int of int
         | Tuple of Value list
@@ -89,9 +90,13 @@ module Eval =
         | E.Universe (u, _) ->
             ctx.qpu.Prepare (u, ctx)
 
-    and eval_quantum( q, ctx) =
-        max_ket <- max_ket + 1
-        (Value.Ket {Id= max_ket; StatePrep = q}, ctx) |> Ok
+    and eval_quantum(q, ctx) =
+        match q with
+        | Q.Var id ->
+            eval_var (id, ctx)
+        | _ ->
+            max_ket <- max_ket + 1
+            (Value.Ket {Id= max_ket; StatePrep = q; Heap = ctx.heap }, ctx) |> Ok
 
     and eval_classic (c, ctx) =
         match c with
@@ -253,7 +258,9 @@ module Eval =
 
     and eval_block (stmts,value, ctx) =
         eval_stmts (stmts, ctx) 
-        ==> fun (ctx) -> eval_classic (value, ctx)
+        ==> fun (ctx') -> 
+            eval_classic (value, ctx')
+            ==> fun (value, _) -> (value, ctx) |> Ok
         
     and eval_sample (u, ctx) =
         let qpu = ctx.qpu
@@ -264,22 +271,13 @@ module Eval =
             | _ -> $"Expecting Prepare to return Universe, got {u}" |> Error
 
     and eval_callmethod(method, args, ctx) =
-        let add_argument ctx' (id, value) =
-            ctx' ==> fun ctx' ->
-                eval(value, ctx')
-                ==> fun (value, ctx') ->
-                    { ctx' with heap = ctx'.heap.Add (id, value) } |> Ok
-        eval_classic (method, ctx)
-        ==> fun (method, ctx) ->
-            match method with
-            | Value.Method (ids, body) ->
-                args
-                |> List.zip ids
-                |> List.fold add_argument (ctx |> Ok)
-                ==> fun ctx' ->
-                    eval (body, ctx')
-            | _ ->
-                $"Expecting method, got {method}" |> Error
+        prepare_method (method, args, ctx)
+        ==> fun (body, ctx') ->
+            eval (body, ctx')
+            ==> fun (value, ctx') ->
+                // return the heap back to the original state
+                let ctx = { ctx' with heap = ctx.heap }
+                (value, ctx) |> Ok
 
     and eval_expression_list (values, ctx) =
         let rec next (items, ctx: EvalContext) =
@@ -314,3 +312,30 @@ module Eval =
                     |> List.fold print_one (ctx' |> Ok)
         stmts
         |> List.fold eval_one (ctx |> Ok)
+
+    and prepare_args ids args ctx = 
+        let add_argument (heap': Result<Map<Id, Value>, string>) (id, value) =
+            heap' ==> fun heap' ->
+                eval(value, ctx)
+                ==> fun (value, _) ->
+                    let value =
+                        match value with 
+                        | Value.Ket k -> value
+                        | _ -> value
+                    heap'.Add (id, value) |> Ok
+        args
+        |> List.zip ids
+        |> List.fold add_argument (Map.empty |> Ok)
+
+    and prepare_method(method, args, ctx) =
+        eval_classic (method, ctx)
+        ==> fun (method, ctx) ->
+            match method with
+            | Value.Method (ids, body) ->
+                prepare_args ids args ctx
+                ==> fun args_map ->
+                    let ctx = { ctx with heap = args_map }
+                    (body, ctx) |> Ok
+            | _ ->
+                $"Expecting method, got {method}" |> Error
+

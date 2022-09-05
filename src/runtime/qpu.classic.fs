@@ -106,10 +106,16 @@ type Processor() =
         | Some columns -> 
             (columns, ctx) |> Ok        // Already prepared...
         | None ->
-            prepare (ket.StatePrep, ctx)
-            ==> fun (columns, ctx) ->
+            // need to prepare using the heap when the ket was created:
+            let ctx' = { ctx with evalCtx = { ctx.evalCtx with heap = ket.Heap } }
+            prepare (ket.StatePrep, ctx')
+            ==> fun (columns, ctx') ->
                 // Assign to the ket the columns returned by the preparation:
-                let ctx = { ctx with allocations = ctx.allocations.Add (ket.Id, columns) }
+                // return the original heap
+                let ctx = { 
+                    ctx' with 
+                        allocations = ctx'.allocations.Add (ket.Id, columns) 
+                        evalCtx = ctx.evalCtx  }
                 (columns, ctx) |> Ok
 
     (*
@@ -158,7 +164,7 @@ type Processor() =
             ==> fun (columns, ctx) ->
                 (columns, ctx) |> Ok
         | _ ->
-            $"Invalid variable: {id}. Expecting ket." |> Error
+            $"Unknown variable: {id}. Expecting ket." |> Error
 
     (*
         Adding a new literal involves updating the quantum state 
@@ -413,14 +419,21 @@ type Processor() =
         Calls the corresponding method, and automatically prepares the resulting Ket
     *)
     and prepare_callmethod (method, args, ctx) =
-        eval_callmethod(method, args, ctx.evalCtx)
-        ==> fun (value, evalCtx) ->
-            match value with
-            | Value.Ket k -> 
-                let ctx = { ctx with evalCtx = evalCtx }
-                prepare_ket (k, ctx)
-            | _ ->
-                $"Expecting a Ket result, got {value}" |> Error
+        prepare_method (method, args, ctx.evalCtx)
+        ==> fun (body, argsCtx) ->
+            eval (body, argsCtx)
+            ==> fun (value, argsCtx) ->
+                match value with
+                | Value.Ket k -> 
+                    let ctx' = { ctx with evalCtx = argsCtx }
+                    prepare_ket (k, ctx')
+                    ==> fun (value, ctx') ->
+                        // return the heap back to the original state
+                        let ctx = { ctx' with evalCtx = ctx.evalCtx }
+                        (value, ctx) |> Ok
+                | _ ->
+                    $"Expecting a Ket result, got {value}" |> Error
+
 
     and tensor_product left right : Value list list =
         let as_list = function

@@ -423,13 +423,14 @@ module TypeChecker =
         
     and typecheck_block (stmts, r, ctx') =
         let as_typed_stmt previous (next:ast.Statement) =
-            previous 
+            previous
             ==> fun (previous, ctx) ->
+                let get_type =  function | Classic (_, t) -> AnyType.Type t | Quantum (_, t) -> AnyType.QType t | Universe (_, t) -> AnyType.UType t
                 match next with
                 | ast.Statement.Let (id, value) ->
                     typecheck (value, ctx)
                     ==> fun (value, ctx) ->
-                        let t = value |> function | Classic (_, t) -> AnyType.Type t | Quantum (_, t) -> AnyType.QType t | Universe (_, t) -> AnyType.UType t
+                        let t = value |> get_type
                         let ctx = ctx.Add (id, t)
                         (previous @ [typed.Statement.Let (id, value)], ctx) |> Ok
                 | ast.Statement.Print (msg, value) ->
