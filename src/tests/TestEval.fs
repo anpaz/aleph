@@ -70,57 +70,57 @@ type TestEval () =
 
         [
             // false
-            u.Bool false, 
+            e.Bool false, 
                 Value.Bool false
             // 5
-            u.Int 5, 
+            e.Int 5, 
                 Value.Int 5
             // (false, 0, 1)
-            u.Tuple [u.Bool false; u.Int 0; u.Int 1],
+            e.Tuple [e.Bool false; e.Int 0; e.Int 1],
                 Value.Tuple [Bool false; Int 0; Int 1]
 
             // {}
-            u.Set [],
+            e.Set [],
                 Value.Set (Set.ofList [])
 
             // {false}
-            u.Set [u.Bool false],
+            e.Set [e.Bool false],
                 Value.Set (Set.ofList [Bool false])
 
             // {0, 1, 2}
-            u.Set [u.Int 0; u.Int 1; u.Int 2],
+            e.Set [e.Int 0; e.Int 1; e.Int 2],
                 Value.Set (Set.ofList [Int 0; Int 1; Int 2])
 
             // {(false, 0, 0), (true, 0, 1), (true, 1, 1)}
-            u.Set [
-                u.Tuple [u.Bool false; u.Int 0; u.Int 0]
-                u.Tuple [u.Bool true; u.Int 0; u.Int 1]
-                u.Tuple [u.Bool true; u.Int 1; u.Int 1]
+            e.Set [
+                e.Tuple [e.Bool false; e.Int 0; e.Int 0]
+                e.Tuple [e.Bool true; e.Int 0; e.Int 1]
+                e.Tuple [e.Bool true; e.Int 1; e.Int 1]
             ],
                 Value.Set (Set.ofList [
                     Tuple [Bool false; Int 0; Int 0]
                     Tuple [Bool true; Int 0; Int 1]
                     Tuple [Bool true; Int 1; Int 1]])
             // { 1..5 }
-            u.Range (u.Int 1, u.Int 5),
+            e.Range (e.Int 1, e.Int 5),
                 Value.Set (Set.ofList [Int 1; Int 2; Int 3; Int 4])
             // (a: Int) -> a + 1
-            u.Method (["a", AnyType.Type Type.Int], (u.Add (u.Var "a", u.Int 1))),
+            e.Method (["a", AnyType.Type Type.Int], (e.Add (e.Var "a", e.Int 1))),
                 Value.Method (["a"], (E.Classic (C.Add ((C.Var "a", C.IntLiteral 1)), Type.Int)))
             // (k1: Ket<Int>, k2: Ket<Int, Bool>) -> (k1, k2)
-            u.Method (["k1", AnyType.QType (QType.Ket [Type.Int]); "k2", AnyType.QType (QType.Ket [Type.Int; Type.Bool])], 
-                (u.Join (u.Var "k1", u.Var "k2"))),
+            e.Method (["k1", AnyType.QType (QType.Ket [Type.Int]); "k2", AnyType.QType (QType.Ket [Type.Int; Type.Bool])], 
+                (e.Join (e.Var "k1", e.Var "k2"))),
                 Value.Method (["k1"; "k2"], (E.Quantum (Q.Join (Q.Var "k1", Q.Var "k2"), (QType.Ket [Type.Int; Type.Int; Type.Bool]))))
             // (k1: Ket<Int>, k2: Ket<Int, Bool>) -> Prepare(k2)
-            u.Method (["k1", AnyType.QType (QType.Ket [Type.Int]); "k2", AnyType.QType (QType.Ket [Type.Int; Type.Bool])], 
-                (u.Prepare (u.Var "k2"))),
+            e.Method (["k1", AnyType.QType (QType.Ket [Type.Int]); "k2", AnyType.QType (QType.Ket [Type.Int; Type.Bool])], 
+                (e.Prepare (e.Var "k2"))),
                 Value.Method (["k1"; "k2"], (E.Universe (U.Prepare (Q.Var "k2"), (UType.Universe [Type.Int; Type.Bool]))))
         ]
         |> List.iter (this.TestExpression ctx)
 
         [
             // Type check:
-            u.Set [ u.Tuple [ u.Int 0; u.Int 0]; u.Int 1], "All elements in a set must be of the same type."
+            e.Set [ e.Tuple [ e.Int 0; e.Int 0]; e.Int 1], "All elements in a set must be of the same type."
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -131,37 +131,37 @@ type TestEval () =
 
         [
             // true || true
-            u.Or (u.Bool true, u.Bool true),
+            e.Or (e.Bool true, e.Bool true),
                 Value.Bool true
             // false || true
-            u.Or (u.Bool false, u.Bool true),
+            e.Or (e.Bool false, e.Bool true),
                 Value.Bool true
             // false && true
-            u.And (u.Bool false, u.Bool true),
+            e.And (e.Bool false, e.Bool true),
                 Value.Bool false
             // false && false
-            u.And (u.Bool false, u.Bool false),
+            e.And (e.Bool false, e.Bool false),
                 Value.Bool false
             // (5 + 10) * 4
-            u.Multiply (u.Add(u.Int 5, u.Int 10), u.Int 4),
+            e.Multiply (e.Add(e.Int 5, e.Int 10), e.Int 4),
                 Value.Int 60
             // (5 + 10) * 4 == 100
-            u.Equals(u.Multiply (u.Add(u.Int 5, u.Int 10), u.Int 4), u.Int 100),
+            e.Equals(e.Multiply (e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 100),
                 Value.Bool false
             // (5 + 10) * 4 == 60
-            u.Equals(u.Multiply (u.Add(u.Int 5, u.Int 10), u.Int 4), u.Int 60),
+            e.Equals(e.Multiply (e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 60),
                 Value.Bool true
             // (5 + 10) * 4 == 100 || true
-            u.Or (u.Equals(u.Multiply (u.Add(u.Int 5, u.Int 10), u.Int 4), u.Int 100), u.Bool true),
+            e.Or (e.Equals(e.Multiply (e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 100), e.Bool true),
                 Value.Bool true
             // (5 + 10) * 4 < 50
-            u.LessThan (u.Multiply (u.Add(u.Int 5, u.Int 10), u.Int 4), u.Int 50),
+            e.LessThan (e.Multiply (e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 50),
                 Value.Bool false
             // (5 + 10) * 4 < 100
-            u.LessThan (u.Multiply (u.Add(u.Int 5, u.Int 10), u.Int 4), u.Int 100),
+            e.LessThan (e.Multiply (e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 100),
                 Value.Bool true
             // not ((5 + 10) * 4 < 50)
-            u.Not (u.LessThan (u.Multiply (u.Add(u.Int 5, u.Int 10), u.Int 4), u.Int 50)),
+            e.Not (e.LessThan (e.Multiply (e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 50)),
                 Value.Bool true
         ]
         |> List.iter (this.TestExpression ctx)
@@ -172,17 +172,17 @@ type TestEval () =
 
         [
             // if true then 10 else 20
-            u.If (u.Bool true, u.Int 10, u.Int 20),
+            e.If (e.Bool true, e.Int 10, e.Int 20),
                 Value.Int 10
             // if false then 10 else 20 + 20
-            u.If (u.Bool false, u.Int 10, u.Add (u.Int 20, u.Int 20)),
+            e.If (e.Bool false, e.Int 10, e.Add (e.Int 20, e.Int 20)),
                 Value.Int 40
         ]
         |> List.iter (this.TestExpression ctx)
 
         [
             // if 1 then 10 else 20
-            u.If (u.Int 1, u.Int 10, u.Int 20),  "If condition must be a boolean, got Int"
+            e.If (e.Int 1, e.Int 10, e.Int 20),  "If condition must be a boolean, got Int"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -193,29 +193,29 @@ type TestEval () =
 
         [
             // t1[0]
-            u.Project (u.Var "t1", u.Int 0),
+            e.Project (e.Var "t1", e.Int 0),
                 Value.Bool false
             // t2[1]
-            u.Project (u.Var "t2", u.Int 1),
+            e.Project (e.Var "t2", e.Int 1),
                 Value.Int 2
             // t3[0 + t2[1]]
-            u.Project (u.Var "t3", u.Add(u.Int 0, u.Project (u.Var "t2", u.Int 1))),
+            e.Project (e.Var "t3", e.Add(e.Int 0, e.Project (e.Var "t2", e.Int 1))),
                 Value.Int 2
             // (t3, t2)[2]
-            u.Project(u.Join (u.Var "t3", u.Var "t2"), u.Int 1),
+            e.Project(e.Join (e.Var "t3", e.Var "t2"), e.Int 1),
                 Value.Int 1
             // (t3, t2)[3]
-            u.Project(u.Join (u.Var "t3", u.Var "t2"), u.Int 3),
+            e.Project(e.Join (e.Var "t3", e.Var "t2"), e.Int 3),
                 Value.Bool true
             // (t3, t3)[2 + 2]
-            u.Project(u.Join (u.Var "t3", u.Var "t3"), u.Add(u.Int 2, u.Int 2)),
+            e.Project(e.Join (e.Var "t3", e.Var "t3"), e.Add(e.Int 2, e.Int 2)),
                 Value.Int 1
         ]
         |> List.iter (this.TestExpression ctx)
 
         [
             // t1[t2[0]]
-            u.Project (u.Var "t2", u.Project (u.Var "t2", u.Int 0)),  "Invalid projection index. Expected int expression, got: Classic (Project (Var \"t2\", 0), Bool)"
+            e.Project (e.Var "t2", e.Project (e.Var "t2", e.Int 0)),  "Invalid projection index. Expected int expression, got: Classic (Project (Var \"t2\", 0), Bool)"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -225,16 +225,16 @@ type TestEval () =
 
         [
             // m0 ()
-            u.CallMethod (u.Var "m0", []),
+            e.CallMethod (e.Var "m0", []),
                 Value.Tuple [Value.Int 1; Value.Int 2]
             // m1 (10, 20)
-            u.CallMethod (u.Var "m1", [u.Int 10; u.Int 20]),
+            e.CallMethod (e.Var "m1", [e.Int 10; e.Int 20]),
                 Value.Int 30
             // m2 (10, true, 0)
-            u.CallMethod (u.Var "m2", [u.Tuple [u.Int 10; u.Bool false; u.Bool true]; u.Bool false; u.Int 2]),
+            e.CallMethod (e.Var "m2", [e.Tuple [e.Int 10; e.Bool false; e.Bool true]; e.Bool false; e.Int 2]),
                 Value.Bool true
             // m2 (10, false, 0)
-            u.CallMethod (u.Var "m2", [u.Tuple [u.Int 10; u.Bool false; u.Bool true]; u.Bool false; u.Int 1]),
+            e.CallMethod (e.Var "m2", [e.Tuple [e.Int 10; e.Bool false; e.Bool true]; e.Bool false; e.Int 1]),
                 Value.Bool false
         ]
         |> List.iter (this.TestExpression ctx)
@@ -248,9 +248,9 @@ type TestEval () =
         [
             // let x = 10
             // x
-            u.Block ([
-                aleph.parser.ast.Statement.Let ("x", u.Tuple [u.Int 1; u.Int 2])
-            ], (u.Var "x")),
+            e.Block ([
+                aleph.parser.ast.Statement.Let ("x", e.Tuple [e.Int 1; e.Int 2])
+            ], (e.Var "x")),
                 Value.Tuple [Value.Int 1; Value.Int 2]
             
             // let x =
@@ -261,16 +261,16 @@ type TestEval () =
             //      let z = 20
             //      z
             // x
-            u.Block ([
+            e.Block ([
                 s.Let ("x",
-                    u.If (u.Bool true, 
-                        u.Block ([
-                            s.Let ("y", u.Int 10)
-                        ], u.Var "y"),
-                        u.Block ([
-                            s.Let ("z", u.Int 20)
-                        ], u.Var "z")))
-            ], u.Var "x"),
+                    e.If (e.Bool true, 
+                        e.Block ([
+                            s.Let ("y", e.Int 10)
+                        ], e.Var "y"),
+                        e.Block ([
+                            s.Let ("z", e.Int 20)
+                        ], e.Var "z")))
+            ], e.Var "x"),
                 Value.Int 10
 
             // let foo = 100
@@ -281,15 +281,15 @@ type TestEval () =
             //    else
             //      foo
             // x
-            u.Block ([
-                s.Let ("foo", u.Int 100)
+            e.Block ([
+                s.Let ("foo", e.Int 100)
                 s.Let ("x",
-                    u.If (u.Bool false, 
-                        u.Block ([
-                            s.Let ("y", u.Int 10)
-                        ], u.Var "y"),
-                        u.Var "foo"))
-            ], u.Var "x"),
+                    e.If (e.Bool false, 
+                        e.Block ([
+                            s.Let ("y", e.Int 10)
+                        ], e.Var "y"),
+                        e.Var "foo"))
+            ], e.Var "x"),
                 Value.Int 100
 
             // let alpha = 1
@@ -301,17 +301,17 @@ type TestEval () =
             //      let alpha = 20
             //      alpha
             // (alpha, x)
-            u.Block ([
-                s.Let ("alpha", u.Int 1)
+            e.Block ([
+                s.Let ("alpha", e.Int 1)
                 s.Let ("x",
-                    u.If (u.Bool true, 
-                        u.Block ([
-                            s.Let ("alpha", u.Int 10)
-                        ], u.Var "alpha"),
-                        u.Block ([
-                            s.Let ("alpha", u.Int 20)
-                        ], u.Var "alpha")))
-            ], u.Tuple [u.Var "alpha"; u.Var "x"]),
+                    e.If (e.Bool true, 
+                        e.Block ([
+                            s.Let ("alpha", e.Int 10)
+                        ], e.Var "alpha"),
+                        e.Block ([
+                            s.Let ("alpha", e.Int 20)
+                        ], e.Var "alpha")))
+            ], e.Tuple [e.Var "alpha"; e.Var "x"]),
                 Value.Tuple [Value.Int 1; Value.Int 10]
 
             // let alpha = 1
@@ -323,40 +323,44 @@ type TestEval () =
             //      let alpha = 20
             //      alpha
             // (alpha, x)
-            u.Block ([
-                s.Let ("alpha", u.Int 1)
+            e.Block ([
+                s.Let ("alpha", e.Int 1)
                 s.Let ("x",
-                    u.If (u.Bool false, 
-                        u.Block ([
-                            s.Let ("alpha", u.Int 10)
-                        ], u.Var "alpha"),
-                        u.Block ([
-                            s.Let ("alpha", u.Int 20)
-                        ], u.Var "alpha")))
-            ], u.Tuple [u.Var "alpha"; u.Var "x"]),
+                    e.If (e.Bool false, 
+                        e.Block ([
+                            s.Let ("alpha", e.Int 10)
+                        ], e.Var "alpha"),
+                        e.Block ([
+                            s.Let ("alpha", e.Int 20)
+                        ], e.Var "alpha")))
+            ], e.Tuple [e.Var "alpha"; e.Var "x"]),
                 Value.Tuple [Value.Int 1; Value.Int 20]
 
 
-            // let alpha = 1
-            // let x =
-            //    let alpha = alpha * 10
-            //    let x = 
-            //      let alpha = alpha * 20
-            //      alpha
-            //    (alpha, x)
-            // (alpha, x)
-            u.Block ([
-                s.Let ("alpha", u.Int 1)
-                s.Let ("x",
-                    u.Block ([
-                        s.Let ("alpha", u.Multiply(u.Var "alpha", u.Int 10))
-                        s.Let ("x",
-                            u.Block ([
-                                s.Let ("alpha", u.Multiply(u.Var "alpha", u.Int 20))
-                            ], u.Var "alpha"))
-                    ], u.Tuple [u.Var "alpha"; u.Var "x"]))
-            ], u.Join (u.Tuple [u.Var "alpha"], u.Var "x")),
-                Value.Tuple [Value.Int 1; Value.Int 10; Value.Int 200]
+            // // let alpha = 1
+            // // let beta = 10
+            // // let x =
+            // //    let alpha = alpha * beta
+            // //    beta = 20
+            // //    let x = 
+            // //      let alpha = alpha * beta
+            // //      alpha
+            // //    (alpha, x)
+            // // (Join (alpha, beta), x)
+            // e.Block ([
+            //     s.Let ("alpha", e.Int 1)
+            //     s.Let ("beta", e.Int 10)
+            //     s.Let ("x",
+            //         e.Block ([
+            //             s.Let ("alpha", e.Multiply(e.Var "alpha", e.Var "beta"))
+            //             //s.Update ("beta", u.Int 20)
+            //             s.Let ("x",
+            //                 e.Block ([
+            //                     s.Let ("alpha", e.Multiply(e.Var "alpha", e.Var "beta"))
+            //                 ], e.Var "alpha"))
+            //         ], e.Tuple [e.Var "alpha"; e.Var "x"]))
+            // ], e.Join (e.Tuple [e.Var "alpha"; e.Var "beta"], e.Var "x")),
+            //     Value.Tuple [Value.Int 1; Value.Int 10; Value.Int 200]
 
         ]
         |> List.iter (this.TestExpression ctx)
@@ -371,23 +375,23 @@ type TestEval () =
             //      let z = 20
             //      z
             // (x, y)
-            u.Block ([
+            e.Block ([
                 s.Let ("x",
-                    u.If (u.Bool true, 
-                        u.Block ([
-                            s.Let ("y", u.Int 10)
-                        ], u.Var "y"),
-                        u.Block ([
-                            s.Let ("z", u.Int 20)
-                        ], u.Var "z")))
-            ], u.Tuple [u.Var "x"; u.Var "y"]), "Variable not found: y"
+                    e.If (e.Bool true, 
+                        e.Block ([
+                            s.Let ("y", e.Int 10)
+                        ], e.Var "y"),
+                        e.Block ([
+                            s.Let ("z", e.Int 20)
+                        ], e.Var "z")))
+            ], e.Tuple [e.Var "x"; e.Var "y"]), "Variable not found: y"
 
             // let alpha = 1
             // let x() = alpha
             // x()
-            u.Block ([
-                s.Let ("alpha", u.Int 1)
-                s.Let ("x", u.Method([], u.Var "alpha"))
-            ], u.CallMethod (u.Var "x", [])), "Variable not found: alpha"
+            e.Block ([
+                s.Let ("alpha", e.Int 1)
+                s.Let ("x", e.Method([], e.Var "alpha"))
+            ], e.CallMethod (e.Var "x", [])), "Variable not found: alpha"
         ]
         |> List.iter (this.TestInvalidExpression ctx)

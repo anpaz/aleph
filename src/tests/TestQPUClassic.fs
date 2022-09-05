@@ -26,11 +26,11 @@ type TestQPUClassic () =
 
         [
             // | false >
-            u.Ket (u.Bool false), 
+            e.Ket (e.Bool false), 
                 [ [ Bool false ] ],
                 [ 0 ]
             // | 0, 1, 2 >
-            u.Ket (u.Set [u.Int 0; u.Int 1; u.Int 2]),
+            e.Ket (e.Set [e.Int 0; e.Int 1; e.Int 2]),
                 [
                     [ Int 0 ]
                     [ Int 1 ]
@@ -38,7 +38,7 @@ type TestQPUClassic () =
                 ],
                 [ 0 ]
             // | (0,0), (0,1), (1,1) >
-            u.Ket (u.Set [u.Tuple [u.Int 0; u.Int 0]; u.Tuple [u.Int 0; u.Int 1]; u.Tuple [u.Int 1; u.Int 1]]),
+            e.Ket (e.Set [e.Tuple [e.Int 0; e.Int 0]; e.Tuple [e.Int 0; e.Int 1]; e.Tuple [e.Int 1; e.Int 1]]),
                 [
                     [ Int 0; Int 0 ]
                     [ Int 0; Int 1 ]
@@ -46,12 +46,12 @@ type TestQPUClassic () =
                 ],
                 [ 0; 1 ]
             // | (0,0,0), (0,1,1), (1,1,0), (1,1,2) >.2
-            u.Project (u.Ket (u.Set [
-                    u.Tuple [ u.Int 0; u.Int 0; u.Int 0 ]
-                    u.Tuple [ u.Int 0; u.Int 1; u.Int 1 ]
-                    u.Tuple [ u.Int 1; u.Int 1; u.Int 0 ]
-                    u.Tuple [ u.Int 1; u.Int 1; u.Int 2 ]
-                ]), u.Int 2),
+            e.Project (e.Ket (e.Set [
+                    e.Tuple [ e.Int 0; e.Int 0; e.Int 0 ]
+                    e.Tuple [ e.Int 0; e.Int 1; e.Int 1 ]
+                    e.Tuple [ e.Int 1; e.Int 1; e.Int 0 ]
+                    e.Tuple [ e.Int 1; e.Int 1; e.Int 2 ]
+                ]), e.Int 2),
                 [
                     [ Int 0; Int 0; Int 0 ]
                     [ Int 0; Int 1; Int 1 ]
@@ -60,7 +60,7 @@ type TestQPUClassic () =
                 ],
                 [2]
             // ( | 0, 1 >, | 1, 2 > )
-            u.Join (u.Ket (u.Set [u.Int 0; u.Int 1]), u.Ket (u.Set [u.Int 1; u.Int 2])),
+            e.Join (e.Ket (e.Set [e.Int 0; e.Int 1]), e.Ket (e.Set [e.Int 1; e.Int 2])),
                 [
                     [ Int 0; Int 1 ]
                     [ Int 0; Int 2 ]
@@ -68,7 +68,7 @@ type TestQPUClassic () =
                     [ Int 1; Int 2 ]
                 ],
                 [ 0; 1 ]
-            u.KetAll (u.Int 3),
+            e.KetAll (e.Int 3),
                 [
                     [Int 0]
                     [Int 1]
@@ -80,7 +80,7 @@ type TestQPUClassic () =
                     [Int 7]
                 ],
                 [ 0 ]
-            u.Join( u.Ket (u.Set [ u.Tuple [u.Int 0; u.Int -6]]), u.KetAll (u.Int 2)),
+            e.Join( e.Ket (e.Set [ e.Tuple [e.Int 0; e.Int -6]]), e.KetAll (e.Int 2)),
             [
                     [Int 0; Int -6; Int 0]
                     [Int 0; Int -6; Int 1]
@@ -96,15 +96,15 @@ type TestQPUClassic () =
     member this.TestAddMultiply () =
         let ctx = 
             this.Context 
-            |> add_to_context "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (u.Ket (u.Set [
-                u.Tuple [ u.Int 0; u.Int 0]
-                u.Tuple [ u.Int 0; u.Int 1]
-                u.Tuple [ u.Int 1; u.Int 1]
+            |> add_to_context "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (e.Ket (e.Set [
+                e.Tuple [ e.Int 0; e.Int 0]
+                e.Tuple [ e.Int 0; e.Int 1]
+                e.Tuple [ e.Int 1; e.Int 1]
             ]))
 
         [
             // k1.0 + k1.1
-            u.Add( u.Project (u.Var "k1", u.Int 0), u.Project (u.Var "k1", u.Int 1) ),
+            e.Add( e.Project (e.Var "k1", e.Int 0), e.Project (e.Var "k1", e.Int 1) ),
                 [
                     [ Int 0; Int 0; Int 0 ]
                     [ Int 0; Int 1; Int 1 ]
@@ -112,7 +112,7 @@ type TestQPUClassic () =
                 ],
                 [ 2 ]
             // k1.0 + 1
-            u.Add( u.Project (u.Var "k1", u.Int 0), u.Int 1),
+            e.Add( e.Project (e.Var "k1", e.Int 0), e.Int 1),
                 [
                     [ Int 0; Int 0; Int 1; Int 1 ]
                     [ Int 0; Int 1; Int 1; Int 1 ]
@@ -120,7 +120,7 @@ type TestQPUClassic () =
                 ],
                 [ 3 ]
             // k1.0 * 5
-            u.Multiply( u.Project (u.Var "k1", u.Int 0), u.Int 5),
+            e.Multiply( e.Project (e.Var "k1", e.Int 0), e.Int 5),
                 [
                     [ Int 0; Int 0; Int 5; Int 0 ]
                     [ Int 0; Int 1; Int 5; Int 0 ]
@@ -128,7 +128,7 @@ type TestQPUClassic () =
                 ],
                 [ 3 ]
             // k1.0 + | 1, 2, 3 >
-            u.Add(u.Project (u.Var "k1", u.Int 1), u.Ket (u.Set [u.Int 1; u.Int 2; u.Int 3])),
+            e.Add(e.Project (e.Var "k1", e.Int 1), e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])),
                 [
                     [ Int 0; Int 0; Int 1; Int 1 ]
                     [ Int 0; Int 0; Int 2; Int 2 ]
@@ -142,7 +142,7 @@ type TestQPUClassic () =
                 ],
                 [ 3 ]
             // Join (k1.0, k1.1 + | 1, 2, 3 >)
-            u.Join (u.Project (u.Var "k1", u.Int 0), u.Add(u.Project (u.Var "k1", u.Int 1), u.Ket (u.Set [u.Int 1; u.Int 2; u.Int 3]))),
+            e.Join (e.Project (e.Var "k1", e.Int 0), e.Add(e.Project (e.Var "k1", e.Int 1), e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3]))),
                 [
                     [ Int 0; Int 0; Int 1; Int 1 ]
                     [ Int 0; Int 0; Int 2; Int 2 ]
@@ -156,7 +156,7 @@ type TestQPUClassic () =
                 ],
                 [ 0; 3 ]
             // Join (k1.0, k1.1 * | 1, 2, 3 >)
-            u.Join (u.Project (u.Var "k1", u.Int 0), u.Multiply(u.Project (u.Var "k1", u.Int 1), u.Ket (u.Set [u.Int 1; u.Int 2; u.Int 3]))),
+            e.Join (e.Project (e.Var "k1", e.Int 0), e.Multiply(e.Project (e.Var "k1", e.Int 1), e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3]))),
                 [
                     [ Int 0; Int 0; Int 1; Int 0 ]
                     [ Int 0; Int 0; Int 2; Int 0 ]
@@ -176,19 +176,19 @@ type TestQPUClassic () =
     member this.TestJoin () =
         let ctx = 
             this.Context
-            |> add_to_context "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (u.Ket (u.Set [
-                u.Tuple [ u.Int 0; u.Int 0]
-                u.Tuple [ u.Int 0; u.Int 1]
-                u.Tuple [ u.Int 1; u.Int 1]
+            |> add_to_context "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (e.Ket (e.Set [
+                e.Tuple [ e.Int 0; e.Int 0]
+                e.Tuple [ e.Int 0; e.Int 1]
+                e.Tuple [ e.Int 1; e.Int 1]
             ]))
-            |> add_to_context "k2" (AnyType.QType (QType.Ket [Type.Int])) (u.Ket (u.Set [
-                u.Tuple [ u.Int 1 ]
-                u.Tuple [ u.Int 3 ]
+            |> add_to_context "k2" (AnyType.QType (QType.Ket [Type.Int])) (e.Ket (e.Set [
+                e.Tuple [ e.Int 1 ]
+                e.Tuple [ e.Int 3 ]
             ]))
 
         [
             // Join (k1, k1)
-            u.Join (u.Var "k1", u.Var "k1"),
+            e.Join (e.Var "k1", e.Var "k1"),
                 [
                     [ Int 0; Int 0]
                     [ Int 0; Int 1]
@@ -196,7 +196,7 @@ type TestQPUClassic () =
                 ],
                 [ 0; 1; 0; 1 ]
             // Join (k1, k2)
-            u.Join (u.Var "k1", u.Var "k2"),
+            e.Join (e.Var "k1", e.Var "k2"),
                 [
                     [ Int 0; Int 0; Int 1 ]
                     [ Int 0; Int 0; Int 3 ]
@@ -207,7 +207,7 @@ type TestQPUClassic () =
                 ],
                 [ 0; 1; 2 ]
             // (Join k1, |true, false>)
-            u.Join (u.Var "k1", u.Ket (u.Set [u.Bool true; u.Bool false])),
+            e.Join (e.Var "k1", e.Ket (e.Set [e.Bool true; e.Bool false])),
                 [
                     [ Int 0; Int 0; Bool false ]
                     [ Int 0; Int 0; Bool true ]
@@ -220,11 +220,11 @@ type TestQPUClassic () =
             // let e1 = k1.1 + 10
             // let e2 = k2 + 10
             // (Join k1, e2 == e1 )
-            u.Block (
+            e.Block (
                 [
-                    Let ("e1", u.Add (u.Project (u.Var "k1", u.Int 1), u.Int 10))
-                    Let ("e2", u.Add (u.Var "k2", u.Int 10))
-                ], u.Join (u.Var "k1", u.Equals(u.Var "e2", u.Var "e1"))),
+                    Let ("e1", e.Add (e.Project (e.Var "k1", e.Int 1), e.Int 10))
+                    Let ("e2", e.Add (e.Var "k2", e.Int 10))
+                ], e.Join (e.Var "k1", e.Equals(e.Var "e2", e.Var "e1"))),
                 [
                     [ Int 0; Int 0; Int 1; Int 10; Int 11; Int 10; Int 10; Bool false ]
                     [ Int 0; Int 0; Int 3; Int 10; Int 13; Int 10; Int 10; Bool false ]
@@ -244,17 +244,17 @@ type TestQPUClassic () =
             //      alpha
             //    (alpha, x)
             // (alpha, x)
-            u.Block ([
-                s.Let ("alpha", u.Ket (u.Set [ u.Int 3; u.Int 5]))
+            e.Block ([
+                s.Let ("alpha", e.Ket (e.Set [ e.Int 3; e.Int 5]))
                 s.Let ("x",
-                    u.Block ([
-                        s.Let ("alpha", u.Multiply(u.Var "alpha", u.Int 10))
+                    e.Block ([
+                        s.Let ("alpha", e.Multiply(e.Var "alpha", e.Int 10))
                         s.Let ("x",
-                            u.Block ([
-                                s.Let ("alpha", u.Multiply(u.Var "alpha", u.Int 20))
-                            ], u.Var "alpha"))
-                    ], u.Join (u.Var "alpha", u.Var "x")))
-            ], u.Join (u.Var "alpha", u.Var "x")),
+                            e.Block ([
+                                s.Let ("alpha", e.Multiply(e.Var "alpha", e.Int 20))
+                            ], e.Var "alpha"))
+                    ], e.Join (e.Var "alpha", e.Var "x")))
+            ], e.Join (e.Var "alpha", e.Var "x")),
             [
                 [Int 3; Int 10; Int 30; Int 20; Int 600]
                 [Int 5; Int 10; Int 50; Int 20; Int 1000]
@@ -269,15 +269,15 @@ type TestQPUClassic () =
     member this.TestIndex () =
         let ctx = 
             this.Context 
-            |> add_to_context "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (u.Ket (u.Set [
-                u.Tuple [ u.Int 0; u.Int 0]
-                u.Tuple [ u.Int 0; u.Int 1]
-                u.Tuple [ u.Int 1; u.Int 1]
+            |> add_to_context "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (e.Ket (e.Set [
+                e.Tuple [ e.Int 0; e.Int 0]
+                e.Tuple [ e.Int 0; e.Int 1]
+                e.Tuple [ e.Int 1; e.Int 1]
             ]))
 
         [
             // k1.0 + k1.[0 + 1]
-            u.Add( u.Project (u.Var "k1", u.Int 0), u.Project (u.Var "k1", u.Add (u.Int 0, u.Int 1))),
+            e.Add( e.Project (e.Var "k1", e.Int 0), e.Project (e.Var "k1", e.Add (e.Int 0, e.Int 1))),
                 [
                     [ Int 0; Int 0; Int 0 ]
                     [ Int 0; Int 1; Int 1 ]
@@ -285,7 +285,7 @@ type TestQPUClassic () =
                 ],
                 [ 2 ]
             // k1.0 + k1.[0 + 3]        // Index is modular, so 3 == 1
-            u.Add( u.Project (u.Var "k1", u.Int 0), u.Project (u.Var "k1", u.Add (u.Int 0, u.Int 3))),
+            e.Add( e.Project (e.Var "k1", e.Int 0), e.Project (e.Var "k1", e.Add (e.Int 0, e.Int 3))),
                 [
                     [ Int 0; Int 0; Int 0 ]
                     [ Int 0; Int 1; Int 1 ]
@@ -299,21 +299,21 @@ type TestQPUClassic () =
     member this.TestIfQ () =
         let ctx = 
             this.Context
-            |> add_to_context "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (u.Ket (u.Set [
-                u.Tuple [ u.Int 0; u.Int 0]
-                u.Tuple [ u.Int 0; u.Int 1]
-                u.Tuple [ u.Int 1; u.Int 1]
+            |> add_to_context "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (e.Ket (e.Set [
+                e.Tuple [ e.Int 0; e.Int 0]
+                e.Tuple [ e.Int 0; e.Int 1]
+                e.Tuple [ e.Int 1; e.Int 1]
             ]))
-            |> add_to_context "k2" (AnyType.QType (QType.Ket [Type.Int])) (u.Ket (u.Set [
-                u.Tuple [ u.Int 2 ]
-                u.Tuple [ u.Int 3 ]
+            |> add_to_context "k2" (AnyType.QType (QType.Ket [Type.Int])) (e.Ket (e.Set [
+                e.Tuple [ e.Int 2 ]
+                e.Tuple [ e.Int 3 ]
             ]))
 
         [
             // if k1.1 == k1.0 then k1.1 else 42
-            u.If (u.Equals ( u.Project (u.Var "k1", u.Int 1), u.Project (u.Var "k1", u.Int 0)),
-                    u.Project (u.Var "k1", u.Int 1),
-                    u.Int 42),
+            e.If (e.Equals ( e.Project (e.Var "k1", e.Int 1), e.Project (e.Var "k1", e.Int 0)),
+                    e.Project (e.Var "k1", e.Int 1),
+                    e.Int 42),
                 [
                     [ Int 0; Int 0; Bool true; Int 42; Int 0 ]
                     [ Int 0; Int 1; Bool false; Int 42; Int 42 ]
@@ -327,21 +327,21 @@ type TestQPUClassic () =
     member this.TestIfClassic () =
         let ctx = 
             this.Context
-            |> add_to_context "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (u.Ket (u.Set [
-                u.Tuple [ u.Int 0; u.Int 0]
-                u.Tuple [ u.Int 0; u.Int 1]
-                u.Tuple [ u.Int 1; u.Int 1]
+            |> add_to_context "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (e.Ket (e.Set [
+                e.Tuple [ e.Int 0; e.Int 0]
+                e.Tuple [ e.Int 0; e.Int 1]
+                e.Tuple [ e.Int 1; e.Int 1]
             ]))
-            |> add_to_context "k2" (AnyType.QType (QType.Ket [Type.Int])) (u.Ket (u.Set [
-                u.Tuple [ u.Int 2 ]
-                u.Tuple [ u.Int 3 ]
+            |> add_to_context "k2" (AnyType.QType (QType.Ket [Type.Int])) (e.Ket (e.Set [
+                e.Tuple [ e.Int 2 ]
+                e.Tuple [ e.Int 3 ]
             ]))
 
         [
             // if true then k1.1 else 42
-            u.If (u.Bool true,
-                    u.Project (u.Var "k1", u.Int 1),
-                    u.Int 42),
+            e.If (e.Bool true,
+                    e.Project (e.Var "k1", e.Int 1),
+                    e.Int 42),
                 [
                     [ Int 0; Int 0 ]
                     [ Int 0; Int 1 ]
@@ -349,9 +349,9 @@ type TestQPUClassic () =
                 ],
                 [ 1 ]
             // if false then k1.1 else 42
-            u.If (u.Bool false,
-                    u.Project (u.Var "k1", u.Int 1),
-                    u.Int 42),
+            e.If (e.Bool false,
+                    e.Project (e.Var "k1", e.Int 1),
+                    e.Int 42),
                 [
                     [ Int 42 ]
                 ],
@@ -364,19 +364,19 @@ type TestQPUClassic () =
     member this.TestSolveEquals () =
         let ctx = 
             this.Context
-            |> add_to_context "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (u.Ket (u.Set [
-                u.Tuple [ u.Int 0; u.Int 0]
-                u.Tuple [ u.Int 0; u.Int 1]
-                u.Tuple [ u.Int 1; u.Int 1]
+            |> add_to_context "k1" (AnyType.QType (QType.Ket [Type.Int; Type.Int])) (e.Ket (e.Set [
+                e.Tuple [ e.Int 0; e.Int 0]
+                e.Tuple [ e.Int 0; e.Int 1]
+                e.Tuple [ e.Int 1; e.Int 1]
             ]))
-            |> add_to_context "k2" (AnyType.QType (QType.Ket [Type.Int])) (u.Ket (u.Set [
-                u.Tuple [ u.Int 2 ]
-                u.Tuple [ u.Int 3 ]
+            |> add_to_context "k2" (AnyType.QType (QType.Ket [Type.Int])) (e.Ket (e.Set [
+                e.Tuple [ e.Int 2 ]
+                e.Tuple [ e.Int 3 ]
             ]))
 
         [
             // k1.1 == 1
-            u.Equals ( u.Project (u.Var "k1", u.Int 1), u.Int 1),
+            e.Equals ( e.Project (e.Var "k1", e.Int 1), e.Int 1),
                 [
                     [ Int 0; Int 0; Int 1; Bool false ]
                     [ Int 0; Int 1; Int 1; Bool true ]
@@ -384,20 +384,20 @@ type TestQPUClassic () =
                 ],
                 [ 3 ]
             // (Solve k1, k1.1 == 1)
-            u.Solve (u.Var "k1", u.Equals ( u.Project (u.Var "k1", u.Int 1), u.Int 1)),
+            e.Solve (e.Var "k1", e.Equals ( e.Project (e.Var "k1", e.Int 1), e.Int 1)),
                 [
                     [ Int 0; Int 1; Int 1; Bool true ]
                     [ Int 1; Int 1; Int 1; Bool true ]
                 ],
                 [ 0; 1 ]
             // (Solve k1, k1.0 + k1.1 == 1)
-            u.Solve (u.Var "k1", u.Equals ( u.Add( u.Project (u.Var "k1", u.Int 0), u.Project (u.Var "k1", u.Int 1) ), u.Int 1)),
+            e.Solve (e.Var "k1", e.Equals ( e.Add( e.Project (e.Var "k1", e.Int 0), e.Project (e.Var "k1", e.Int 1) ), e.Int 1)),
                 [
                     [ Int 0; Int 1; Int 1; Int 1; Bool true ]
                 ],
                 [ 0; 1 ]
             // (Solve k1.0, k1.1 + | 1, 2, 3 > == |2, 4> )
-            u.Solve (u.Project (u.Var "k1", u.Int 1), u.Equals(u.Add(u.Project (u.Var "k1", u.Int 1), u.Ket (u.Set [u.Int 1; u.Int 2; u.Int 3])), u.Ket (u.Set [u.Int 2; u.Int 4]))),
+            e.Solve (e.Project (e.Var "k1", e.Int 1), e.Equals(e.Add(e.Project (e.Var "k1", e.Int 1), e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])), e.Ket (e.Set [e.Int 2; e.Int 4]))),
                 [
                     [ Int 0; Int 0; Int 2; Int 2; Int 2; Bool true ]
                     [ Int 0; Int 1; Int 1; Int 2; Int 2; Bool true ]
@@ -414,14 +414,14 @@ type TestQPUClassic () =
     member this.TestBoolOps () =
         let ctx = 
             this.Context 
-            |> add_to_context "k" (AnyType.QType (QType.Ket [Type.Int; Type.Bool])) (u.Ket (u.Set [
-                u.Tuple [ u.Int 0; u.Bool true]
-                u.Tuple [ u.Int 0; u.Bool false]
-                u.Tuple [ u.Int 1; u.Bool true]
+            |> add_to_context "k" (AnyType.QType (QType.Ket [Type.Int; Type.Bool])) (e.Ket (e.Set [
+                e.Tuple [ e.Int 0; e.Bool true]
+                e.Tuple [ e.Int 0; e.Bool false]
+                e.Tuple [ e.Int 1; e.Bool true]
             ]))
 
         [
-            u.Var "k",
+            e.Var "k",
                 [
                     // Looks like because they are set, they are ordered differently from inputs:
                     // this might be problematic for tests...
@@ -432,7 +432,7 @@ type TestQPUClassic () =
                 [ 0; 1 ]
 
             // not k.1
-            u.Not ( u.Project (u.Var "k", u.Int 1)),
+            e.Not ( e.Project (e.Var "k", e.Int 1)),
                 [
                     [ Int 0; Bool false; Bool true ]
                     [ Int 0; Bool true; Bool false ]
@@ -441,9 +441,9 @@ type TestQPUClassic () =
                 [ 2 ]
 
             // (false or k.1)
-                u.Or ( 
-                    u.Bool false,
-                    u.Project (u.Var "k", u.Int 1)),
+                e.Or ( 
+                    e.Bool false,
+                    e.Project (e.Var "k", e.Int 1)),
                 [
                     [ Bool false; Int 0; Bool false; Bool false ]
                     [ Bool false; Int 0; Bool true;  Bool true ]
@@ -452,12 +452,12 @@ type TestQPUClassic () =
                 [ 3 ]
 
             // not (k.0 == 0 and k.1)
-            u.Not ( 
-                u.And ( 
-                    u.Equals ( 
-                        u.Project (u.Var "k", u.Int 0), 
-                        u.Int 0), 
-                    u.Project (u.Var "k", u.Int 1)) ),
+            e.Not ( 
+                e.And ( 
+                    e.Equals ( 
+                        e.Project (e.Var "k", e.Int 0), 
+                        e.Int 0), 
+                    e.Project (e.Var "k", e.Int 1)) ),
                 [
                     [ Int 0; Bool false; Int 0; Bool true; Bool false; Bool true ]
                     [ Int 0; Bool true;  Int 0; Bool true; Bool true; Bool false ]
@@ -475,11 +475,11 @@ type TestQPUClassic () =
         [
             // // let colors() = |1,2,3>
             // // colors()
-            u.Block (
+            e.Block (
                 [
-                    Let ("colors", u.Method([], u.Ket (u.Set [u.Int 1; u.Int 2; u.Int 3])))
+                    Let ("colors", e.Method([], e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])))
                 ],
-                u.CallMethod (u.Var "colors", [])),
+                e.CallMethod (e.Var "colors", [])),
                 [
                     [ Int 1 ]
                     [ Int 2 ]
@@ -488,11 +488,11 @@ type TestQPUClassic () =
                 [ 0 ]
             // let colors() = |1,2,3>
             // ( colors(), colors() )
-            u.Block (
+            e.Block (
                 [
-                    Let ("colors", u.Method([], u.Ket (u.Set [u.Int 1; u.Int 2; u.Int 3])))
+                    Let ("colors", e.Method([], e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])))
                 ],
-                u.Join (u.CallMethod (u.Var "colors", []), u.CallMethod (u.Var "colors", []))),
+                e.Join (e.CallMethod (e.Var "colors", []), e.CallMethod (e.Var "colors", []))),
                 [
                     [ Int 1; Int 1 ]
                     [ Int 1; Int 2 ]
@@ -508,12 +508,12 @@ type TestQPUClassic () =
             // let k1 = |0,1>
             // let add_one(k: Ket<Int>) = k + 1
             // add_one(k1)
-            u.Block (
+            e.Block (
                 [
-                    Let ("k1", u.Ket (u.Set [u.Int 0; u.Int 1]))
-                    Let ("add_one", u.Method(["k", (AnyType.QType (QType.Ket [Type.Int]))], u.Add(u.Var "k", u.Int 1)))
+                    Let ("k1", e.Ket (e.Set [e.Int 0; e.Int 1]))
+                    Let ("add_one", e.Method(["k", (AnyType.QType (QType.Ket [Type.Int]))], e.Add(e.Var "k", e.Int 1)))
                 ],
-                u.CallMethod (u.Var "add_one", [u.Var "k1"])),
+                e.CallMethod (e.Var "add_one", [e.Var "k1"])),
                 [
                     [ Int 0; Int 1; Int 1 ]
                     [ Int 1; Int 1; Int 2 ]
@@ -523,13 +523,13 @@ type TestQPUClassic () =
             // let add_one(k: Ket<Int>) = k + 1
             // let k = add_one(k)
             // k
-            u.Block (
+            e.Block (
                 [
-                    Let ("k", u.Ket (u.Set [u.Int 0; u.Int 1]))
-                    Let ("add_one", u.Method(["k", (AnyType.QType (QType.Ket [Type.Int]))], u.Add(u.Var "k", u.Int 1)))
-                    Let ("k", u.CallMethod (u.Var "add_one", [u.Var "k"]))
+                    Let ("k", e.Ket (e.Set [e.Int 0; e.Int 1]))
+                    Let ("add_one", e.Method(["k", (AnyType.QType (QType.Ket [Type.Int]))], e.Add(e.Var "k", e.Int 1)))
+                    Let ("k", e.CallMethod (e.Var "add_one", [e.Var "k"]))
                 ],
-                u.Var "k"),
+                e.Var "k"),
                 [
                     [ Int 0; Int 1; Int 1 ]
                     [ Int 1; Int 1; Int 2 ]
@@ -540,14 +540,14 @@ type TestQPUClassic () =
             // let k2 = add_one(k1)
             // let k1 = | 2,3 >
             // k2
-            u.Block (
+            e.Block (
                 [
-                    Let ("k1", u.Ket (u.Set [u.Int 0; u.Int 1]))
-                    Let ("add_one", u.Method(["k", (AnyType.QType (QType.Ket [Type.Int]))], u.Add(u.Var "k", u.Int 1)))
-                    Let ("k2", u.CallMethod (u.Var "add_one", [u.Var "k1"]))
-                    Let ("k1", u.Ket (u.Set [u.Int 2; u.Int 3]))
+                    Let ("k1", e.Ket (e.Set [e.Int 0; e.Int 1]))
+                    Let ("add_one", e.Method(["k", (AnyType.QType (QType.Ket [Type.Int]))], e.Add(e.Var "k", e.Int 1)))
+                    Let ("k2", e.CallMethod (e.Var "add_one", [e.Var "k1"]))
+                    Let ("k1", e.Ket (e.Set [e.Int 2; e.Int 3]))
                 ],
-                u.Var "k2"),
+                e.Var "k2"),
                 [
                     [ Int 0; Int 1; Int 1 ]
                     [ Int 1; Int 1; Int 2 ]
@@ -555,14 +555,14 @@ type TestQPUClassic () =
                 [ 2 ]
             // let prepare_bell(a: int, b: int) = Prepare( |(a,a), (b,b)> )
             // prepare_bell(2, i1)
-            u.Block (
+            e.Block (
                 [
-                    Let ("prepare_bell", u.Method(
+                    Let ("prepare_bell", e.Method(
                         ["a", AnyType.Type (Type.Int); "b", AnyType.Type (Type.Int)], 
-                        u.Prepare (
-                            u.Ket (u.Set [ u.Tuple [u.Var "a"; u.Var "a"]; u.Tuple [u.Var "b"; u.Var "b"] ]))))
+                        e.Prepare (
+                            e.Ket (e.Set [ e.Tuple [e.Var "a"; e.Var "a"]; e.Tuple [e.Var "b"; e.Var "b"] ]))))
                 ],
-                u.CallMethod (u.Var "prepare_bell", [u.Int 2; u.Var "i1"])),
+                e.CallMethod (e.Var "prepare_bell", [e.Int 2; e.Var "i1"])),
                 [
                     [ Int 1; Int 1 ]
                     [ Int 2; Int 2 ]
@@ -575,20 +575,20 @@ type TestQPUClassic () =
     member this.TestMeasure () =
         let ctx = 
             this.Context 
-            |> add_to_context "k" (AnyType.QType (QType.Ket [Type.Int; Type.Bool])) (u.Ket (u.Set [
-                u.Tuple [ u.Int 0; u.Bool true]
-                u.Tuple [ u.Int 0; u.Bool false]
-                u.Tuple [ u.Int 1; u.Bool true]
+            |> add_to_context "k" (AnyType.QType (QType.Ket [Type.Int; Type.Bool])) (e.Ket (e.Set [
+                e.Tuple [ e.Int 0; e.Bool true]
+                e.Tuple [ e.Int 0; e.Bool false]
+                e.Tuple [ e.Int 1; e.Bool true]
             ]))
 
         [
-            u.Ket (u.Set []),
+            e.Ket (e.Set []),
                 []
             // Solve (k, k.0 == 2)
-            u.Solve (u.Var "k", u.Equals (u.Project (u.Var "k", u.Int 0), u.Int 2)),
+            e.Solve (e.Var "k", e.Equals (e.Project (e.Var "k", e.Int 0), e.Int 2)),
                 []
             // k
-            u.Var "k",
+            e.Var "k",
                 [
                     // Looks like because they are set, they are ordered differently from inputs:
                     // this might be problematic for tests...
@@ -597,28 +597,28 @@ type TestQPUClassic () =
                     Tuple [ Int 1; Bool true; ]
                 ]
             // k.1
-            u.Project (u.Var "k", u.Int 1),
+            e.Project (e.Var "k", e.Int 1),
                 [
                     Bool false
                     Bool true
                 ]
 
             // (false, k.1)
-                u.Join ( 
-                    u.Ket (u.Bool false),
-                    u.Project (u.Var "k", u.Int 1)),
+                e.Join ( 
+                    e.Ket (e.Bool false),
+                    e.Project (e.Var "k", e.Int 1)),
                 [
                     Tuple [ Bool false; Bool false ]
                     Tuple [ Bool false; Bool true ]
                 ]
 
             // not (k.0 == 0 and k.1)
-            u.Not ( 
-                u.And ( 
-                    u.Equals ( 
-                        u.Project (u.Var "k", u.Int 0), 
-                        u.Int 0), 
-                    u.Project (u.Var "k", u.Int 1)) ),
+            e.Not ( 
+                e.And ( 
+                    e.Equals ( 
+                        e.Project (e.Var "k", e.Int 0), 
+                        e.Int 0), 
+                    e.Project (e.Var "k", e.Int 1)) ),
                 [
                     Bool false;
                     Bool true;
@@ -627,19 +627,19 @@ type TestQPUClassic () =
         |> List.iter (verify_expression ctx)
 
 
-    member this.TestExpression (ctx: EvalContext) (e, state, columns)=
+    member this.TestExpression (ctx: EvalContext) (expr, state, columns)=
         let qpu = ctx.qpu
         // If it is not already a Prepare expression, wrap in Prepare...
         let e = 
-            match typecheck(e, ctx.typeCtx) with
+            match typecheck(expr, ctx.typeCtx) with
             | Ok (result, _) ->
                 match result with 
-                | typed.E.Universe (_, UType.Universe _) -> e
-                | _ -> u.Prepare e
+                | typed.E.Universe (_, UType.Universe _) -> expr
+                | _ -> e.Prepare expr
             | Error msg ->
-                printfn "e: %A" e
+                printfn "e: %A" expr
                 Assert.AreEqual($"Expression failed type-checking.", $"Got Error msg: {msg}")
-                e
+                expr
         match run(e, ctx) with
         | Ok (Universe universe, ctx) ->
             let universe = universe :?> aleph.runtime.qpu.classic.Universe

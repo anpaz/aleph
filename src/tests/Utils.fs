@@ -7,7 +7,7 @@ open aleph.parser.ast
 open aleph.runtime.Eval
 
 // alias for untyped expressions
-type u = Expression
+type e = Expression
 type s = Statement
 
 module Utils =
@@ -19,17 +19,17 @@ module Utils =
         | Error msg ->
             failwith msg
 
-    let prepare (e, ctx) = 
-        match run(u.Prepare e, ctx) with
+    let prepare (expr, ctx) = 
+        match run(e.Prepare expr, ctx) with
         | Ok (Universe universe, _) ->
             universe
         | Ok (v, _) ->
-            printfn "e: %A" e
+            printfn "e: %A" expr
             Assert.AreEqual($"Expecting Universe value.", $"Got {v}")
             { new IUniverse with
                   member this.CompareTo(obj) = failwith "Not Implemented" } // not reachable
         | Error msg ->
-            printfn "e: %A" e
+            printfn "e: %A" expr
             Assert.AreEqual($"Expecting valid expression.", $"Got Error msg: {msg}")
             { new IUniverse with
                   member this.CompareTo(obj) = failwith "Not Implemented" } // not reachable
