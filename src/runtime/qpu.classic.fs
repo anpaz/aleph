@@ -158,13 +158,15 @@ type Processor() =
         this method returns the columns associated with the ket accordingly.
      *)
     and prepare_var (id, ctx) =
-        match ctx.evalCtx.heap.TryFind id with
-        | Some (Value.Ket ket) ->
-            prepare_ket (ket, ctx)
-            ==> fun (columns, ctx) ->
-                (columns, ctx) |> Ok
-        | _ ->
-            $"Unknown variable: {id}. Expecting ket." |> Error
+        eval_var (id, ctx.evalCtx)
+        ==> fun (value, evalCtx) ->
+            match value with
+            | Value.Ket ket ->
+                prepare_ket (ket, { ctx with evalCtx = evalCtx })
+                ==> fun (columns, ctx) ->
+                    (columns, ctx) |> Ok
+            | _ ->
+                $"Unknown variable: {id}. Expecting ket." |> Error
 
     (*
         Adding a new literal involves updating the quantum state 
@@ -409,11 +411,11 @@ type Processor() =
     (*
         Returns the columns of the specified ket.
      *)
-    and prepare_block (stmts, value, ctx) =
+    and prepare_block (stmts, body, ctx) =
         eval_stmts (stmts, ctx.evalCtx)
         ==> fun evalCtx ->
             let ctx = { ctx with evalCtx = evalCtx }
-            prepare (value, ctx)
+            prepare (body, ctx)
 
     (*
         Calls the corresponding method, and automatically prepares the resulting Ket

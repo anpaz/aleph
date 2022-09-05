@@ -120,13 +120,15 @@ type Processor(sim: IOperationFactory) =
             $"Not implemented: {q}" |> Error
 
     and prepare_var (id, ctx) =
-        match ctx.evalCtx.heap.TryFind id with
-        | Some (Value.Ket ket) ->
-            prepare_ket (ket, ctx)
-            ==> fun (registers, ctx) ->
-                (registers, ctx) |> Ok
-        | _ ->
-            $"Invalid variable: {id}. Expecting ket." |> Error
+        eval_var (id, ctx.evalCtx)
+        ==> fun (value, evalCtx) ->
+            match value with
+            | Value.Ket ket ->
+                prepare_ket (ket, { ctx with evalCtx = evalCtx })
+                ==> fun (columns, ctx) ->
+                    (columns, ctx) |> Ok
+            | _ ->
+                $"Unknown variable: {id}. Expecting ket." |> Error
 
     and prepare_literal (values, ctx) =
         eval_classic(values, ctx.evalCtx)
@@ -222,11 +224,11 @@ type Processor(sim: IOperationFactory) =
                 | _ -> 
                     $"Invalid inputs for ket And. Expected one length registers, got: left:{left.Length} && right:{right.Length}" |> Error
                     
-    and prepare_block (stmts, value, ctx) =
+    and prepare_block (stmts, body, ctx) =
         eval_stmts (stmts, ctx.evalCtx)
         ==> fun evalCtx ->
             let ctx = { ctx with evalCtx = evalCtx }
-            prepare (value, ctx)
+            prepare (body, ctx)
 
     and prepare_callmethod (method, args, ctx) =
         prepare_method (method, args, ctx.evalCtx)

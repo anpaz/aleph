@@ -70,6 +70,7 @@ module Eval =
     and EvalContext = {
         heap: Map<Id, Value>
         qpu: QPU
+        callerCtx: Option<EvalContext>
         typeCtx: TypeContext
     }
 
@@ -133,10 +134,13 @@ module Eval =
 
     and eval_var (id, ctx) =
         match ctx.heap.TryFind id with
-        | Some value ->
-            (value, ctx) |> Ok
+        | Some value -> (value, ctx) |> Ok
         | _ ->
-            $"Variable not found: {id}" |> Error
+            match ctx.callerCtx with
+            | Some ctx' -> 
+                eval_var (id, ctx')
+                ==> fun (value, _) -> (value, ctx) |> Ok
+            | None -> $"Variable not found: {id}" |> Error
 
     and eval_bool (b, ctx) =
         (Value.Bool b, ctx) |> Ok
@@ -258,9 +262,9 @@ module Eval =
 
     and eval_block (stmts,value, ctx) =
         eval_stmts (stmts, ctx) 
-        ==> fun (ctx') -> 
-            eval_classic (value, ctx')
-            ==> fun (value, _) -> (value, ctx) |> Ok
+        ==> fun (ctx) -> 
+            eval_classic (value, ctx)
+            ==> fun (value, _) -> (value, ctx.callerCtx.Value) |> Ok
         
     and eval_sample (u, ctx) =
         let qpu = ctx.qpu
@@ -310,6 +314,10 @@ module Eval =
                             ctx' |> Ok
                     expressions
                     |> List.fold print_one (ctx' |> Ok)
+        let ctx = {
+            ctx with 
+                heap = Map.empty
+                callerCtx = ctx |> Some }
         stmts
         |> List.fold eval_one (ctx |> Ok)
 

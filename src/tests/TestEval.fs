@@ -43,6 +43,7 @@ module ClassicValueContext =
                 "m1", AnyType.Type (Type.Method ([AnyType.Type Type.Int; AnyType.Type Type.Int], AnyType.Type Type.Int))
                 "m2", AnyType.Type (Type.Method ([AnyType.Type Type.Tuple[Type.Int; Type.Bool; Type.Bool]; AnyType.Type Type.Bool; AnyType.Type Type.Int], AnyType.Type Type.Bool))
             ]
+            callerCtx = None
         }
 
 [<TestClass>]
@@ -334,6 +335,28 @@ type TestEval () =
                         ], u.Var "alpha")))
             ], u.Tuple [u.Var "alpha"; u.Var "x"]),
                 Value.Tuple [Value.Int 1; Value.Int 20]
+
+
+            // let alpha = 1
+            // let x =
+            //    let alpha = alpha * 10
+            //    let x = 
+            //      let alpha = alpha * 20
+            //      alpha
+            //    (alpha, x)
+            // (alpha, x)
+            u.Block ([
+                s.Let ("alpha", u.Int 1)
+                s.Let ("x",
+                    u.Block ([
+                        s.Let ("alpha", u.Multiply(u.Var "alpha", u.Int 10))
+                        s.Let ("x",
+                            u.Block ([
+                                s.Let ("alpha", u.Multiply(u.Var "alpha", u.Int 20))
+                            ], u.Var "alpha"))
+                    ], u.Tuple [u.Var "alpha"; u.Var "x"]))
+            ], u.Join (u.Tuple [u.Var "alpha"], u.Var "x")),
+                Value.Tuple [Value.Int 1; Value.Int 10; Value.Int 200]
 
         ]
         |> List.iter (this.TestExpression ctx)

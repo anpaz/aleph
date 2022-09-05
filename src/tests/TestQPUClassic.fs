@@ -234,6 +234,33 @@ type TestQPUClassic () =
                     [ Int 1; Int 1; Int 3; Int 10; Int 13; Int 10; Int 11; Bool false ]
                 ],
                 [ 0; 1; 7 ]
+
+
+            // let alpha = |3,5>
+            // let x =
+            //    let alpha = alpha * 10
+            //    let x = 
+            //      let alpha = alpha * 20
+            //      alpha
+            //    (alpha, x)
+            // (alpha, x)
+            u.Block ([
+                s.Let ("alpha", u.Ket (u.Set [ u.Int 3; u.Int 5]))
+                s.Let ("x",
+                    u.Block ([
+                        s.Let ("alpha", u.Multiply(u.Var "alpha", u.Int 10))
+                        s.Let ("x",
+                            u.Block ([
+                                s.Let ("alpha", u.Multiply(u.Var "alpha", u.Int 20))
+                            ], u.Var "alpha"))
+                    ], u.Join (u.Var "alpha", u.Var "x")))
+            ], u.Join (u.Var "alpha", u.Var "x")),
+            [
+                [Int 3; Int 10; Int 30; Int 20; Int 600]
+                [Int 5; Int 10; Int 50; Int 20; Int 1000]
+            ],
+            [ 0; 2; 4]
+
         ]
         |> List.iter (this.TestExpression ctx)
 
