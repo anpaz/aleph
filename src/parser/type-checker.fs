@@ -40,14 +40,17 @@ module TypeChecker =
         | Classic (l, Type.Tuple t) -> (Literal (C.Set [l]), QType.Ket t) |> Ok
         | _ -> "Cannot create quantum literal from {e}" |> Error 
 
-    type TypeContext = Map<Id, AnyType>
+    type TypeContext = {
+        heap: Map<Id, AnyType>
+        previousCtx: TypeContext option
+    }
 
     let QInt = QType.Ket [Type.Int]
     let QBool = QType.Ket [Type.Bool]
 
-    let add_to_context (ctx:TypeContext) (arguments: (Id * AnyType) list) : TypeContext =
+    let add_to_typecontext (arguments: (Id * AnyType) list)  (ctx:TypeContext) : TypeContext =
         arguments 
-        |> List.fold (fun state arg -> state.Add arg) ctx
+        |> List.fold (fun state arg -> { state with heap = state.heap.Add arg }) ctx
 
     let rec typecheck (e: Expression, ctx: TypeContext) =
         match e with 
@@ -105,13 +108,18 @@ module TypeChecker =
         next (values, ctx)
 
     and typecheck_var (id, ctx) =
-        match ctx.TryFind id with
-        | Some t -> 
+        match ctx.heap.TryFind id with
+        | Some t ->
             match t with
             | Type t -> (Classic (C.Var id, t), ctx) |> Ok
             | QType t -> (Quantum (Q.Var id, t), ctx) |> Ok
             | UType t -> (Universe (U.Var id, t), ctx) |> Ok
-        | None -> $"Unknown variable: {id}" |> Error
+        | None -> 
+            match ctx.previousCtx with
+            | Some previousCtx -> 
+                typecheck_var (id, previousCtx)
+                ==> fun (value, _) -> (value, ctx) |> Ok
+            | None -> $"Variable not found: {id}" |> Error
 
     and typecheck_bool (b, ctx) =
         (Classic (BoolLiteral b, Type.Bool), ctx) |> Ok
@@ -211,11 +219,11 @@ module TypeChecker =
                 $"Start must be an int expression, got: {start}" |> Error
 
     and typecheck_method (arguments, body, ctx) =
-        let ctx =
-            arguments 
-            |> add_to_context ctx
-        typecheck (body, ctx)
-        ==> fun (body, ctx) ->
+        let ctx' =
+            { heap = Map.empty; previousCtx = None }
+            |> add_to_typecontext arguments
+        typecheck (body, ctx')
+        ==> fun (body, _) ->
             let argNames = arguments |> List.map (fun a -> (fst a))
             let argTypes = arguments |> List.map (fun a -> (snd a))
             match body with
@@ -421,34 +429,18 @@ module TypeChecker =
                 | Classic (i, Type.Int) -> use_index (value, i, ctx)
                 | _ -> $"Invalid projection index. Expected int expression, got: {index}" |> Error
         
-    and typecheck_block (stmts, r, ctx') =
-        let as_typed_stmt previous (next:ast.Statement) =
-            previous
-            ==> fun (previous, ctx) ->
-                let get_type =  function | Classic (_, t) -> AnyType.Type t | Quantum (_, t) -> AnyType.QType t | Universe (_, t) -> AnyType.UType t
-                match next with
-                | ast.Statement.Let (id, value) ->
-                    typecheck (value, ctx)
-                    ==> fun (value, ctx) ->
-                        let t = value |> get_type
-                        let ctx = ctx.Add (id, t)
-                        (previous @ [typed.Statement.Let (id, value)], ctx) |> Ok
-                | ast.Statement.Print (msg, value) ->
-                    typecheck_expression_list any_expression (value, ctx)
-                    ==> fun (value, ctx) ->
-                        (previous @ [typed.Statement.Print (msg, value)], ctx) |> Ok
-        stmts
-        |> List.fold as_typed_stmt (([], ctx') |> Ok)
+    and typecheck_block (stmts, r, ctx) =
+        typecheck_statements (stmts, ctx)
         ==> fun (stmts, ctx) ->
             typecheck (r, ctx)
-            ==> fun (r, ctx) ->
+            ==> fun (r, _) ->
                 match r with
                 | Classic (e, t) ->
-                    (Classic (C.Block (stmts, e), t), ctx) |> Ok
+                    (Classic (C.Block (stmts, e), t), ctx.previousCtx.Value) |> Ok
                 | Quantum (e, t) ->
-                    (Quantum (Q.Block (stmts, e), t), ctx) |> Ok
+                    (Quantum (Q.Block (stmts, e), t), ctx.previousCtx.Value) |> Ok
                 | Universe (e, t) ->
-                    (Universe (U.Block (stmts, e), t), ctx) |> Ok
+                    (Universe (U.Block (stmts, e), t), ctx.previousCtx.Value) |> Ok
 
     and typecheck_if (c, t, f, ctx) =
         typecheck_expression_list any_expression ([c; t; f], ctx)
@@ -495,7 +487,7 @@ module TypeChecker =
             match enumeration with
             | Classic (values, (Type.Set t)) ->
                 // and the variable to the context, and typecheck the body:
-                let ctx = add_to_context ctx [varId, AnyType.Type t]
+                let ctx = ctx |> add_to_typecontext [varId, AnyType.Type t]
                 typecheck (body, ctx)
                 ==> fun (body, ctx) ->
                     // the body must match the aggregation:
@@ -554,3 +546,44 @@ module TypeChecker =
             | Universe (u, UType.Universe t) -> (Classic (C.Sample u, Type.Tuple t), ctx) |> Ok
             | Quantum (_, t) -> $"Sample argument must be a quantum ket, got: {t}" |> Error
             | Classic (_, t) -> $"Sample argument must be a quantum ket, got: {t}" |> Error
+
+    and typecheck_statements (stmts, ctx) =
+        let rec as_typed_stmt previous (next:ast.Statement) =
+            previous
+            ==> fun (previous, ctx) ->
+                let get_type =  function | Classic (_, t) -> AnyType.Type t | Quantum (_, t) -> AnyType.QType t | Universe (_, t) -> AnyType.UType t
+                match next with
+                | ast.Statement.Let (id, value) ->
+                    typecheck (value, ctx)
+                    ==> fun (value, ctx) ->
+                        let t = value |> get_type
+                        let ctx = {ctx with heap = ctx.heap.Add (id, t) }
+                        (previous @ [typed.Statement.Let (id, value)], ctx) |> Ok
+                | ast.Statement.Update (id, value) ->
+                    typecheck (value, ctx)
+                    ==> fun (value, ctx) ->
+                        let rec update_ctx id t ctx' =
+                            // Find in this context
+                            match ctx'.heap.TryFind id with
+                            | Some _ -> 
+                                { ctx' with heap = ctx'.heap.Add (id, t) } |> Ok
+                            | None ->
+                                // if not in this context, find recursively in previous context...
+                                match ctx'.previousCtx with
+                                | Some previousCtx ->
+                                    update_ctx id t previousCtx
+                                    ==> fun (previousCtx) ->
+                                        { ctx' with previousCtx = previousCtx |> Some } |> Ok
+                                | None ->
+                                    $"Unknown variable for update: {id}." |> Error
+                        let t = value |> get_type
+                        update_ctx id t ctx
+                        ==> fun ctx -> 
+                            (previous @ [typed.Statement.Update (id, value)], ctx) |> Ok
+                | ast.Statement.Print (msg, value) ->
+                    typecheck_expression_list any_expression (value, ctx)
+                    ==> fun (value, ctx) ->
+                        (previous @ [typed.Statement.Print (msg, value)], ctx) |> Ok
+        let ctx' = { ctx with heap = Map.empty; previousCtx = ctx |> Some }
+        stmts
+        |> List.fold as_typed_stmt (([], ctx') |> Ok)

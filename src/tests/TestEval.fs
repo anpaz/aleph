@@ -32,17 +32,20 @@ module ClassicValueContext =
                 // (x, y, z) -> y || x[z]
                 "m2", Method (["x"; "y"; "z"], (E.Classic (C.Or ((C.Var "y", C.Index (C.Var ("x"), C.Var "z"))), Type.Bool)))
             ]
-            typeCtx = aleph.parser.TypeChecker.TypeContext [ 
-                "i1", AnyType.Type Type.Int
-                "b1", AnyType.Type Type.Bool
-                "t1", AnyType.Type (Type.Tuple [Type.Bool; Type.Int])
-                "t2", AnyType.Type (Type.Tuple [Type.Bool; Type.Int])
-                "t3", AnyType.Type (Type.Tuple [Type.Int; Type.Int; Type.Int])
-                "s1", AnyType.Type (Type.Set (Type.Tuple [Type.Bool; Type.Int]))
-                "m0", AnyType.Type (Type.Method ([], (AnyType.Type (Type.Tuple [Type.Int; Type.Int]))))
-                "m1", AnyType.Type (Type.Method ([AnyType.Type Type.Int; AnyType.Type Type.Int], AnyType.Type Type.Int))
-                "m2", AnyType.Type (Type.Method ([AnyType.Type Type.Tuple[Type.Int; Type.Bool; Type.Bool]; AnyType.Type Type.Bool; AnyType.Type Type.Int], AnyType.Type Type.Bool))
-            ]
+            typeCtx = {
+                heap = Map [ 
+                    "i1", AnyType.Type Type.Int
+                    "b1", AnyType.Type Type.Bool
+                    "t1", AnyType.Type (Type.Tuple [Type.Bool; Type.Int])
+                    "t2", AnyType.Type (Type.Tuple [Type.Bool; Type.Int])
+                    "t3", AnyType.Type (Type.Tuple [Type.Int; Type.Int; Type.Int])
+                    "s1", AnyType.Type (Type.Set (Type.Tuple [Type.Bool; Type.Int]))
+                    "m0", AnyType.Type (Type.Method ([], (AnyType.Type (Type.Tuple [Type.Int; Type.Int]))))
+                    "m1", AnyType.Type (Type.Method ([AnyType.Type Type.Int; AnyType.Type Type.Int], AnyType.Type Type.Int))
+                    "m2", AnyType.Type (Type.Method ([AnyType.Type Type.Tuple[Type.Int; Type.Bool; Type.Bool]; AnyType.Type Type.Bool; AnyType.Type Type.Int], AnyType.Type Type.Bool))
+                ]
+                previousCtx = None
+            }
             callerCtx = None
         }
 
@@ -246,12 +249,23 @@ type TestEval () =
         let ctx = ClassicValueContext.ctx
 
         [
-            // let x = 10
+            // let x = (1, 2)
             // x
             e.Block ([
-                aleph.parser.ast.Statement.Let ("x", e.Tuple [e.Int 1; e.Int 2])
+                s.Let ("x", e.Tuple [e.Int 1; e.Int 2])
             ], (e.Var "x")),
                 Value.Tuple [Value.Int 1; Value.Int 2]
+
+            // let x = 10
+            // let y = x
+            // x = 20
+            // (x, y)
+            e.Block ([
+                s.Let ("x", e.Int 10)
+                s.Let ("y", e.Var "x")
+                s.Update ("x", e.Int 20)
+            ], e.Tuple [e.Var "x"; e.Var "y"]),
+                Value.Tuple [Value.Int 20; Value.Int 10]
             
             // let x =
             //    if true then 
@@ -337,30 +351,28 @@ type TestEval () =
                 Value.Tuple [Value.Int 1; Value.Int 20]
 
 
-            // // let alpha = 1
-            // // let beta = 10
-            // // let x =
-            // //    let alpha = alpha * beta
-            // //    beta = 20
-            // //    let x = 
-            // //      let alpha = alpha * beta
-            // //      alpha
-            // //    (alpha, x)
-            // // (Join (alpha, beta), x)
-            // e.Block ([
-            //     s.Let ("alpha", e.Int 1)
-            //     s.Let ("beta", e.Int 10)
-            //     s.Let ("x",
-            //         e.Block ([
-            //             s.Let ("alpha", e.Multiply(e.Var "alpha", e.Var "beta"))
-            //             //s.Update ("beta", u.Int 20)
-            //             s.Let ("x",
-            //                 e.Block ([
-            //                     s.Let ("alpha", e.Multiply(e.Var "alpha", e.Var "beta"))
-            //                 ], e.Var "alpha"))
-            //         ], e.Tuple [e.Var "alpha"; e.Var "x"]))
-            // ], e.Join (e.Tuple [e.Var "alpha"; e.Var "beta"], e.Var "x")),
-            //     Value.Tuple [Value.Int 1; Value.Int 10; Value.Int 200]
+            // let alpha = 1
+            // let beta = 10
+            // let x =
+            //    let alpha = alpha * beta
+            //    beta = 20
+            //    let x = 
+            //      let alpha = alpha * beta
+            //      alpha
+            //    (alpha, beta, x)
+            // (Join (alpha, beta), x)
+            e.Block ([
+                s.Let ("alpha", e.Int 1)
+                s.Let ("beta", e.Int 10)
+                s.Let ("x", e.Block ([
+                    s.Let ("alpha", e.Multiply(e.Var "alpha", e.Var "beta"))
+                    s.Update ("beta", e.Int 20)
+                    s.Let ("x", e.Block ([
+                        s.Let ("alpha", e.Multiply(e.Var "alpha", e.Var "beta"))
+                    ], e.Var "alpha"))
+                ], e.Tuple [e.Var "alpha"; e.Var "beta"; e.Var "x"]))
+            ], e.Join (e.Tuple [e.Var "alpha"; e.Var "beta"], e.Var "x")),
+                Value.Tuple [Value.Int 1; Value.Int 20; Value.Int 10; Value.Int 20; Value.Int 200]
 
         ]
         |> List.iter (this.TestExpression ctx)

@@ -43,24 +43,26 @@ type TestCore () =
             Assert.AreEqual(error, msg)
 
     member this.TypeContext =
-
-        TypeContext [ 
-            "i1", AnyType.Type Type.Int
-            "b1", AnyType.Type Type.Bool
-            "t1", AnyType.Type (Type.Tuple [Type.Bool; Type.Int])
-            "t2", AnyType.Type (Type.Tuple [Type.Bool; Type.Int])
-            "s1", AnyType.Type (Type.Set (Type.Tuple [Type.Bool; Type.Int]))
-            "qb1", AnyType.QType QBool
-            "k1", AnyType.QType QInt
-            "k2", AnyType.QType (QType.Ket [Type.Int; Type.Bool])
-            "m1", AnyType.Type (Type.Method ([], AnyType.Type Type.Int))
-            "q1", AnyType.Type (Type.Method ([], AnyType.QType QType.Ket[Type.Int]))
-        ]
+        { 
+            heap = Map ([ 
+                "i1", AnyType.Type Type.Int
+                "b1", AnyType.Type Type.Bool
+                "t1", AnyType.Type (Type.Tuple [Type.Bool; Type.Int])
+                "t2", AnyType.Type (Type.Tuple [Type.Bool; Type.Int])
+                "s1", AnyType.Type (Type.Set (Type.Tuple [Type.Bool; Type.Int]))
+                "qb1", AnyType.QType QBool
+                "k1", AnyType.QType QInt
+                "k2", AnyType.QType (QType.Ket [Type.Int; Type.Bool])
+                "m1", AnyType.Type (Type.Method ([], AnyType.Type Type.Int))
+                "q1", AnyType.Type (Type.Method ([], AnyType.QType QType.Ket[Type.Int]))
+            ])
+            previousCtx = None
+        }
 
 
     [<TestMethod>]
     member this.TestBoolInt () =
-        let ctx = Map.empty
+        let ctx = { heap = Map.empty; previousCtx = None }
 
         [
             e.Bool false, Type.Bool, C.BoolLiteral false
@@ -86,7 +88,7 @@ type TestCore () =
         |> List.iter (this.TestQuantumExpression ctx)
 
         [
-            e.Var "foo", "Unknown variable: foo"
+            e.Var "foo", "Variable not found: foo"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -122,14 +124,13 @@ type TestCore () =
                 Type.Tuple [Type.Bool; Type.Bool], 
                 C.Tuple [C.Or (C.BoolLiteral true, C.BoolLiteral false); C.Var "b1"]
 
-
             // TODO: JOIN expressions
 
         ]
         |> List.iter (this.TestClassicExpression ctx)
 
         [
-            e.Tuple [e.Var "foo"], "Unknown variable: foo"
+            e.Tuple [e.Var "foo"], "Variable not found: foo"
             e.Tuple [e.Var "i1"; e.Var "b1"; e.Var "m1"], "Invalid tuple element. Expected bool or int expression, got: (Var \"m1\":Method ([], Type Int))"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
@@ -172,7 +173,7 @@ type TestCore () =
         |> List.iter (this.TestClassicExpression ctx)
 
         [
-            e.Set [e.Var "foo"], "Unknown variable: foo"
+            e.Set [e.Var "foo"], "Variable not found: foo"
             e.Set [e.Var "i1"; e.Var "b1"; e.Var "m1"], "Invalid set element. Expected int, bool or tuple expression, got: (Var \"m1\":Method ([], Type Int))"
             e.Set [e.Int 4; e.Bool true], "All elements in a set must be of the same type."
             e.Set [e.Tuple [e.Int 4; e.Bool true]; e.Tuple [e.Int 1; e.Int 2]], "All elements in a set must be of the same type."
@@ -213,7 +214,7 @@ type TestCore () =
         |> List.iter (this.TestQuantumExpression ctx)
 
         [
-            e.And (e.Var "foo", e.Bool true), "Unknown variable: foo"
+            e.And (e.Var "foo", e.Bool true), "Variable not found: foo"
             e.And (e.Bool true, e.Int 23), "Boolean expressions require boolean arguments, got Bool == Int"
             e.Or (e.Bool true, e.Int 23), "Boolean expressions require boolean arguments, got Bool == Int"
             e.Not (e.Int 23), "Not must be applied to a boolean expression, got: Int"
@@ -517,14 +518,16 @@ type TestCore () =
     member this.TestCallMethod() =
         let ctx = 
             this.TypeContext
-                .Add("m2", AnyType.Type (
+            |> add_to_typecontext ([
+                "m2", AnyType.Type (
                     Type.Method (
                         [AnyType.QType (QType.Ket [Type.Int]); AnyType.Type (Type.Tuple [Type.Int; Type.Bool])], 
-                        AnyType.Type (Type.Tuple [Type.Int; Type.Int]))))
-                .Add("q2", AnyType.Type (
+                        AnyType.Type (Type.Tuple [Type.Int; Type.Int])))
+                "q2", AnyType.Type (
                     Type.Method (
                         [AnyType.QType (QType.Ket [Type.Int]); AnyType.Type (Type.Tuple [Type.Int; Type.Bool])], 
-                        AnyType.QType (QType.Ket [Type.Bool]))))
+                        AnyType.QType (QType.Ket [Type.Bool])))
+            ])
 
         [
             // m1()
@@ -683,14 +686,55 @@ type TestCore () =
                 C.Block ([], C.Var "t1")
             // { let a = 15; print "some msg" a k1; a + i1 }
             e.Block ([
-                aleph.parser.ast.Statement.Let ("a", e.Int 15)
-                aleph.parser.ast.Statement.Print ("some msg", [e.Var "a"; e.Var "k1"])],
-                (e.Add (e.Var "a", e.Var "i1"))),
+                s.Let ("a", e.Int 15)
+                s.Print ("some msg", [e.Var "a"; e.Var "k1"])],
+                e.Add (e.Var "a", e.Var "i1")),
                 Type.Int,
                 C.Block ([
                     Let ("a", Classic (C.IntLiteral 15, Type.Int))
                     Print ("some msg", [Classic (C.Var "a", Type.Int); (Quantum (Q.Var "k1", QType.Ket [Type.Int]))])],
                     C.Add (C.Var "a", C.Var "i1"))
+            // { let a = 15; let b = a + 2; a = true; b }
+            e.Block ([
+                s.Let ("a", e.Int 15)
+                s.Let ("b", e.Add (e.Var "a", e.Int 2))
+                s.Update ("a", e.Bool true)],
+                e.Var "b"),
+                Type.Int,
+                C.Block ([
+                    Let ("a", Classic (C.IntLiteral 15, Type.Int))
+                    Let ("b", Classic (C.Add(C.Var "a", C.IntLiteral 2), Type.Int))
+                    Update ("a", Classic (C.BoolLiteral true, Type.Bool))],
+                    C.Var "b")
+            // { let a = 15; let b = a + 2; a = true; a }
+            e.Block ([
+                s.Let ("a", e.Int 15)
+                s.Let ("b", e.Add (e.Var "a", e.Int 2))
+                s.Update ("a", e.Bool true)],
+                e.Var "a"),
+                Type.Bool,
+                C.Block ([
+                    Let ("a", Classic (C.IntLiteral 15, Type.Int))
+                    Let ("b", Classic (C.Add(C.Var "a", C.IntLiteral 2), Type.Int))
+                    Update ("a", Classic (C.BoolLiteral true, Type.Bool))],
+                    C.Var "a")
+
+            // { let a = 15; let b = { let a = true; a }; a }
+            e.Block ([
+                s.Let ("a", e.Int 15)
+                s.Let ("b", e.Block ([
+                    s.Let("a", e.Bool true)],
+                    e.Var "a"))
+                ],
+                e.Var "a"),
+                Type.Int,
+                C.Block ([
+                    Let ("a", Classic (C.IntLiteral 15, Type.Int))
+                    Let ("b", Classic (C.Block ([
+                        Let ("a", Classic (C.BoolLiteral true, Type.Bool))],  
+                        C.Var "a"), Type.Bool))],
+                    C.Var "a")
+
         ]
         |> List.iter (this.TestClassicExpression ctx)
 
@@ -701,8 +745,8 @@ type TestCore () =
                 Q.Block ([], Q.Var "k1")
             // { let a = 15; print "some msg" a k1; a + k1 }
             e.Block ([
-                aleph.parser.ast.Statement.Let ("a", e.Int 15)
-                aleph.parser.ast.Statement.Print ("some msg", [e.Var "a"; e.Var "k1"])],
+                s.Let ("a", e.Int 15)
+                s.Print ("some msg", [e.Var "a"; e.Var "k1"])],
                 (e.Add (e.Var "a", e.Var "k1"))),
                 QType.Ket [Type.Int],
                 Q.Block ([
@@ -713,8 +757,13 @@ type TestCore () =
         |> List.iter (this.TestQuantumExpression ctx)
 
         [
-            // { let s = 5 == false; a}
-            e.Block ([aleph.parser.ast.Statement.Let ("a", e.Equals (e.Int 5, e.Bool false))], e.Var "a"), "== can only be applied to int expressions"
+            // { let a = 5 == false; a}
+            e.Block ([s.Let ("a", e.Equals (e.Int 5, e.Bool false))], e.Var "a"), "== can only be applied to int expressions"
+            // { let a = { let b = 2; b } b }
+            e.Block ([
+                s.Let ("a", e.Block ([s.Let ("b", e.Int 2)], e.Var "b"))],
+                e.Var "b"), 
+                "Variable not found: b"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 

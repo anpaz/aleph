@@ -70,7 +70,7 @@ module Eval =
     and EvalContext = {
         heap: Map<Id, Value>
         qpu: QPU
-        callerCtx: Option<EvalContext>
+        callerCtx: EvalContext option
         typeCtx: TypeContext
     }
 
@@ -304,6 +304,20 @@ module Eval =
                     eval (e, ctx')
                     ==> fun (value, ctx') ->
                         { ctx' with heap = ctx'.heap.Add (id, value) } |> Ok
+                | Update (id, e) ->
+                    eval (e, ctx')
+                    ==> fun (value, ctx') ->
+                        let rec update id value ctx' =
+                            match ctx'.heap.TryFind id with
+                            | Some _ -> { ctx' with heap = ctx'.heap.Add (id, value) } |> Ok
+                            | None -> 
+                                match ctx'.callerCtx with
+                                | Some callerCtx -> 
+                                    update id value callerCtx
+                                    ==> fun (callerCtx) ->
+                                        { ctx' with callerCtx = callerCtx |> Some } |> Ok
+                                | None -> $"Unknown variable for update: {id}." |> Error
+                        update id value ctx'
                 | Print (msg, expressions) ->
                     printfn "%s" msg
                     let print_one ctx' e =

@@ -187,6 +187,20 @@ type TestQPUClassic () =
             ]))
 
         [
+            // let x = 10
+            // let y = x
+            // x = 20
+            // (x, y)
+            e.Block ([
+                s.Let ("x", e.Ket (e.Int 10))
+                s.Let ("y", e.Var "x")
+                s.Update ("x", e.Ket (e.Bool false))
+            ], e.Join (e.Var "x", e.Var "y")),
+                [
+                    [Bool false; Int 10]
+                ],
+                [0; 1]
+
             // Join (k1, k1)
             e.Join (e.Var "k1", e.Var "k1"),
                 [

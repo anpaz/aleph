@@ -15,7 +15,7 @@ module Utils =
     let add_to_context id t e ctx =
         match run (e, ctx) with
         | Ok (v, ctx) ->
-            { ctx with heap = ctx.heap.Add (id, v); typeCtx = ctx.typeCtx.Add(id, t)  }
+            { ctx with heap = ctx.heap.Add (id, v); typeCtx = { ctx.typeCtx with heap = ctx.typeCtx.heap.Add(id, t) } }
         | Error msg ->
             failwith msg
 
