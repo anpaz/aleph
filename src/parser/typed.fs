@@ -71,5 +71,4 @@ and E =
 
 and Statement =
     | Let of id: Id * value: E
-    | Update of id: Id * value: E
     | Print of string * E list

@@ -694,46 +694,43 @@ type TestCore () =
                     Let ("a", Classic (C.IntLiteral 15, Type.Int))
                     Print ("some msg", [Classic (C.Var "a", Type.Int); (Quantum (Q.Var "k1", QType.Ket [Type.Int]))])],
                     C.Add (C.Var "a", C.Var "i1"))
-            // { let a = 15; let b = a + 2; a = true; b }
+            // { let a = 15; let b = a + 2; b }
             e.Block ([
                 s.Let ("a", e.Int 15)
-                s.Let ("b", e.Add (e.Var "a", e.Int 2))
-                s.Update ("a", e.Bool true)],
+                s.Let ("b", e.Add (e.Var "a", e.Int 2))],
                 e.Var "b"),
                 Type.Int,
                 C.Block ([
                     Let ("a", Classic (C.IntLiteral 15, Type.Int))
-                    Let ("b", Classic (C.Add(C.Var "a", C.IntLiteral 2), Type.Int))
-                    Update ("a", Classic (C.BoolLiteral true, Type.Bool))],
-                    C.Var "b")
-            // { let a = 15; let b = a + 2; a = true; a }
+                    Let ("b", Classic (C.Add(C.Var "a", C.IntLiteral 2), Type.Int))],
+                    C.Var "b")            
+            // { let a = 15; let b = a + 2; a = true; (a, b) }
             e.Block ([
                 s.Let ("a", e.Int 15)
                 s.Let ("b", e.Add (e.Var "a", e.Int 2))
-                s.Update ("a", e.Bool true)],
-                e.Var "a"),
-                Type.Bool,
+                s.Let ("a", e.Bool true)],
+                e.Tuple [e.Var "a"; e.Var "b"]),
+                Type.Tuple [Type.Bool; Type.Int],
                 C.Block ([
                     Let ("a", Classic (C.IntLiteral 15, Type.Int))
                     Let ("b", Classic (C.Add(C.Var "a", C.IntLiteral 2), Type.Int))
-                    Update ("a", Classic (C.BoolLiteral true, Type.Bool))],
-                    C.Var "a")
-
-            // { let a = 15; let b = { let a = true; a }; a }
+                    Let ("a", Classic (C.BoolLiteral true, Type.Bool))],
+                    C.Tuple [C.Var "a"; C.Var "b"])
+            // { let a = 15; let b = { let a = true; a }; (a, b) }
             e.Block ([
                 s.Let ("a", e.Int 15)
                 s.Let ("b", e.Block ([
                     s.Let("a", e.Bool true)],
                     e.Var "a"))
                 ],
-                e.Var "a"),
-                Type.Int,
+                e.Tuple [e.Var "a"; e.Var "b"]),
+                Type.Tuple [Type.Int; Type.Bool],
                 C.Block ([
                     Let ("a", Classic (C.IntLiteral 15, Type.Int))
                     Let ("b", Classic (C.Block ([
                         Let ("a", Classic (C.BoolLiteral true, Type.Bool))],  
                         C.Var "a"), Type.Bool))],
-                    C.Var "a")
+                    C.Tuple [C.Var "a"; C.Var "b"])
 
         ]
         |> List.iter (this.TestClassicExpression ctx)

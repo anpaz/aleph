@@ -60,6 +60,5 @@ type Expression =
 
 and Statement =
     | Let of id: Id * value: Expression
-    | Update of id: Id * value: Expression
     | Print of string * Expression list
 

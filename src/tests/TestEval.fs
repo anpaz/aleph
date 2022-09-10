@@ -258,14 +258,14 @@ type TestEval () =
 
             // let x = 10
             // let y = x
-            // x = 20
+            // let x = false
             // (x, y)
             e.Block ([
                 s.Let ("x", e.Int 10)
                 s.Let ("y", e.Var "x")
-                s.Update ("x", e.Int 20)
+                s.Let ("x", e.Bool false)
             ], e.Tuple [e.Var "x"; e.Var "y"]),
-                Value.Tuple [Value.Int 20; Value.Int 10]
+                Value.Tuple [Value.Bool false; Value.Int 10]
             
             // let x =
             //    if true then 
@@ -355,7 +355,7 @@ type TestEval () =
             // let beta = 10
             // let x =
             //    let alpha = alpha * beta
-            //    beta = 20
+            //    let beta = 20
             //    let x = 
             //      let alpha = alpha * beta
             //      alpha
@@ -366,13 +366,13 @@ type TestEval () =
                 s.Let ("beta", e.Int 10)
                 s.Let ("x", e.Block ([
                     s.Let ("alpha", e.Multiply(e.Var "alpha", e.Var "beta"))
-                    s.Update ("beta", e.Int 20)
+                    s.Let ("beta", e.Int 20)
                     s.Let ("x", e.Block ([
                         s.Let ("alpha", e.Multiply(e.Var "alpha", e.Var "beta"))
                     ], e.Var "alpha"))
                 ], e.Tuple [e.Var "alpha"; e.Var "beta"; e.Var "x"]))
             ], e.Join (e.Tuple [e.Var "alpha"; e.Var "beta"], e.Var "x")),
-                Value.Tuple [Value.Int 1; Value.Int 20; Value.Int 10; Value.Int 20; Value.Int 200]
+                Value.Tuple [Value.Int 1; Value.Int 10; Value.Int 10; Value.Int 20; Value.Int 200]
 
         ]
         |> List.iter (this.TestExpression ctx)

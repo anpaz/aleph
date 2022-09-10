@@ -7,8 +7,9 @@ module Utils
     let run qpu program =
         let context = { 
             heap = Map.empty
-            typeCtx = Map.empty
+            typeCtx = { heap = Map.empty; previousCtx = None }
             qpu =  qpu
+            callerCtx = None
         }
 
         match run (program, context) with

@@ -559,27 +559,6 @@ module TypeChecker =
                         let t = value |> get_type
                         let ctx = {ctx with heap = ctx.heap.Add (id, t) }
                         (previous @ [typed.Statement.Let (id, value)], ctx) |> Ok
-                | ast.Statement.Update (id, value) ->
-                    typecheck (value, ctx)
-                    ==> fun (value, ctx) ->
-                        let rec update_ctx id t ctx' =
-                            // Find in this context
-                            match ctx'.heap.TryFind id with
-                            | Some _ -> 
-                                { ctx' with heap = ctx'.heap.Add (id, t) } |> Ok
-                            | None ->
-                                // if not in this context, find recursively in previous context...
-                                match ctx'.previousCtx with
-                                | Some previousCtx ->
-                                    update_ctx id t previousCtx
-                                    ==> fun (previousCtx) ->
-                                        { ctx' with previousCtx = previousCtx |> Some } |> Ok
-                                | None ->
-                                    $"Unknown variable for update: {id}." |> Error
-                        let t = value |> get_type
-                        update_ctx id t ctx
-                        ==> fun ctx -> 
-                            (previous @ [typed.Statement.Update (id, value)], ctx) |> Ok
                 | ast.Statement.Print (msg, value) ->
                     typecheck_expression_list any_expression (value, ctx)
                     ==> fun (value, ctx) ->
