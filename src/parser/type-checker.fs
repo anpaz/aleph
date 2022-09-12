@@ -88,7 +88,12 @@ module TypeChecker =
 
         | Expression.Solve (ket, cond) -> typecheck_solve (ket, cond, ctx)        
         | Expression.Prepare ket -> typecheck_prepare (ket, ctx)
-        | Expression.Sample universe -> typecheck_sample (universe, ctx)        
+        | Expression.Sample universe -> typecheck_sample (universe, ctx)
+
+        | Expression.Element (set) -> typecheck_element (set, ctx)
+        | Expression.Append (item, set) -> typecheck_append (item, set, ctx)
+        | Expression.Remove (item, set) -> typecheck_remove (item, set, ctx)
+        | Expression.Count (set) -> typecheck_count (set, ctx)
 
     // Typechecks an untyped expression list. Receives a callback such that
     // each expression can be validated. If all the expressions are valid
@@ -546,6 +551,45 @@ module TypeChecker =
             | Universe (u, UType.Universe t) -> (Classic (C.Sample u, Type.Tuple t), ctx) |> Ok
             | Quantum (_, t) -> $"Sample argument must be a quantum ket, got: {t}" |> Error
             | Classic (_, t) -> $"Sample argument must be a quantum ket, got: {t}" |> Error
+
+    and typecheck_element (set, ctx) =
+        typecheck (set, ctx)
+        ==> fun (set, ctx) ->
+            match set with
+            | Classic (s, Type.Set t) -> (Classic (C.Element s, t), ctx) |> Ok
+            | Classic (_, t) ->  $"Element expects a Set, got: {t}" |> Error
+            | Quantum (_, t) ->  $"Element expects a Set, got: {t}" |> Error
+            | Universe (_, t) -> $"Element expects a Set, got: {t}" |> Error 
+
+    and typecheck_append (item, set, ctx) =
+        typecheck (item, ctx)
+        ==> fun (item, ctx) ->
+            typecheck (set, ctx)
+            ==> fun (set, ctx) ->
+                match (item, set) with
+                | Classic (i, itemType), Classic (s, Type.Set setType) when itemType = setType || setType = (Type.Tuple []) ->
+                    (Classic (C.Append (i, s), Type.Set itemType), ctx) |> Ok
+                | _ ->  $"Item to append must be of the same type as set." |> Error
+
+    and typecheck_remove (item, set, ctx) =
+        typecheck (item, ctx)
+        ==> fun (item, ctx) ->
+            typecheck (set, ctx)
+            ==> fun (set, ctx) ->
+                match (item, set) with
+                | Classic (i, itemType), Classic (s, Type.Set setType) when itemType = setType ->
+                    (Classic (C.Remove (i, s), Type.Set itemType), ctx) |> Ok
+                | _ ->  $"Item to remove must be of the same type as set." |> Error
+
+    and typecheck_count (set, ctx) =
+        typecheck (set, ctx)
+        ==> fun (set, ctx) ->
+            match set with
+            | Classic (s, Type.Set _) -> (Classic (C.Count s, Type.Int), ctx) |> Ok
+            | Classic (_, t) ->  $"Count expects a Set, got: {t}" |> Error
+            | Quantum (_, t) ->  $"Count expects a Set, got: {t}" |> Error
+            | Universe (_, t) -> $"Count expects a Set, got: {t}" |> Error 
+
 
     and typecheck_statements (stmts, ctx) =
         let rec as_typed_stmt previous (next:ast.Statement) =

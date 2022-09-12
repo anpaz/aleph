@@ -5,6 +5,7 @@ open aleph.parser.ast.typed
 open aleph.parser.TypeChecker
 
 module Eval =
+    let random = System.Random()
 
     let (==>) (input: Result<'a,'b>) ok  =
         Result.bind ok input
@@ -129,6 +130,11 @@ module Eval =
 
         | C.CallMethod (method, args) -> eval_callmethod(method, args, ctx)
         
+        | C.Element (set) -> eval_element (set, ctx)
+        | C.Append (item, set) -> eval_append(item, set, ctx)
+        | C.Remove (item, set) -> eval_remove(item, set, ctx)
+        | C.Count (set) -> eval_count(set, ctx)
+
         | C.Summarize _ ->
             $"Not implemented: {c}" |> Error
 
@@ -282,6 +288,41 @@ module Eval =
                 // return the heap back to the original state
                 let ctx = { ctx' with heap = ctx.heap }
                 (value, ctx) |> Ok
+
+    and eval_element (set, ctx) =
+        let pick_random (s: Set<Value>) =
+            let i = random.Next(s.Count)
+            (Set.toList s).[i]
+        eval_classic (set, ctx)
+        ==> fun (set, ctx) ->
+            match set with
+            | Value.Set s -> (s |> pick_random, ctx) |> Ok
+            | _ -> $"Append only available for sets, got: {set}" |> Error
+
+    and eval_append (item, set, ctx) =
+        eval_classic (item, ctx)
+        ==> fun (item, ctx) ->
+            eval_classic (set, ctx)
+            ==> fun (set, ctx) ->
+                match set with
+                | Value.Set s -> (Value.Set (s.Add item), ctx) |> Ok
+                | _ -> $"Append only available for sets, got: {set}" |> Error
+
+    and eval_remove (item, set, ctx) =
+        eval_classic (item, ctx)
+        ==> fun (item, ctx) ->
+            eval_classic (set, ctx)
+            ==> fun (set, ctx) ->
+                match set with
+                | Value.Set s -> (Value.Set (s.Remove item), ctx) |> Ok
+                | _ -> $"Remove only available for sets, got: {set}" |> Error
+
+    and eval_count (set, ctx) =
+        eval_classic (set, ctx)
+        ==> fun (set, ctx) ->
+            match set with
+            | Value.Set s -> (Value.Int s.Count, ctx) |> Ok
+            | _ -> $"Count only available for sets, got: {set}" |> Error
 
     and eval_expression_list (values, ctx) =
         let rec next (items, ctx: EvalContext) =

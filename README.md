@@ -386,6 +386,11 @@ Aleph supports a similar set of expressions for classical values.
     * **and**
     * **or**
     * **not**
+* Set expressions:
+    * **element** - picks a random element from a set
+    * **append**
+    * **remove**
+    * **count**
 * **if/else**
 * **summarize**
 

@@ -31,6 +31,11 @@ type C =
     | If of cond: C * t : C * f: C
     | Summarize of id: Id * enumeration : C * aggregation: Aggregation * body: C
 
+    | Element of set: C
+    | Append of item: C * set: C
+    | Remove of item: C * set: C
+    | Count of set: C
+
     | Sample of universe: U
 
 and Q =

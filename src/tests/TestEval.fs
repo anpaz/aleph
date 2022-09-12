@@ -84,7 +84,7 @@ type TestEval () =
 
             // {}
             e.Set [],
-                Value.Set (Set.ofList [])
+                Value.Set (Set.empty)
 
             // {false}
             e.Set [e.Bool false],
@@ -242,6 +242,72 @@ type TestEval () =
         ]
         |> List.iter (this.TestExpression ctx)
 
+
+    [<TestMethod>]
+    member this.TestSetExpressions () =
+        let ctx = ClassicValueContext.ctx
+
+        [
+            // (Append 3, {})
+            e.Append (e.Int 3, e.Set []),
+                Value.Set (Set.ofList [Int 3])
+            // (Append false, {false})
+            e.Append (e.Bool false, e.Set [e.Bool false]),
+                Value.Set (Set.ofList [Bool false])
+            // (Append 1, {0, 4, 2})
+            e.Append( e.Int 1, e.Set [e.Int 0; e.Int 4; e.Int 2]),
+                Value.Set (Set.ofList [Int 0; Int 1; Int 2; Int 4])
+
+            // (Remove false, {false})
+            e.Remove (e.Bool false, e.Set [e.Bool false]),
+                Value.Set (Set.ofList [])
+            // (Remove 4, {0, 4, 2})
+            e.Remove (e.Int 4, e.Set [e.Int 0; e.Int 4; e.Int 2]),
+                Value.Set (Set.ofList [Int 0; Int 2])
+            // (Remove (1,2), {(0,0), (1,1), (1,2)})
+            e.Remove (e.Tuple [e.Int 1; e.Int 2], e.Set [
+                e.Tuple [e.Int 0; e.Int 0]
+                e.Tuple [e.Int 1; e.Int 1]
+                e.Tuple [e.Int 1; e.Int 2]
+            ]),
+                Value.Set (Set.ofList [
+                    Tuple [Int 0; Int 0]
+                    Tuple [Int 1; Int 1]
+                ])
+            
+            // (Count {})
+            e.Count (e.Set []),
+                Int 0
+            // (Count {false})
+            e.Count (e.Set [e.Bool false]),
+                Int 1
+            // ({false, false, true})
+            e.Count (e.Set [e.Bool false; e.Bool false; e.Bool true]),
+                Int 2
+            // (Count {(0,0), (1,1), (1,2)})
+            e.Count (e.Set [
+                e.Tuple [e.Int 0; e.Int 0]
+                e.Tuple [e.Int 1; e.Int 1]
+                e.Tuple [e.Int 1; e.Int 2]
+            ]),
+                Int 3
+
+            // (Remove(Element s1), s1), Count(s1)) 
+            e.Tuple [e.Count (e.Remove (e.Element (e.Var "s1"), e.Var "s1")); e.Count(e.Var "s1")],
+                Tuple [Int 2; Int 3]
+            // (Count {(0,0), (1,1), (1,2)})
+            e.Element (
+                e.Remove (e.Tuple [e.Int 1; e.Int 1],
+                    e.Remove (e.Tuple [e.Int 0; e.Int 0], 
+                        e.Set [
+                            e.Tuple [e.Int 0; e.Int 0]
+                            e.Tuple [e.Int 1; e.Int 1]
+                            e.Tuple [e.Int 1; e.Int 2]
+                        ]))),
+                Tuple [Int 1; Int 2]
+
+        ]
+        |> List.iter (this.TestExpression ctx)
 
 
     [<TestMethod>]

@@ -8,7 +8,7 @@ open aleph.parser.TypeChecker
 
 
 [<TestClass>]
-type TestCore () =
+type TestTypecheck () =
 
     member this.TestClassicExpression ctx (e, t, r)=
         match typecheck (e, ctx) with
@@ -181,6 +181,67 @@ type TestCore () =
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
+
+    [<TestMethod>]
+    member this.TestSetOperations () =
+        let ctx = this.TypeContext
+
+        [
+            // (Element [])
+            e.Element (e.Set []), Type.Tuple [], C.Element (C.Set [])
+            // (Element [3])
+            e.Element (e.Set [e.Int 3]), Type.Int, C.Element (C.Set [C.IntLiteral 3])
+            // (Element [3,5])
+            e.Set [e.Int 3; e.Int 5], 
+                Type.Set (Type.Int),
+                C.Set [C.IntLiteral 3; C.IntLiteral 5]
+            // (Element [false, true, false, false])
+            e.Set [e.Bool false; e.Bool true; e.Bool false; e.Bool false], 
+                Type.Set (Type.Bool),
+                C.Set [C.BoolLiteral false; C.BoolLiteral true; C.BoolLiteral false; C.BoolLiteral false]
+            // (Element [(3,5)])
+            e.Element (e.Set [e.Tuple [e.Int 3; e.Int 5]]), 
+                Type.Tuple [Type.Int; Type.Int],
+                C.Element (C.Set [C.Tuple [C.IntLiteral 3; C.IntLiteral 5]])
+
+            // (Append 3 [])
+            e.Append (e.Int 3, e.Set []), Type.Set (Type.Int), C.Append (C.IntLiteral 3, C.Set [])
+            // (Add 3 [10])
+            e.Append (e.Int 3, e.Set [e.Int 10]), Type.Set (Type.Int), C.Append (C.IntLiteral 3, C.Set [C.IntLiteral 10])
+
+            // (Remove 3 [10; 3])
+            e.Remove (e.Int 3, e.Set [e.Int 10; e.Int 3]), 
+                Type.Set (Type.Int), 
+                C.Remove (C.IntLiteral 3, C.Set [C.IntLiteral 10; C.IntLiteral 3])
+
+            // (Remove 3 [3])
+            e.Remove (e.Int 3, e.Set [e.Int 3]), 
+                Type.Set (Type.Int), 
+                C.Remove (C.IntLiteral 3, C.Set [C.IntLiteral 3])
+
+            // (Count [])
+            e.Count (e.Set []), 
+                Type.Int, 
+                C.Count (C.Set [])
+            // (Count 3 [3])
+            e.Count (e.Set [e.Int 3]), 
+                Type.Int, 
+                C.Count (C.Set [C.IntLiteral 3])
+
+        ]
+        |> List.iter (this.TestClassicExpression ctx)
+
+        [
+            // Element 4
+            e.Element (e.Int 4), "Element expects a Set, got: Int"
+            // Element 4
+            e.Count (e.Int 4), "Count expects a Set, got: Int"
+            // Append (false, [3])
+            e.Append (e.Bool false, e.Set [e.Int 10]), "Item to append must be of the same type as set."
+            // Remove (false, [3])
+            e.Remove (e.Bool false, e.Set [e.Int 10]), "Item to remove must be of the same type as set."
+        ]
+        |> List.iter (this.TestInvalidExpression ctx)
 
     [<TestMethod>]
     member this.TestAndOrNot () =

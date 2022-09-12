@@ -58,6 +58,12 @@ type Expression =
     | Prepare of universe: Expression
     | Solve of ket: Expression * cond: Expression
 
+    | Element of set: Expression
+    | Append of item: Expression * set: Expression
+    | Remove of item: Expression * set: Expression
+    | Count of set: Expression
+
+
 and Statement =
     | Let of id: Id * value: Expression
     | Print of string * Expression list
