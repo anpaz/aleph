@@ -1,0 +1,11 @@
+{
+    "fileOptions": {
+        "systemExcludeSearchPatterns": [
+            "**/node_modules/**/*",
+            "**/bin/**/*",
+            "**/obj/**/*",
+            ".old-stuff/**/*"
+        ],
+        "excludeSearchPatterns": []
+    }
+}
