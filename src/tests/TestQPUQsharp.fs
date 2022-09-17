@@ -291,6 +291,57 @@ type TestQPUQsharp () =
         |> List.iter (verify_expression ctx)
 
 
+
+    [<TestMethod>]
+    member this.TestArithmeticExpressions () =
+        let ctx = 
+            this.Context
+            |> add_to_context "k1" (AnyType.QType (QType.Ket [Type.Int])) (e.Ket (e.Set [
+                e.Int 0
+                e.Int 1
+            ]))
+            |> add_to_context "k2" (AnyType.QType (QType.Ket [Type.Int])) (e.Ket (e.Set [
+                e.Int 1
+                e.Int 2
+            ]))
+
+        [
+            // (k1, k2, k1 + k2)
+            e.Join(
+                e.Join(e.Var "k1", e.Var "k2"),
+                e.Add(e.Var "k1", e.Var "k2")),
+            [
+                Tuple [ Int 0; Int 1; Int 1 ]
+                Tuple [ Int 0; Int 2; Int 2 ]
+                Tuple [ Int 1; Int 1; Int 2 ]
+                Tuple [ Int 1; Int 2; Int 3 ]
+            ]
+        ]
+        |> List.iter (verify_expression ctx)
+
+
+
+        [
+            // (k1, k2, k1 + k2)
+            e.Block ([
+                s.Let("k1", e.Ket (e.Set [
+                    e.Tuple [e.Int 2; e.Int 2]
+                    e.Tuple [e.Int 2; e.Int 2]
+                    e.Tuple [e.Int 2; e.Int 3]
+                    e.Tuple [e.Int 3; e.Int 3]
+                ]))
+            ],
+            e.Join(
+                e.Var "k1",
+                e.Add(e.Project (e.Var "k1", e.Int 0), e.Project (e.Var "k1", e.Int 1)))),
+            [
+                Tuple [ Int 2; Int 2; Int (4 % (pown 2 INT_REGISTER_DEFAULT_SIZE)) ]
+                Tuple [ Int 2; Int 3; Int (5 % (pown 2 INT_REGISTER_DEFAULT_SIZE)) ]
+                Tuple [ Int 3; Int 3; Int (6 % (pown 2 INT_REGISTER_DEFAULT_SIZE)) ]
+            ]
+        ]
+        |> List.iter (verify_expression ctx)
+
     [<TestMethod>]
     member this.TestCallMethod () =
         let ctx = this.Context

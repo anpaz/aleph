@@ -14,7 +14,7 @@ open aleph.runtime.Eval
 
 module Convert =
     let BOOL_REGISTER_SIZE = 1
-    let INT_REGISTER_DEFAULT_SIZE = 3
+    let INT_REGISTER_DEFAULT_SIZE = 2
 
     let toQValue = function
         | Bool b -> new QValue((if b then (1,BOOL_REGISTER_SIZE) else (0,BOOL_REGISTER_SIZE)))
@@ -97,6 +97,7 @@ type Processor(sim: IOperationFactory) =
         | Q.Literal values -> prepare_literal (values, ctx)
         | Q.KetAll size -> prepare_ketall (size, ctx)
 
+        | Q.Add (left,right) -> prepare_add (left, right, ctx)
         | Q.Equals (left, right) -> prepare_equals (left, right, ctx)
 
         | Q.Not q -> prepare_not (q, ctx)
@@ -110,7 +111,6 @@ type Processor(sim: IOperationFactory) =
 
         | Q.CallMethod (method, args) ->  prepare_callmethod(method, args, ctx)
 
-        | Q.Add _
         | Q.Multiply _
         | Q.Solve  _
         | Q.Block  _
@@ -151,6 +151,19 @@ type Processor(sim: IOperationFactory) =
                 |> qsharp_result { ctx with evalCtx = evalCtx }
             | _ -> 
                 $"Invalid ket_all size, expected int got: {size}" |> Error
+
+
+    and prepare_add (left, right, ctx) =
+        prepare (left, ctx)
+        ==> fun (left, ctx) ->
+            prepare (right, ctx)
+            ==> fun (right, ctx) ->
+                match (left.Length, right.Length) with
+                | (1L, 1L) ->
+                    ket.Add.Run(sim, left.[0], right.[0], ctx.universe).Result
+                    |> qsharp_result ctx
+                | _ -> 
+                    $"Invalid inputs for ket Add. Expected one length registers, got: left:{left.Length} && right:{right.Length}" |> Error
 
     and prepare_project (q, index, ctx) =
         prepare (q, ctx)

@@ -48,21 +48,11 @@ namespace aleph.qsharp.ket {
             use t1 = Qubit();
             use t2 = Qubit();
             use a1 = Qubit();
-            use a = Qubit[n];
 
             within {
                 previous(all, t1);
                 
-                let ctrls = left + right;
-
-                // a1 holds true if left == right
-                for i in 0..Length(left) -1  {
-                    Controlled X ([left[i], right[i]], a[i]);
-                    X(left[i]);
-                    X(right[i]);
-                    Controlled X ([left[i], right[i]], a[i]);
-                }
-                Controlled X (a, a1);
+                AreEqual(left, right, a1);
 
                 // the true cases.
                 Controlled X ([a1, answer], t2);
@@ -74,6 +64,23 @@ namespace aleph.qsharp.ket {
             } apply {
                 Controlled X ([t1, t2], target);
             }
+        }
+    }
+
+    operation AreEqual(left: Qubit[], right: Qubit[], answer: Qubit) : Unit
+    is Adj + Ctl {
+        use a = Qubit[Length(left)];
+
+        within {
+        // a_i holds true if left_i == right_i
+        for i in 0..Length(left) -1  {
+            Controlled X ([left[i], right[i]], a[i]);
+            X(left[i]);
+            X(right[i]);
+            Controlled X ([left[i], right[i]], a[i]);
+        }
+        } apply {
+            Controlled X (a, answer);
         }
     }
 }
