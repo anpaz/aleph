@@ -316,13 +316,8 @@ type TestQPUQsharp () =
                 Tuple [ Int 1; Int 1; Int 2 ]
                 Tuple [ Int 1; Int 2; Int 3 ]
             ]
-        ]
-        |> List.iter (verify_expression ctx)
-
-
-
-        [
-            // (k1, k2, k1 + k2)
+            // let k1 = | (2,2), (2,2), (2,3), (3,3) >
+            // (k1, k1.0 + k1.1)
             e.Block ([
                 s.Let("k1", e.Ket (e.Set [
                     e.Tuple [e.Int 2; e.Int 2]
@@ -339,6 +334,28 @@ type TestQPUQsharp () =
                 Tuple [ Int 2; Int 3; Int (5 % (pown 2 INT_REGISTER_DEFAULT_SIZE)) ]
                 Tuple [ Int 3; Int 3; Int (6 % (pown 2 INT_REGISTER_DEFAULT_SIZE)) ]
             ]
+            // (k1, k2, k1 * k2)
+            e.Join(
+                e.Join(e.Var "k1", e.Var "k2"),
+                e.Multiply(e.Var "k1", e.Var "k2")),
+            [
+                Tuple [ Int 0; Int 1; Int 0 ]
+                Tuple [ Int 0; Int 2; Int 0 ]
+                Tuple [ Int 1; Int 1; Int 1 ]
+                Tuple [ Int 1; Int 2; Int 2 ]
+            ]
+            // // (k2, k2 = (k1 * k2))
+            // e.Join(
+            //     e.Var ("k2"),
+            //     e.Add(
+            //         e.Var ("k2"),
+            //         e.Multiply(e.Var "k1", e.Var "k2"))),
+            // [
+            //     Tuple [ Int 1; Int 1 ]
+            //     Tuple [ Int 2; Int 2 ]
+            //     Tuple [ Int 1; Int 2 ]
+            //     Tuple [ Int 2; Int 4 ]
+            // ]
         ]
         |> List.iter (verify_expression ctx)
 
