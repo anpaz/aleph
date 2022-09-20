@@ -5,6 +5,7 @@ open aleph.parser.ast.typed
 open aleph.parser.TypeChecker
 
 module Eval =
+    open System
     let random = System.Random()
 
     let (==>) (input: Result<'a,'b>) ok  =
@@ -20,12 +21,29 @@ module Eval =
           StatePrep: Q
           Heap: Map<Id, Value> }
 
+    and [<CustomComparison; CustomEquality>] Method = 
+        { args: Id list
+          body: E
+          context: EvalContext }
+
+        override this.Equals x =
+            match x with
+            | :? Method as {args=args'; body=body'} -> (this.args = args' && this.body = body')
+            | _ -> false
+
+        override this.GetHashCode () =
+            this.args.GetHashCode() + this.body.GetHashCode() + this.context.GetHashCode()
+
+        interface System.IComparable with
+            member this.CompareTo(obj: obj): int = 
+                failwith "Not Implemented"
+
     and Value =
         | Bool of bool
         | Int of int
         | Tuple of Value list
         | Set of Set<Value>
-        | Method of Id list * E
+        | Method of Method
         | Ket of Ket
         | Universe of IUniverse
 
@@ -64,7 +82,7 @@ module Eval =
             | Value.Bool l, Value.Bool r -> Value.Bool (l || r)
             | _ -> failwith "= only supported for bool values, got {l} || {r}"
             
-    type QPU =
+    and QPU =
         abstract Prepare: U * EvalContext -> Result<Value * EvalContext, string>
         abstract Measure: IUniverse -> Result<Value, string>
 
@@ -155,7 +173,7 @@ module Eval =
         (Value.Int i, ctx) |> Ok
 
     and eval_method (args, body, ctx) =
-        (Value.Method (args, body), ctx) |> Ok
+        (Value.Method { args = args; body = body; context = ctx }, ctx) |> Ok
         
     and eval_tuple (values, ctx) =
         eval_expression_list (values, ctx)
@@ -380,11 +398,10 @@ module Eval =
         eval_classic (method, ctx)
         ==> fun (method, ctx) ->
             match method with
-            | Value.Method (ids, body) ->
+            | Value.Method ( {args = ids; body = body; context = context}) ->
                 prepare_args ids args ctx
                 ==> fun args_map ->
-                    let ctx = { ctx with heap = args_map }
+                    let ctx = { ctx with heap = args_map; callerCtx = context |> Some }
                     (body, ctx) |> Ok
             | _ ->
                 $"Expecting method, got {method}" |> Error
-

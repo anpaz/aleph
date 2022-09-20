@@ -131,7 +131,7 @@ type TestTypecheck () =
 
         [
             e.Tuple [e.Var "foo"], "Variable not found: foo"
-            e.Tuple [e.Var "i1"; e.Var "b1"; e.Var "m1"], "Invalid tuple element. Expected bool or int expression, got: (Var \"m1\":Method ([], Type Int))"
+            e.Tuple [e.Var "i1"; e.Var "b1"; e.Var "m1"], "Invalid tuple element. Expected bool or int expression, got: Method ([], Type Int)"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -174,7 +174,7 @@ type TestTypecheck () =
 
         [
             e.Set [e.Var "foo"], "Variable not found: foo"
-            e.Set [e.Var "i1"; e.Var "b1"; e.Var "m1"], "Invalid set element. Expected int, bool or tuple expression, got: (Var \"m1\":Method ([], Type Int))"
+            e.Set [e.Var "i1"; e.Var "b1"; e.Var "m1"], "Invalid set element. Expected int, bool or tuple expression, got: Method ([], Type Int)"
             e.Set [e.Int 4; e.Bool true], "All elements in a set must be of the same type."
             e.Set [e.Tuple [e.Int 4; e.Bool true]; e.Tuple [e.Int 1; e.Int 2]], "All elements in a set must be of the same type."
             e.Set [e.Var "t1"; e.Tuple [e.Bool true; e.Int 5; e.Int 2]], "All elements in a set must be of the same type."
@@ -973,3 +973,70 @@ type TestTypecheck () =
             e.Sample (e.Tuple [e.Int 1;e.Int 2]), "Sample argument must be a quantum ket, got: Tuple [Int; Int]"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
+
+
+    [<TestMethod>]
+    member this.TestCaptureVariables () =
+        let ctx = this.TypeContext
+
+        [
+            // let alpha = true
+            // let beta = false
+            // let foo(beta:Int) =
+            //    let alpha = if alpha then 3 * beta else 0
+            //    let x =
+            //      let beta = 10 
+            //      let alpha = alpha * beta
+            //      alpha
+            //    (alpha, beta, x)
+            // ((alpha, beta), foo(25))
+            e.Block ([
+                s.Let ("alpha", e.Bool true)
+                s.Let ("beta", e.Bool false)
+                s.Let ("foo",
+                    e.Method(
+                        ["beta", AnyType.Type Type.Int],
+                        e.Block ([
+                            s.Let ("alpha", e.If(
+                                e.Var "alpha",
+                                e.Multiply(e.Int 3, e.Var "beta"),
+                                e.Int 0))
+                            s.Let ("x", e.Block ([
+                                s.Let ("beta", e.Int 11)
+                                s.Let ("alpha", e.Multiply(e.Var "alpha", e.Var "beta"))
+                            ], e.Var "alpha"))
+                        ], e.Tuple [e.Var "alpha"; e.Var "beta"; e.Var "x"])))
+            ], e.Join (
+                e.Tuple [
+                    e.Var "alpha"
+                    e.Var "beta"],
+                e.CallMethod (e.Var "foo", [e.Int 25])
+            )),
+            Type.Tuple [Type.Bool; Type.Bool; Type.Int; Type.Int; Type.Int],
+            C.Block ([
+                Statement.Let ("alpha", Classic (C.BoolLiteral true, Type.Bool))
+                Statement.Let ("beta", Classic (C.BoolLiteral false, Type.Bool))
+                Statement.Let ("foo", Classic (C.Method(
+                    arguments = ["beta"], 
+                    body = Classic (
+                        C.Block ([
+                            Statement.Let ("alpha", Classic (
+                                C.If(
+                                    C.Var "alpha",
+                                    C.Multiply (C.IntLiteral 3, C.Var "beta"),
+                                    C.IntLiteral 0), Type.Int))
+                            Statement.Let ("x", Classic (C.Block ([
+                                Statement.Let ("beta", Classic (C.IntLiteral 11, Type.Int))
+                                Statement.Let ("alpha", Classic (C.Multiply (C.Var "alpha", C.Var "beta"), Type.Int))
+                            ], C.Var "alpha"), Type.Int))
+                        ], C.Tuple [
+                            C.Var "alpha"; 
+                            C.Var "beta"; 
+                            C.Var "x" ]), 
+                        Type.Tuple [Type.Int; Type.Int; Type.Int])), 
+                    Type.Method ([AnyType.Type Type.Int], AnyType.Type (Type.Tuple [Type.Int; Type.Int; Type.Int]))))
+            ], C.Join( 
+                C.Tuple [C.Var "alpha"; C.Var "beta" ],
+                C.CallMethod (C.Var "foo", [Classic (C.IntLiteral 25, Type.Int)])))
+        ]
+        |> List.iter (this.TestClassicExpression ctx)

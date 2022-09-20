@@ -137,9 +137,9 @@ module TypeChecker =
             match e with 
             | Classic (_, Type.Bool)
             | Classic (_, Type.Int) -> e |> Ok
-            | Classic (e, t) -> msg + $"Expected bool or int expression, got: ({e}:{t})" |> Error
-            | Quantum (e, t) -> msg + $"Expected bool or int expression, got: ({e}:{t})" |> Error
-            | Universe (e, t) -> msg + $"Expected bool or int expression, got: ({e}:{t})" |> Error
+            | Classic (e, t) -> msg + $"Expected bool or int expression, got: {t}" |> Error
+            | Quantum (e, t) -> msg + $"Expected bool or int expression, got: {t}" |> Error
+            | Universe (e, t) -> msg + $"Expected bool or int expression, got: {t}" |> Error
 
         typecheck_expression_list (is_bool_or_int  "Invalid tuple element. ") (values, ctx)
         ==> fun (values, ctx) ->
@@ -153,9 +153,9 @@ module TypeChecker =
             | Classic (_, Type.Int _)
             | Classic (_, Type.Bool _)
             | Classic (_, Type.Tuple _) -> e |> Ok
-            | Classic (e, t) -> msg + $"Expected int, bool or tuple expression, got: ({e}:{t})" |> Error
-            | Quantum (e, t) -> msg + $"Expected int, bool or tuple expression, got: ({e}:{t})" |> Error
-            | Universe (e, t) -> msg + $"Expected int, bool or tuple expression, got: ({e}:{t})" |> Error
+            | Classic (e, t) -> msg + $"Expected int, bool or tuple expression, got: {t}" |> Error
+            | Quantum (e, t) -> msg + $"Expected int, bool or tuple expression, got: {t}" |> Error
+            | Universe (e, t) -> msg + $"Expected int, bool or tuple expression, got: {t}" |> Error
 
         match values with
         | [] -> (Classic (C.Set [], Type.Set (Type.Tuple [])), ctx) |> Ok
@@ -225,7 +225,7 @@ module TypeChecker =
 
     and typecheck_method (arguments, body, ctx) =
         let ctx' =
-            { heap = Map.empty; previousCtx = None }
+            { heap = Map.empty; previousCtx = ctx |> Some }
             |> add_to_typecontext arguments
         typecheck (body, ctx')
         ==> fun (body, _) ->

@@ -25,24 +25,15 @@ module ClassicValueContext =
                     Tuple [Bool false; Int 1]
                     Tuple [Bool false; Int 2]
                 ])
-                // () -> (1, 2)
-                "m0", Method ([], (E.Classic (C.Tuple [C.IntLiteral 1; C.IntLiteral 2], Type.Tuple [Type.Int; Type.Int])))
-                // (a, b) -> a + b
-                "m1", Method (["a"; "b"], (E.Classic (C.Add ((C.Var "a", C.Var "b")), Type.Int)))
-                // (x, y, z) -> y || x[z]
-                "m2", Method (["x"; "y"; "z"], (E.Classic (C.Or ((C.Var "y", C.Index (C.Var ("x"), C.Var "z"))), Type.Bool)))
             ]
             typeCtx = {
                 heap = Map [ 
-                    "i1", AnyType.Type Type.Int
-                    "b1", AnyType.Type Type.Bool
-                    "t1", AnyType.Type (Type.Tuple [Type.Bool; Type.Int])
-                    "t2", AnyType.Type (Type.Tuple [Type.Bool; Type.Int])
-                    "t3", AnyType.Type (Type.Tuple [Type.Int; Type.Int; Type.Int])
-                    "s1", AnyType.Type (Type.Set (Type.Tuple [Type.Bool; Type.Int]))
-                    "m0", AnyType.Type (Type.Method ([], (AnyType.Type (Type.Tuple [Type.Int; Type.Int]))))
-                    "m1", AnyType.Type (Type.Method ([AnyType.Type Type.Int; AnyType.Type Type.Int], AnyType.Type Type.Int))
-                    "m2", AnyType.Type (Type.Method ([AnyType.Type Type.Tuple[Type.Int; Type.Bool; Type.Bool]; AnyType.Type Type.Bool; AnyType.Type Type.Int], AnyType.Type Type.Bool))
+                    "i1", Type Type.Int
+                    "b1", Type Type.Bool
+                    "t1", Type (Type.Tuple [Type.Bool; Type.Int])
+                    "t2", Type (Type.Tuple [Type.Bool; Type.Int])
+                    "t3", Type (Type.Tuple [Type.Int; Type.Int; Type.Int])
+                    "s1", Type (Type.Set (Type.Tuple [Type.Bool; Type.Int]))
                 ]
                 previousCtx = None
             }
@@ -108,16 +99,16 @@ type TestEval () =
             e.Range (e.Int 1, e.Int 5),
                 Value.Set (Set.ofList [Int 1; Int 2; Int 3; Int 4])
             // (a: Int) -> a + 1
-            e.Method (["a", AnyType.Type Type.Int], (e.Add (e.Var "a", e.Int 1))),
-                Value.Method (["a"], (E.Classic (C.Add ((C.Var "a", C.IntLiteral 1)), Type.Int)))
+            e.Method (["a", Type Type.Int], (e.Add (e.Var "a", e.Int 1))),
+                Value.Method { args = ["a"]; body = (E.Classic (C.Add ((C.Var "a", C.IntLiteral 1)), Type.Int)); context = ctx }
             // (k1: Ket<Int>, k2: Ket<Int, Bool>) -> (k1, k2)
-            e.Method (["k1", AnyType.QType (QType.Ket [Type.Int]); "k2", AnyType.QType (QType.Ket [Type.Int; Type.Bool])], 
+            e.Method (["k1", QType (QType.Ket [Type.Int]); "k2", QType (QType.Ket [Type.Int; Type.Bool])], 
                 (e.Join (e.Var "k1", e.Var "k2"))),
-                Value.Method (["k1"; "k2"], (E.Quantum (Q.Join (Q.Var "k1", Q.Var "k2"), (QType.Ket [Type.Int; Type.Int; Type.Bool]))))
+                Value.Method { args = ["k1"; "k2"]; body = (E.Quantum (Q.Join (Q.Var "k1", Q.Var "k2"), (QType.Ket [Type.Int; Type.Int; Type.Bool]))); context = ctx }
             // (k1: Ket<Int>, k2: Ket<Int, Bool>) -> Prepare(k2)
-            e.Method (["k1", AnyType.QType (QType.Ket [Type.Int]); "k2", AnyType.QType (QType.Ket [Type.Int; Type.Bool])], 
+            e.Method (["k1", QType (QType.Ket [Type.Int]); "k2", QType (QType.Ket [Type.Int; Type.Bool])], 
                 (e.Prepare (e.Var "k2"))),
-                Value.Method (["k1"; "k2"], (E.Universe (U.Prepare (Q.Var "k2"), (UType.Universe [Type.Int; Type.Bool]))))
+                Value.Method { args = ["k1"; "k2"]; body = (E.Universe (U.Prepare (Q.Var "k2"), (UType.Universe [Type.Int; Type.Bool]))); context = ctx }
         ]
         |> List.iter (this.TestExpression ctx)
 
@@ -224,7 +215,14 @@ type TestEval () =
 
     [<TestMethod>]
     member this.TestCallMethodExpressions () =
-        let ctx = ClassicValueContext.ctx
+        let ctx = 
+            ClassicValueContext.ctx
+            |> Utils.add_to_context "m0" (Type (Type.Method ([], (Type (Type.Tuple [Type.Int; Type.Int]))))) (
+                e.Method ([], e.Tuple [e.Int 1; e.Int 2]))
+            |> Utils.add_to_context "m1" (Type (Type.Method ([Type Type.Int; Type Type.Int], Type Type.Int))) (
+                e.Method ([("a", Type Type.Int); ("b", Type Type.Int)], e.Add (e.Var "a", e.Var "b")))
+            |> Utils.add_to_context  "m2" (Type (Type.Method ([Type Type.Tuple[Type.Bool; Type.Bool; Type.Bool]; Type Type.Bool; Type Type.Int], Type Type.Bool))) (
+                e.Method ([("x", Type (Type.Tuple [Type.Bool; Type.Bool; Type.Bool])); ("y", Type Type.Bool); ("z", Type Type.Int)],e.Or (e.Var "y", e.Project (e.Var "x", e.Var "z"))))
 
         [
             // m0 ()
@@ -233,11 +231,11 @@ type TestEval () =
             // m1 (10, 20)
             e.CallMethod (e.Var "m1", [e.Int 10; e.Int 20]),
                 Value.Int 30
-            // m2 (10, true, 0)
-            e.CallMethod (e.Var "m2", [e.Tuple [e.Int 10; e.Bool false; e.Bool true]; e.Bool false; e.Int 2]),
+            // m2 ((10, false, true), false, 2)
+            e.CallMethod (e.Var "m2", [e.Tuple [e.Bool false; e.Bool false; e.Bool true]; e.Bool false; e.Int 2]),
                 Value.Bool true
-            // m2 (10, false, 0)
-            e.CallMethod (e.Var "m2", [e.Tuple [e.Int 10; e.Bool false; e.Bool true]; e.Bool false; e.Int 1]),
+            // m2 ((10, false, true), false, 1)
+            e.CallMethod (e.Var "m2", [e.Tuple [e.Bool true; e.Bool false; e.Bool true]; e.Bool false; e.Int 1]),
                 Value.Bool false
         ]
         |> List.iter (this.TestExpression ctx)
@@ -245,7 +243,7 @@ type TestEval () =
 
     [<TestMethod>]
     member this.TestSetExpressions () =
-        let ctx = ClassicValueContext.ctx
+        let ctx =  ClassicValueContext.ctx
 
         [
             // (Append 3, {})
@@ -321,6 +319,15 @@ type TestEval () =
                 s.Let ("x", e.Tuple [e.Int 1; e.Int 2])
             ], (e.Var "x")),
                 Value.Tuple [Value.Int 1; Value.Int 2]
+
+            // let alpha = 1
+            // let x() = alpha
+            // x()
+            e.Block ([
+                s.Let ("alpha", e.Int 1)
+                s.Let ("x", e.Method([], e.Var "alpha"))
+            ], e.CallMethod (e.Var "x", [])), 
+                Value.Int 1
 
             // let x = 10
             // let y = x
@@ -440,6 +447,17 @@ type TestEval () =
             ], e.Join (e.Tuple [e.Var "alpha"; e.Var "beta"], e.Var "x")),
                 Value.Tuple [Value.Int 1; Value.Int 10; Value.Int 10; Value.Int 20; Value.Int 200]
 
+            // let a = 3
+            // let foo(b) = a + b
+            // let a = 25
+            // foo(4)
+            e.Block ([
+                s.Let ("a", e.Int 3)
+                s.Let ("foo", e.Method(
+                    ["b", Type Type.Int], 
+                    e.Add(e.Var "a", e.Var "b")))
+            ], e.CallMethod(e.Var "foo", [e.Int 4])),
+                Value.Int 7
         ]
         |> List.iter (this.TestExpression ctx)
 
@@ -463,13 +481,48 @@ type TestEval () =
                             s.Let ("z", e.Int 20)
                         ], e.Var "z")))
             ], e.Tuple [e.Var "x"; e.Var "y"]), "Variable not found: y"
-
-            // let alpha = 1
-            // let x() = alpha
-            // x()
-            e.Block ([
-                s.Let ("alpha", e.Int 1)
-                s.Let ("x", e.Method([], e.Var "alpha"))
-            ], e.CallMethod (e.Var "x", [])), "Variable not found: alpha"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
+
+
+    [<TestMethod>]
+    member this.TestCaptureVariables () =
+        let ctx = ClassicValueContext.ctx
+
+        [
+
+            // let alpha = true
+            // let beta = false
+            // let foo(beta:Int) =
+            //    let alpha = if alpha then 3 * beta else 0
+            //    let x =
+            //      let beta = 10 
+            //      let alpha = alpha * beta
+            //      alpha
+            //    (alpha, beta, x)
+            // ((alpha, beta), foo(25))
+            e.Block ([
+                s.Let ("alpha", e.Bool true)
+                s.Let ("beta", e.Bool false)
+                s.Let ("foo",
+                    e.Method(
+                        ["beta", Type Type.Int],
+                        e.Block ([
+                            s.Let ("alpha", e.If(
+                                e.Var "alpha",
+                                e.Multiply(e.Int 3, e.Var "beta"),
+                                e.Int 0))
+                            s.Let ("x", e.Block ([
+                                s.Let ("beta", e.Int 11)
+                                s.Let ("alpha", e.Multiply(e.Var "alpha", e.Var "beta"))
+                            ], e.Var "alpha"))
+                        ], e.Tuple [e.Var "alpha"; e.Var "beta"; e.Var "x"])))
+            ], e.Join (
+                e.Tuple [
+                    e.Var "alpha"
+                    e.Var "beta"],
+                e.CallMethod (e.Var "foo", [e.Int 25]))),
+            Tuple [Bool true; Bool false; Value.Int 75; Value.Int 25; Value.Int 825]
+
+        ]
+        |> List.iter (this.TestExpression ctx)
