@@ -216,7 +216,33 @@ type TestQPUQsharp() =
             Tuple [ Int 2; Bool true ] ] ]
         |> List.iter (verify_expression (prelude, this.QPU))
 
+    [<TestMethod>]
+    member this.TestIfClassic() =
+        let prelude =
+            this.Prelude
+            @ [ s.Let(
+                    "k1",
+                    e.Ket(
+                        e.Set
+                            [ e.Tuple [ e.Int 0; e.Int 0 ]
+                              e.Tuple [ e.Int 0; e.Int 1 ]
+                              e.Tuple [ e.Int 1; e.Int 1 ] ]
+                    )
+                )]
 
+        [
+          // if true then k1.1 else 42
+          e.If(e.Bool true, e.Project(e.Var "k1", e.Int 1), e.Int 3),
+          [ 
+            Int 0;
+            Int 1;
+          ]
+
+          // if false then k1.1 else 42
+          e.If(e.Bool false, e.Project(e.Var "k1", e.Int 1), e.Int 3), 
+          [ Int 3 ]
+        ]
+        |> List.iter (verify_expression (prelude, this.QPU))
 
     [<TestMethod>]
     member this.TestArithmeticExpressions() =

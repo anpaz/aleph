@@ -111,12 +111,12 @@ type Processor(sim: IOperationFactory) =
         | Q.Join (left, right) -> prepare_join (left, right, ctx)
         | Q.Block (stmts, value) -> prepare_block (stmts, value, ctx)
 
+        | Q.IfClassic (c, t, e) -> prepare_if_c(c, t, e, ctx)
+
         | Q.CallMethod (method, args) -> prepare_callmethod (method, args, ctx)
 
         | Q.Solve _
-        | Q.Block _
-        | Q.IfQuantum _
-        | Q.IfClassic _ -> $"Not implemented: {q}" |> Error
+        | Q.IfQuantum _ -> $"Not implemented: {q}" |> Error
 
     and prepare_var (id, ctx) =
         eval_var (id, ctx.evalCtx)
@@ -240,6 +240,16 @@ type Processor(sim: IOperationFactory) =
                         | _ ->
                             $"Invalid inputs for ket And. Expected one length registers, got: left:{left.Length} && right:{right.Length}"
                             |> Error
+
+    and prepare_if_c (condition, then_q, else_q, ctx) =
+        eval_classic (condition, ctx.evalCtx)
+        ==> fun (cond, evalCtx) ->
+                let ctx = { ctx with evalCtx = evalCtx }
+
+                match cond with
+                | (Bool true) -> prepare (then_q, ctx) ==> fun (then_q, ctx) -> (then_q, ctx) |> Ok
+                | (Bool false) -> prepare (else_q, ctx) ==> fun (else_q, ctx) -> (else_q, ctx) |> Ok
+                | _ -> $"Invalid classical input for if condition. Expecting bool, got {cond}" |> Error
 
     and prepare_block (stmts, body, ctx) =
         eval_stmts (stmts, ctx.evalCtx)
