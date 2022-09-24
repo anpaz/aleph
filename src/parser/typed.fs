@@ -71,8 +71,8 @@ and U =
 
 and E =
     | Classic of C * Type
-    | Quantum of Q * QType
-    | Universe of U * UType
+    | Quantum of Q * Type
+    | Universe of U * Type
 
 and Statement =
     | Let of id: Id * value: E

@@ -65,7 +65,7 @@ type TestQPUQsharp () =
     member this.TestLiteral () =
         let ctx = 
             this.Context
-            |> add_to_context "k" (AnyType.QType (QType.Ket [Type.Int; Type.Bool])) (e.Ket (e.Set [
+            |> add_to_context "k" (Type.Ket [Type.Int; Type.Bool]) (e.Ket (e.Set [
                 e.Tuple [ e.Int 0; e.Bool true]
                 e.Tuple [ e.Int 0; e.Bool false]
                 e.Tuple [ e.Int 1; e.Bool true]
@@ -141,13 +141,13 @@ type TestQPUQsharp () =
     member this.TestJoinLiterals () =
         let ctx = 
             this.Context 
-            |> add_to_context "k" (AnyType.QType (QType.Ket [Type.Int; Type.Bool])) (e.Ket (e.Set [
+            |> add_to_context "k" (Type.Ket [Type.Int; Type.Bool]) (e.Ket (e.Set [
                 e.Tuple [ e.Int 0; e.Bool true]
                 e.Tuple [ e.Int 0; e.Bool false]
                 e.Tuple [ e.Int 1; e.Bool true]
             ]))
-            |> add_to_context "all_1" (AnyType.QType (QType.Ket [Type.Int])) (e.KetAll (e.Int 2))
-            |> add_to_context "all_2" (AnyType.QType (QType.Ket [Type.Int])) (e.KetAll (e.Int 2))
+            |> add_to_context "all_1" (Type.Ket [Type.Int]) (e.KetAll (e.Int 2))
+            |> add_to_context "all_2" (Type.Ket [Type.Int]) (e.KetAll (e.Int 2))
 
         [
             e.Join(e.Ket (e.Set []),e.Ket (e.Set [])),
@@ -228,15 +228,15 @@ type TestQPUQsharp () =
     member this.TestBoolExpressions () =
         let ctx = 
             this.Context
-            |> add_to_context "k1" (AnyType.QType (QType.Ket [Type.Bool])) (e.Ket (e.Set [
+            |> add_to_context "k1" (Type.Ket [Type.Bool]) (e.Ket (e.Set [
                 e.Bool true
                 e.Bool false
             ]))
-            |> add_to_context "k2" (AnyType.QType (QType.Ket [Type.Bool])) (e.Ket (e.Set [
+            |> add_to_context "k2" (Type.Ket [Type.Bool]) (e.Ket (e.Set [
                 e.Bool true
                 e.Bool false
             ]))
-            |> add_to_context "k3" (AnyType.QType (QType.Ket [Type.Int; Type.Bool; Type.Bool])) (e.Ket (e.Set [
+            |> add_to_context "k3" (Type.Ket [Type.Int; Type.Bool; Type.Bool]) (e.Ket (e.Set [
                 e.Tuple [e.Int 0; e.Bool true; e.Bool true ]
                 e.Tuple [e.Int 1; e.Bool false; e.Bool true ]
                 e.Tuple [e.Int 2; e.Bool true; e.Bool false ]
@@ -296,11 +296,11 @@ type TestQPUQsharp () =
     member this.TestArithmeticExpressions () =
         let ctx = 
             this.Context
-            |> add_to_context "k1" (AnyType.QType (QType.Ket [Type.Int])) (e.Ket (e.Set [
+            |> add_to_context "k1" (Type.Ket [Type.Int]) (e.Ket (e.Set [
                 e.Int 0
                 e.Int 1
             ]))
-            |> add_to_context "k2" (AnyType.QType (QType.Ket [Type.Int])) (e.Ket (e.Set [
+            |> add_to_context "k2" (Type.Ket [Type.Int]) (e.Ket (e.Set [
                 e.Int 1
                 e.Int 2
             ]))
@@ -370,7 +370,7 @@ type TestQPUQsharp () =
                 [
                     Let ("colors", e.Method(
                         arguments = [],
-                        returns = QType (QType.Ket [Type.Int]),
+                        returns = Type.Ket [Type.Int],
                         body = e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])))
                 ],
                 e.CallMethod (e.Var "colors", [])),
@@ -385,7 +385,7 @@ type TestQPUQsharp () =
                 [
                     Let ("colors", e.Method(
                         arguments = [],
-                        returns = QType (QType.Ket [Type.Int]),
+                        returns = Type.Ket [Type.Int],
                         body = e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])))
                 ],
                 e.Join (e.CallMethod (e.Var "colors", []), e.CallMethod (e.Var "colors", []))),

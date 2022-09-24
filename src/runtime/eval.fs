@@ -115,7 +115,7 @@ module Eval =
 
     and eval (e, ctx) =
         match e with
-        | E.Quantum (q, QType.Ket _) ->
+        | E.Quantum (q, _) ->
             eval_quantum(q, ctx)
         | E.Classic (c, _) ->
             eval_classic (c, ctx)

@@ -17,7 +17,7 @@ let program = Block ([
     //     | RED, BLUE, GREEN >
     Let ("colors", Method (
         arguments = List.empty, 
-        returns = AnyType.QType (QType.Ket [Type.Int]),
+        returns = Type.Ket [Type.Int],
         body = Ket (Set [Var "RED"; Var "BLUE"; Var"GREEN"])))
 
     // // Edges are listed classically, so we can iterate through them
@@ -42,10 +42,10 @@ let program = Block ([
     //
     Let ("is_valid_edge_coloring", (Method (
         arguments = [ 
-            ("color1", QType (QType.Ket [Type.Int]))
-            ("color2", QType (QType.Ket [Type.Int]))
+            ("color1", Type.Ket [Type.Int])
+            ("color2", Type.Ket [Type.Int])
         ],
-        returns = AnyType.QType (QType.Ket [Type.Bool]),
+        returns = Type.Ket [Type.Bool],
         body = (Not (Equals (Var "color1", Var "color2"))))))
 
     // // A valid color combination oracle.
@@ -67,10 +67,10 @@ let program = Block ([
     //
     Let ("classify_coloring", (Method (
         arguments=[ 
-            ("edges", Type (Type.Set (Type.Tuple [Type.Int; Type.Int])))
-            ("coloring", QType (QType.Ket [Type.Int; Type.Int; Type.Int; Type.Int]))
+            ("edges", Type.Set (Type.Tuple [Type.Int; Type.Int]))
+            ("coloring", Type.Ket [Type.Int; Type.Int; Type.Int; Type.Int])
         ], 
-        returns = AnyType.QType (QType.Ket [Type.Bool]),
+        returns = Type.Ket [Type.Bool],
         body = 
             If (Equals(Count(Var "edges"), Int 0),
                 Ket (Bool true),

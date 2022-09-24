@@ -7,18 +7,9 @@ type Type =
     | Int
     | Tuple of Type list
     | Set of Type
-    | Method of AnyType list * AnyType
-
-and QType =
+    | Method of Type list * Type
     | Ket of Type list
-
-and UType =
     | Universe of Type list
-
-and AnyType =
-    | Type of Type
-    | QType of QType
-    | UType of UType
 
 type Aggregation =
     | Sum
@@ -31,7 +22,7 @@ type Expression =
     | Int of int
     | Tuple of values: Expression list
     | Set of values: Expression list
-    | Method of arguments: (Id * AnyType) list * returns: AnyType * body: Expression
+    | Method of arguments: (Id * Type) list * returns: Type * body: Expression
     | Range of start: Expression * stop: Expression
 
     | Not of Expression

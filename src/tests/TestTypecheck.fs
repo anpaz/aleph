@@ -45,16 +45,16 @@ type TestTypecheck () =
     member this.TypeContext =
         { 
             heap = Map ([ 
-                "i1", AnyType.Type Type.Int
-                "b1", AnyType.Type Type.Bool
-                "t1", AnyType.Type (Type.Tuple [Type.Bool; Type.Int])
-                "t2", AnyType.Type (Type.Tuple [Type.Bool; Type.Int])
-                "s1", AnyType.Type (Type.Set (Type.Tuple [Type.Bool; Type.Int]))
-                "qb1", AnyType.QType QBool
-                "k1", AnyType.QType QInt
-                "k2", AnyType.QType (QType.Ket [Type.Int; Type.Bool])
-                "m1", AnyType.Type (Type.Method ([], AnyType.Type Type.Int))
-                "q1", AnyType.Type (Type.Method ([], AnyType.QType QType.Ket[Type.Int]))
+                "i1", Type.Int
+                "b1", Type.Bool
+                "t1", (Type.Tuple [Type.Bool; Type.Int])
+                "t2", (Type.Tuple [Type.Bool; Type.Int])
+                "s1", (Type.Set (Type.Tuple [Type.Bool; Type.Int]))
+                "qb1", QBool
+                "k1", QInt
+                "k2", (Type.Ket [Type.Int; Type.Bool])
+                "m1", (Type.Method ([], Type.Int))
+                "q1", (Type.Method ([], Type.Ket[Type.Int]))
             ])
             previousCtx = None
         }
@@ -77,7 +77,7 @@ type TestTypecheck () =
 
         [
             e.Var "i1", Type.Int, C.Var "i1"
-            e.Var "m1", Type.Method ([], Type Type.Int), C.Var "m1"
+            e.Var "m1", Type.Method ([], Type.Int), C.Var "m1"
         ]
         |> List.iter (this.TestClassicExpression ctx)
 
@@ -131,7 +131,7 @@ type TestTypecheck () =
 
         [
             e.Tuple [e.Var "foo"], "Variable not found: foo"
-            e.Tuple [e.Var "i1"; e.Var "b1"; e.Var "m1"], "Invalid tuple element. Expected bool or int expression, got: Method ([], Type Int)"
+            e.Tuple [e.Var "i1"; e.Var "b1"; e.Var "m1"], "Invalid tuple element. Expected bool or int expression, got: Method ([], Int)"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -174,7 +174,7 @@ type TestTypecheck () =
 
         [
             e.Set [e.Var "foo"], "Variable not found: foo"
-            e.Set [e.Var "i1"; e.Var "b1"; e.Var "m1"], "Invalid set element. Expected int, bool or tuple expression, got: Method ([], Type Int)"
+            e.Set [e.Var "i1"; e.Var "b1"; e.Var "m1"], "Invalid set element. Expected int, bool or tuple expression, got: Method ([], Int)"
             e.Set [e.Int 4; e.Bool true], "All elements in a set must be of the same type."
             e.Set [e.Tuple [e.Int 4; e.Bool true]; e.Tuple [e.Int 1; e.Int 2]], "All elements in a set must be of the same type."
             e.Set [e.Var "t1"; e.Tuple [e.Bool true; e.Int 5; e.Int 2]], "All elements in a set must be of the same type."
@@ -264,12 +264,12 @@ type TestTypecheck () =
         [
             // (not | true >)
             e.Not (e.Ket (e.Bool true)), 
-                QType.Ket [Type.Bool], 
+                Type.Ket [Type.Bool], 
                 Q.Not  (Q.Literal (Set [C.BoolLiteral true]))
 
             // (qb1 or k2.1) and not | true >
             e.And (e.Or (e.Var "qb1", e.Project (e.Var "k2", e.Int 1)), e.Not (e.Ket (e.Bool true))),
-                QType.Ket [Type.Bool],
+                Type.Ket [Type.Bool],
                 Q.And (Q.Or (Q.Var "qb1", Q.Project (Q.Var "k2", 1)), (Q.Not (Q.Literal (Set [C.BoolLiteral true]))))
         ]
         |> List.iter (this.TestQuantumExpression ctx)
@@ -316,30 +316,30 @@ type TestTypecheck () =
 
         [
             // let m () = true
-            e.Method ([], Type Type.Bool, e.Bool true),
-                Type.Method ([], Type Type.Bool),
+            e.Method ([], Type.Bool, e.Bool true),
+                Type.Method ([], Type.Bool),
                 C.Method ([], Classic (C.BoolLiteral true, Type.Bool))
             // let m (a: Int; b: Tuple<Int, Bool>) = b
-            e.Method ([("a", Type Type.Int); ("b", Type (Type.Tuple [Type.Int; Type.Bool]))], Type (Type.Tuple [Type.Int; Type.Bool]), e.Var "b"),
+            e.Method ([("a", Type.Int); ("b", (Type.Tuple [Type.Int; Type.Bool]))], (Type.Tuple [Type.Int; Type.Bool]), e.Var "b"),
                 Type.Method (
-                    [Type Type.Int; Type (Type.Tuple [Type.Int; Type.Bool])], 
-                    Type (Type.Tuple [Type.Int; Type.Bool])),
+                    [Type.Int; (Type.Tuple [Type.Int; Type.Bool])], 
+                    (Type.Tuple [Type.Int; Type.Bool])),
                 C.Method (["a"; "b"], Classic (C.Var "b",  (Type.Tuple [Type.Int; Type.Bool])))
             // let m (i:Int) = 
             //      lambda (y: Bool) = 42
             e.Method (
-                arguments = [("i", Type Type.Int)], 
-                returns = Type (Type.Method ([Type Type.Bool], Type Type.Int)),
+                arguments = [("i", Type.Int)], 
+                returns = (Type.Method ([Type.Bool], Type.Int)),
                 body = e.Method (
-                    arguments = ["y", Type Type.Bool],
-                    returns = Type (Type.Int), 
+                    arguments = ["y", Type.Bool],
+                    returns = (Type.Int), 
                     body = e.Int 42)),
             Type.Method (
-                [Type Type.Int], 
-                Type (Type.Method ([Type Type.Bool], Type Type.Int))),
+                [Type.Int], 
+                (Type.Method ([Type.Bool], Type.Int))),
             C.Method (["i"], (Classic (C.Method (
                 ["y"], 
-                Classic (C.IntLiteral 42, Type.Int)), Type.Method ([Type Type.Bool], Type Type.Int))))
+                Classic (C.IntLiteral 42, Type.Int)), Type.Method ([Type.Bool], Type.Int))))
 
             // let sum (set:Set<Int>) = 
             //      if Count(set) == 0 then
@@ -351,8 +351,8 @@ type TestTypecheck () =
             // sum
             e.Block ([
                 s.Let ("sum",  e.Method (
-                    arguments = [ ("set", Type (Type.Set Type.Int))],
-                    returns = Type Type.Int,
+                    arguments = [ ("set", (Type.Set Type.Int))],
+                    returns = Type.Int,
                     body =  
                         e.If ((e.Equals(e.Count(e.Var "set"), e.Int 0),
                             e.Int 0,
@@ -363,8 +363,8 @@ type TestTypecheck () =
             ], (e.Var "sum")),
 
             Type.Method (
-                [ Type (Type.Set Type.Int) ],
-                AnyType.Type Type.Int),
+                [ (Type.Set Type.Int) ],
+                Type.Int),
             
             C.Block ([
                 Statement.Let ("sum",  Classic (
@@ -379,7 +379,7 @@ type TestTypecheck () =
                                     Statement.Let ("rest", Classic (C.Remove(C.Var "elem", C.Var "set"), Type.Set Type.Int))
                                 ], C.Add(C.Var "elem", C.CallMethod(C.Var "sum", [Classic (C.Var "rest", Type.Set Type.Int)]))))),
                             Type.Int)),
-                    Type.Method ([AnyType.Type (Type.Set Type.Int)], Type Type.Int)))
+                    Type.Method ([(Type.Set Type.Int)], Type.Int)))
             ], C.Var "sum")
         ]
         |> List.iter (this.TestClassicExpression ctx)
@@ -388,23 +388,23 @@ type TestTypecheck () =
             // () : Int = false
             e.Method (
                 arguments = [],
-                returns = Type Type.Int,
+                returns = Type.Int,
                 body = e.Bool false),
-            "Method return type doesn't match signature. Expecting Type Int, got Type Bool"
+            "Method return type doesn't match signature. Expecting Int, got Bool"
 
             // () : Int = false
             e.Method (
                 arguments = [],
-                returns = Type Type.Int,
+                returns = Type.Int,
                 body = e.Ket (e.Bool false)),
-            "Method return type doesn't match signature. Expecting Type Int, got QType (Ket [Bool])"
+            "Method return type doesn't match signature. Expecting Int, got Ket [Bool]"
 
             // () : Ket<Bool> = false
             e.Method (
                 arguments = [],
-                returns = QType (QType.Ket [Type.Bool]),
+                returns = Type.Ket [Type.Bool],
                 body = e.Bool false),
-            "Method return type doesn't match signature. Expecting QType (Ket [Bool]), got Type Bool"
+            "Method return type doesn't match signature. Expecting Ket [Bool], got Bool"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -416,23 +416,23 @@ type TestTypecheck () =
         [
             // |>
             e.Ket (e.Set []),
-                QType.Ket [],
+                Type.Ket [],
                 Q.Literal (C.Set [])
             // |1>
             e.Ket (e.Int 1),
-                QType.Ket [Type.Int],
+                Type.Ket [Type.Int],
                 Q.Literal (C.Set [C.IntLiteral 1])
             // |true, false>
             e.Ket (e.Set [e.Bool true; e.Bool false]),
-                QType.Ket [Type.Bool],
+                Type.Ket [Type.Bool],
                 Q.Literal (C.Set [C.BoolLiteral true; C.BoolLiteral false])
             // |(1,2), (3,4)>
             e.Ket (e.Set [e.Tuple [e.Int 1; e.Int 2]; e.Tuple [e.Int 3; e.Int 4]]),
-                QType.Ket [Type.Int; Type.Int],
+                Type.Ket [Type.Int; Type.Int],
                 Q.Literal (C.Set [C.Tuple [C.IntLiteral 1; C.IntLiteral 2]; C.Tuple [C.IntLiteral 3; C.IntLiteral 4]])
             // |(1,false), (3,true)>
             e.Ket (e.Set [e.Tuple [e.Int 1; e.Bool false]; e.Tuple [e.Int 3; e.Bool true]]),
-                QType.Ket [Type.Int; Type.Bool],
+                Type.Ket [Type.Int; Type.Bool],
                 Q.Literal (C.Set [C.Tuple [C.IntLiteral 1; C.BoolLiteral false]; C.Tuple [C.IntLiteral 3; C.BoolLiteral true]])
         ]
         |> List.iter (this.TestQuantumExpression ctx)
@@ -493,19 +493,19 @@ type TestTypecheck () =
         [
             // |0, 1> + |1, 2, 3>
             e.Add (e.Ket (e.Set [e.Int 0;e.Int 1]), e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])),
-                QType.Ket [Type.Int],
+                Type.Ket [Type.Int],
                 Q.Add (
                     Q.Literal (C.Set [C.IntLiteral 0; C.IntLiteral 1]), 
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // 1 + |1, 2, 3>
             e.Add (e.Int 1, e.Ket (e.Set [e.Int 1;e.Int 2;e.Int 3])),
-                QType.Ket [Type.Int],
+                Type.Ket [Type.Int],
                 Q.Add (
                     Q.Literal (C.Set [C.IntLiteral 1]), 
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // |1, 2, 3> + 1
             e.Add (e.Ket (e.Set [e.Int 1;e.Int 2;e.Int 3]), e.Int 1),
-                QType.Ket [Type.Int],
+                Type.Ket [Type.Int],
                 Q.Add (
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]),
                     Q.Literal (C.Set [C.IntLiteral 1]))
@@ -546,19 +546,19 @@ type TestTypecheck () =
         [
             // |0, 1> = |1, 2, 3>
             e.Equals (e.Ket (e.Set [e.Int 0;e.Int 1]), e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])),
-                QType.Ket [Type.Bool],
+                Type.Ket [Type.Bool],
                 Q.Equals (
                     Q.Literal (C.Set [C.IntLiteral 0; C.IntLiteral 1]), 
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // 1 = |1, 2, 3>
             e.Equals (e.Int 1, e.Ket (e.Set [e.Int 1;e.Int 2;e.Int 3])),
-                QType.Ket [Type.Bool],
+                Type.Ket [Type.Bool],
                 Q.Equals (
                     Q.Literal (C.Set [C.IntLiteral 1]), 
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // |1, 2, 3> = 1
             e.Equals (e.Ket (e.Set [e.Int 1;e.Int 2;e.Int 3]), e.Int 1),
-                QType.Ket [Type.Bool],
+                Type.Ket [Type.Bool],
                 Q.Equals (
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]),
                     Q.Literal (C.Set [C.IntLiteral 1]))
@@ -598,19 +598,19 @@ type TestTypecheck () =
         [
             // |0, 1> * |1, 2, 3>
             e.Multiply (e.Ket (e.Set [e.Int 0;e.Int 1]), e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])),
-                QType.Ket [Type.Int],
+                Type.Ket [Type.Int],
                 Q.Multiply (
                     Q.Literal (C.Set [C.IntLiteral 0; C.IntLiteral 1]), 
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // 1 * |1, 2, 3>
             e.Multiply (e.Int 1, e.Ket (e.Set [e.Int 1;e.Int 2;e.Int 3])),
-                QType.Ket [Type.Int],
+                Type.Ket [Type.Int],
                 Q.Multiply (
                     Q.Literal (C.Set [C.IntLiteral 1]), 
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // |1, 2, 3> * 1
             e.Multiply (e.Ket (e.Set [e.Int 1;e.Int 2;e.Int 3]), e.Int 1),
-                QType.Ket [Type.Int],
+                Type.Ket [Type.Int],
                 Q.Multiply (
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]),
                     Q.Literal (C.Set [C.IntLiteral 1]))
@@ -647,14 +647,12 @@ type TestTypecheck () =
         let ctx = 
             this.TypeContext
             |> add_to_typecontext ([
-                "m2", AnyType.Type (
-                    Type.Method (
-                        [AnyType.QType (QType.Ket [Type.Int]); AnyType.Type (Type.Tuple [Type.Int; Type.Bool])], 
-                        AnyType.Type (Type.Tuple [Type.Int; Type.Int])))
-                "q2", AnyType.Type (
-                    Type.Method (
-                        [AnyType.QType (QType.Ket [Type.Int]); AnyType.Type (Type.Tuple [Type.Int; Type.Bool])], 
-                        AnyType.QType (QType.Ket [Type.Bool])))
+                "m2", Type.Method (
+                        [Type.Ket [Type.Int]; Type.Tuple [Type.Int; Type.Bool]], 
+                        Type.Tuple [Type.Int; Type.Int])
+                "q2", Type.Method (
+                        [Type.Ket [Type.Int]; Type.Tuple [Type.Int; Type.Bool]], 
+                        Type.Ket [Type.Bool])
             ])
 
         [
@@ -666,7 +664,7 @@ type TestTypecheck () =
             e.CallMethod (e.Var "m2", [e.Ket (e.Int 1); e.Tuple [e.Int 2; e.Bool false]]),
                 Type.Tuple [Type.Int; Type.Int],
                 C.CallMethod (C.Var ("m2"),  [
-                    Quantum (Q.Literal (C.Set [C.IntLiteral 1]), QType.Ket [Type.Int]); 
+                    Quantum (Q.Literal (C.Set [C.IntLiteral 1]), Type.Ket [Type.Int]); 
                     Classic (C.Tuple [C.IntLiteral 2; C.BoolLiteral false], Type.Tuple[Type.Int; Type.Bool])])
         ]
         |> List.iter (this.TestClassicExpression ctx)
@@ -674,21 +672,21 @@ type TestTypecheck () =
         [
             // q1()
             e.CallMethod (e.Var "q1", []),
-                QType.Ket [Type.Int],
+                Type.Ket [Type.Int],
                 Q.CallMethod (C.Var ("q1"), [])
             // m2(Ket<Int>, (Int, Bool) : Ket<Bool>
             e.CallMethod (e.Var "q2", [e.Ket (e.Int 1); e.Tuple [e.Int 2; e.Bool false]]),
-                QType.Ket [Type.Bool],
+                Type.Ket [Type.Bool],
                 Q.CallMethod (C.Var ("q2"),  [
-                    Quantum (Q.Literal (C.Set [C.IntLiteral 1]), QType.Ket[Type.Int]); 
+                    Quantum (Q.Literal (C.Set [C.IntLiteral 1]), Type.Ket[Type.Int]); 
                     Classic (C.Tuple [C.IntLiteral 2; C.BoolLiteral false], Type.Tuple[Type.Int; Type.Bool])])
         ]
         |> List.iter (this.TestQuantumExpression ctx)
 
         [
-            e.CallMethod (e.Var "m1", [e.Int 1]), "Arguments type missmatch. Expected [] got [Type Int]"
-            e.CallMethod (e.Var "q1", [e.Int 1]), "Arguments type missmatch. Expected [] got [Type Int]"
-            e.CallMethod (e.Var "m2", [e.Int 1; e.Tuple [e.Int 2; e.Bool false]]), "Arguments type missmatch. Expected [QType (Ket [Int]); Type (Tuple [Int; Bool])] got [Type Int; Type (Tuple [Int; Bool])]"
+            e.CallMethod (e.Var "m1", [e.Int 1]), "Arguments type missmatch. Expected [] got [Int]"
+            e.CallMethod (e.Var "q1", [e.Int 1]), "Arguments type missmatch. Expected [] got [Int]"
+            e.CallMethod (e.Var "m2", [e.Int 1; e.Tuple [e.Int 2; e.Bool false]]), "Arguments type missmatch. Expected [Ket [Int]; Tuple [Int; Bool]] got [Int; Tuple [Int; Bool]]"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -716,21 +714,21 @@ type TestTypecheck () =
         [
             // (|>|), |>)
             e.Join (e.Ket (e.Set []), e.Ket (e.Set [])),
-                QType.Ket [],
+                Type.Ket [],
                 Q.Join (Q.Literal (C.Set []), Q.Literal (C.Set []))
             // (t1, |>)
             e.Join (e.Var "k1", e.Ket (e.Set [])),
-                QType.Ket [Type.Int],
+                Type.Ket [Type.Int],
                 Q.Join (Q.Var "k1", Q.Literal (C.Set []))
             // (t1, |1,2,3>)
             e.Join (e.Var "k1", e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])),
-                QType.Ket [Type.Int; Type.Int],
+                Type.Ket [Type.Int; Type.Int],
                 Q.Join (
                     Q.Var "k1", 
                     Q.Literal (C.Set [C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3]))
             // (|(1,1)>, |(0,0,false)>)
             e.Join (e.Ket (e.Set [e.Tuple [e.Int 1; e.Int 1]]), e.Ket (e.Set [e.Tuple [e.Int 0; e.Int 0; e.Bool true]])),
-                QType.Ket [Type.Int; Type.Int; Type.Int; Type.Int; Type.Bool],
+                Type.Ket [Type.Int; Type.Int; Type.Int; Type.Int; Type.Bool],
                 Q.Join (
                     Q.Literal (C.Set [C.Tuple [C.IntLiteral 1; C.IntLiteral 1]]),
                     Q.Literal (C.Set [C.Tuple [C.IntLiteral 0; C.IntLiteral 0; C.BoolLiteral true]]))
@@ -771,19 +769,19 @@ type TestTypecheck () =
         [
             // |1>.0
             e.Project (e.Ket (e.Set [Int 1]), Int 0),
-                QType.Ket [Type.Int],
+                Type.Ket [Type.Int],
                 Q.Project (Q.Literal (C.Set [C.IntLiteral 1]), 0)
             // k1.2  --> Note, index in projection is modular, so 2 == 0
             e.Project (e.Var "k1", Int 2),
-                QType.Ket [Type.Int],
+                Type.Ket [Type.Int],
                 Q.Project (Q.Var "k1", 0)
             // k2.1
             e.Project (e.Var "k2", Int 1),
-                QType.Ket [Type.Bool],
+                Type.Ket [Type.Bool],
                 Q.Project (Q.Var "k2", 1)
             // |(1, false, 3, true)>.2
             e.Project (e.Ket (e.Set [e.Tuple [Int 1; e.Bool false; Int 3; e.Bool true]]), Int 2),
-                QType.Ket [Type.Int],
+                Type.Ket [Type.Int],
                 Q.Project (Q.Literal (C.Set [Tuple [C.IntLiteral 1; C.BoolLiteral false; C.IntLiteral 3; C.BoolLiteral true]]), 2)
         ]
         |> List.iter (this.TestQuantumExpression ctx)
@@ -820,7 +818,7 @@ type TestTypecheck () =
                 Type.Int,
                 C.Block ([
                     Let ("a", Classic (C.IntLiteral 15, Type.Int))
-                    Print ("some msg", [Classic (C.Var "a", Type.Int); (Quantum (Q.Var "k1", QType.Ket [Type.Int]))])],
+                    Print ("some msg", [Classic (C.Var "a", Type.Int); (Quantum (Q.Var "k1", Type.Ket [Type.Int]))])],
                     C.Add (C.Var "a", C.Var "i1"))
             // { let a = 15; let b = a + 2; b }
             e.Block ([
@@ -866,17 +864,17 @@ type TestTypecheck () =
         [
             // { t1 }
             e.Block ([], (e.Var "k1")),
-                QType.Ket [Type.Int],
+                Type.Ket [Type.Int],
                 Q.Block ([], Q.Var "k1")
             // { let a = 15; print "some msg" a k1; a + k1 }
             e.Block ([
                 s.Let ("a", e.Int 15)
                 s.Print ("some msg", [e.Var "a"; e.Var "k1"])],
                 (e.Add (e.Var "a", e.Var "k1"))),
-                QType.Ket [Type.Int],
+                Type.Ket [Type.Int],
                 Q.Block ([
                     Let ("a", Classic (C.IntLiteral 15, Type.Int))
-                    Print ("some msg", [Classic (C.Var "a", Type.Int); (Quantum (Q.Var "k1", QType.Ket [Type.Int]))])],
+                    Print ("some msg", [Classic (C.Var "a", Type.Int); (Quantum (Q.Var "k1", Type.Ket [Type.Int]))])],
                     Q.Add (Q.Literal (C.Set [C.Var "a"]), Q.Var "k1"))
         ]
         |> List.iter (this.TestQuantumExpression ctx)
@@ -912,15 +910,15 @@ type TestTypecheck () =
         [
             // { if true then k1 else |0> }
             e.If (e.Bool true, e.Var "k1", e.Ket (e.Set [e.Int 0])),
-                QType.Ket [Type.Int],
+                Type.Ket [Type.Int],
                 Q.IfClassic (C.BoolLiteral true, Q.Var "k1", Q.Literal (Set [C.IntLiteral 0]))
             // { if true then k1 else 0 }
             e.If (e.Bool true, e.Var "k1", e.Int 0),
-                QType.Ket [Type.Int],
+                Type.Ket [Type.Int],
                 Q.IfClassic (C.BoolLiteral true, Q.Var "k1", Q.Literal (Set [C.IntLiteral 0]))
             // { if k2.1 then (0, 1) else (0, 0) }
             e.If (e.Project (e.Var "k2", e.Int 1), e.Tuple [e.Int 0; e.Int 1], e.Tuple [e.Int 0; e.Int 0]),
-                QType.Ket [Type.Int; Type.Int],
+                Type.Ket [Type.Int; Type.Int],
                 Q.IfQuantum (
                     Q.Project (Q.Var "k2", 1), 
                     Q.Literal (C.Set [C.Tuple [C.IntLiteral 0; C.IntLiteral 1]]), 
@@ -928,7 +926,7 @@ type TestTypecheck () =
             // TODO: QUANTUM OR
             // // { if b1 or k1.1 then (0, 1) else (0, 0) }
             // u.If (u.Or [u.Var "b1"; u.Project (u.Var "k1", [u.Int 1])], u.Tuple [u.Int 0; u.Int 1], u.Tuple [u.Int 0; u.Int 0]),
-            //     QType.Ket [Type.Int; Type.Int],
+            //     Type.Ket [Type.Int; Type.Int],
             //     Q.IfQuantum (
             //         Q.Or (Q.Join (Q.Literal (C.Var "b1"), Q.Project (Q.Var "k1", [1]))), 
             //         Q.Literal (C.Tuple [C.IntLiteral 0; C.IntLiteral 1]), 
@@ -973,7 +971,7 @@ type TestTypecheck () =
         [
             // summarize e in s1 with and { k2.0 == e.1 } 
             e.Summarize ("e", e.Var "s1", Aggregation.And, e.Equals (e.Project (e.Var "k2", e.Int 0), e.Project (e.Var "e", e.Int 1))),
-                QType.Ket [Type.Bool],
+                Type.Ket [Type.Bool],
                 Q.Summarize ("e", C.Var "s1", Aggregation.And, Q.Equals (Q.Project (Q.Var "k2", 0), (Q.Literal (C.Set [C.Project (C.Var "e", 1)]))))
         ]
         |> List.iter (this.TestQuantumExpression ctx)
@@ -1004,7 +1002,7 @@ type TestTypecheck () =
         [
             // k2 | k2.[0] == 1
             e.Solve(e.Var "k2", e.Equals (e.Project (e.Var "k2", e.Int 0), e.Int 1)),
-                QType.Ket [Type.Int; Type.Bool],
+                Type.Ket [Type.Int; Type.Bool],
                 Q.Solve(Q.Var "k2", Q.Equals (Q.Project (Q.Var "k2", 0), Q.Literal (C.Set [C.IntLiteral 1])))
         ]
         |> List.iter (this.TestQuantumExpression ctx)
@@ -1037,7 +1035,7 @@ type TestTypecheck () =
         |> List.iter (this.TestClassicExpression ctx)
 
         [
-            e.Sample (e.Tuple [e.Int 1;e.Int 2]), "Sample argument must be a quantum ket, got: Tuple [Int; Int]"
+            e.Sample (e.Tuple [e.Int 1;e.Int 2]), "Sample argument must be a quantum universe, got: Tuple [Int; Int]"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -1062,8 +1060,8 @@ type TestTypecheck () =
                 s.Let ("beta", e.Bool false)
                 s.Let ("foo",
                     e.Method (
-                        arguments = ["beta", AnyType.Type Type.Int],
-                        returns = AnyType.Type (Type.Tuple [ Type.Int; Type.Int; Type.Int ]),
+                        arguments = ["beta", Type.Int],
+                        returns = Type.Tuple [ Type.Int; Type.Int; Type.Int ],
                         body = e.Block ([
                             s.Let ("alpha", e.If(
                                 e.Var "alpha",
@@ -1102,7 +1100,7 @@ type TestTypecheck () =
                             C.Var "beta"; 
                             C.Var "x" ]), 
                         Type.Tuple [Type.Int; Type.Int; Type.Int])), 
-                    Type.Method ([AnyType.Type Type.Int], AnyType.Type (Type.Tuple [Type.Int; Type.Int; Type.Int]))))
+                    Type.Method ([Type.Int], Type.Tuple [Type.Int; Type.Int; Type.Int])))
             ], C.Join( 
                 C.Tuple [C.Var "alpha"; C.Var "beta" ],
                 C.CallMethod (C.Var "foo", [Classic (C.IntLiteral 25, Type.Int)])))
