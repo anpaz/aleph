@@ -46,6 +46,14 @@ type Universe(state: Value list list, columns: int list) =
     let random = System.Random()
     let mutable value = None
 
+    let project_columns (row: Value list) =
+        if columns.Length = 1 then
+            row.[columns.[0]]
+        else
+            columns 
+            |> List.fold (fun result i -> result @ [ row.[i] ]) []
+            |> Tuple
+
     interface IUniverse with
         member this.CompareTo(obj: obj): int = 
             failwith "Not Implemented"
@@ -82,16 +90,12 @@ type Universe(state: Value list list, columns: int list) =
                 | n -> 
                     let i = int (random.NextDouble() * (double (n)))
                     state.Item i
-            let project_columns (row: Value list) =
-                if columns.Length = 1 then
-                    row.[columns.[0]]
-                else
-                    columns 
-                    |> List.fold (fun result i -> result @ [ row.[i] ]) []
-                    |> Tuple
             let sample = pick_world() |> project_columns
             value <- Some sample
             sample
+
+    override this.ToString() =
+        sprintf "%A" (seq { for i in state -> i |> project_columns } |> Seq.toList)
 
 type Processor() =
 

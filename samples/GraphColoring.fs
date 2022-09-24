@@ -103,7 +103,7 @@ let program = Block ([
             CallMethod (Var "colors", List.empty)),
             CallMethod (Var "colors", List.empty))))
 
-    Print ("nodes_colors", [Var "nodes_colors"])
+    Print ("nodes_colors: ", [Var "nodes_colors"])
 
     // // To find a valid coloring, solve the valid_combination oracle and
     // // measure the result
@@ -118,8 +118,8 @@ let program = Block ([
     // let answers = Solve(nodes_colors, classification)
     Let ("answers", Solve (Var "nodes_colors", Var "classification"))
 
-    Print ("classification", [Var "classification"])
-    Print ("answers", [Var "answers"])
+    Print ("classification: ", [Prepare (Join (Var "nodes_colors", Var "classification"))])
+    Print ("answers: ", [Prepare (Var "answers")])
 
     // let s1 = | Prepare (answers) |
     // let s2 = | Prepare (answers) |
@@ -128,9 +128,9 @@ let program = Block ([
     Let ("s2", Sample (Prepare (Var "answers")))
     Let ("s3", Sample (Prepare (Var "answers")))
 
-    Print ("s1", [Var "s1"])
-    Print ("s2", [Var "s2"])
-    Print ("s3", [Var "s3"])
+    Print ("s1: ", [Var "s1"])
+    Print ("s2: ", [Var "s2"])
+    Print ("s3: ", [Var "s3"])
 ],
     // s3
     Var("s3"))

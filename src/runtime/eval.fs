@@ -16,7 +16,7 @@ module Eval =
         inherit System.IComparable
         end
 
-    type [<CustomComparison; CustomEquality>] Ket =
+    type [<CustomComparison; CustomEquality; StructuredFormatDisplay("id:{Id}")>] Ket =
         { Id : int
           StatePrep: Q
           Context: EvalContext }
@@ -26,7 +26,7 @@ module Eval =
             | :? Ket as {Id=id'} -> (this.Id = id')
             | _ -> false
 
-        override this.GetHashCode () =
+        override this.GetHashCode() =
             this.Id.GetHashCode() + this.StatePrep.GetHashCode() + this.Context.GetHashCode()
 
         interface System.IComparable with
@@ -373,7 +373,7 @@ module Eval =
                     ==> fun (value, ctx') ->
                         { ctx' with heap = ctx'.heap.Add (id, value) } |> Ok
                 | Print (msg, expressions) ->
-                    printfn "%s" msg
+                    printf "%s" msg
                     let print_one ctx' e =
                         ctx' ==> fun (ctx') -> 
                         eval (e, ctx') 
