@@ -32,7 +32,7 @@ type Expression =
 
     | Project of tuple: Expression * index: Expression
     | Block of Statement list * Expression
-    | If of cond: Expression * t : Expression * f: Expression
+    | If of cond: Expression * t: Expression * f: Expression
 
     | Ket of values: Expression
     | KetAll of size: Expression
@@ -52,4 +52,3 @@ type Expression =
 and Statement =
     | Let of id: Id * value: Expression
     | Print of string * Expression list
-

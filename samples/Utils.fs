@@ -1,40 +1,37 @@
-
 module Utils
-    open aleph.runtime.Eval
-    open Microsoft.Quantum.Simulation.Simulators
-    open Microsoft.Quantum.IQSharp.ExecutionPathTracer
 
-    let run qpu program =
-        let context = { 
-            heap = Map.empty
-            typeCtx = { heap = Map.empty; previousCtx = None }
-            qpu =  qpu
-            callerCtx = None
-        }
+open aleph.runtime.Eval
+open Microsoft.Quantum.Simulation.Simulators
+open Microsoft.Quantum.IQSharp.ExecutionPathTracer
 
-        match run (program, context) with
-        | Ok (v, _) ->
-            printfn $"\nresult: {v}"
-            0
-        | Error msg ->
-            printfn $"\n!! Failed: {msg} !!"
-            1
+let run qpu program =
+    let context =
+        { heap = Map.empty
+          typeCtx = { heap = Map.empty; previousCtx = None }
+          qpu = qpu
+          callerCtx = None }
 
-    let wrapup code =
-        printfn ""
-        printfn ":ℵ-0.4:"
-        code
+    match run (program, context) with
+    | Ok (v, _) ->
+        printfn $"\nresult: {v}"
+        0
+    | Error msg ->
+        printfn $"\n!! Failed: {msg} !!"
+        1
 
-    let simulate program = program |> run (aleph.runtime.qpu.classic.Processor())
+let wrapup code =
+    printfn ""
+    printfn ":ℵ-0.4:"
+    code
 
-    let trace program = 
-        let tracer = new ExecutionPathTracer()
-        let sim = (new QuantumSimulator()).WithExecutionPathTracer(tracer)
+let simulate program =
+    program |> run (aleph.runtime.qpu.classic.Processor())
 
-        let r =
-            program 
-            |> run (aleph.runtime.qpu.qsharp.Processor(sim))
+let trace program =
+    let tracer = new ExecutionPathTracer()
+    let sim = (new QuantumSimulator()).WithExecutionPathTracer(tracer)
 
-        System.IO.File.WriteAllText ("circuit.json", tracer.GetExecutionPath().ToJson())
-        r
+    let r = program |> run (aleph.runtime.qpu.qsharp.Processor(sim))
 
+    System.IO.File.WriteAllText("circuit.json", tracer.GetExecutionPath().ToJson())
+    r

@@ -1,15 +1,15 @@
-module Program 
+module Program
 
 // open aleph.parser.core
 // open aleph.runtime.Core
 
 [<EntryPoint>]
 let main _ =
-    // let printValue errors e = 
+    // let printValue errors e =
     //     let v = eval(e, Map.empty)
 
     //     match v with
-    //     | Result.Ok (v, ctx) -> 
+    //     | Result.Ok (v, ctx) ->
     //         printfn $"Value: {v}"
     //         errors + 0
     //     | Result.Error msg ->
@@ -17,7 +17,7 @@ let main _ =
     //         errors + 1
 
 
-    // // let k1 = 
+    // // let k1 =
     // //     ast.Ket([
     // //         ast.Set([
     // //             ast.Tuple([ast.Int(0); ast.Int(0)])
@@ -25,7 +25,7 @@ let main _ =
     // //         ])
     // //         ast.Tuple([ast.Int(0); ast.Int(1)])
     // //         ast.Tuple([ast.Int(1); ast.Int(1)])])
-    // // let k2 = ast.Ket ([1..10] |> List.map ast.Int)    
+    // // let k2 = ast.Ket ([1..10] |> List.map ast.Int)
 
     // [
     //     ast.Int(3)
@@ -53,4 +53,3 @@ let main _ =
     // // for _ in 1..10 do
     // //     printValue 0 (ast.Measure k2) |> ignore
     0
-
