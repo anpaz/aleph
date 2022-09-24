@@ -247,32 +247,6 @@ prepares the following universe and returns the last column:
 
 
 
-### Summarize
-
-> `summarize i in enum with and|or|sum expr`
-
-Applies the expression with each value in the enumeration, the resulting values are then aggregated using the corresponding operation.
-
-For example:
-```
-let idx = { 0, 2 }
-let values = | (0,0,0,0), (0,0,1,1), (0,1,0,0), (1,1,1,0) >
-summarize i in values with and values.x == values.[x+1]
-```
-
-Creates the following universe:
-
-| | | | | | | r_0 |
-|---|---|---|---|---|---|-----|
-| 0 | 0 | 0 | 0 | true | true | true |
-| 0 | 0 | 1 | 1 | true | true | true |
-| 0 | 1 | 0 | 0 | false | true | false |
-| 1 | 1 | 1 | 0 | true | false | false |
-
-and returns the last column.
-
-
-
 ### Solve
 
 > `Solve (ket<T'>, ket<bool>) : ket<T'>`
@@ -392,7 +366,6 @@ Aleph supports a similar set of expressions for classical values.
     * **remove**
     * **count**
 * **if/else**
-* **summarize**
 
 Classical expressions are evaluated eagerly and their values can be used in quantum expressions. When this happens the result of the expression is first converted into a quantum literal so it can be used in a expression. For example:
 
@@ -496,12 +469,21 @@ let is_valid_edge_coloring (color1: ket<int>, color2: ket<int>) =
 
 // A valid color combination oracle.
 // Returns true only if the nodes' color combination is valid for all edges.
-let classify_coloring (edges: set<int, int>, coloring: ket<int, int, int, int>) =
-    let valid = summarize e in edges with and
-        let x = e.0
-        let y = e.1
-        is_valid_edge_coloring (coloring.x, coloring.y)
-    valid
+let classify_coloring (edges: Set<Tuple<Int, Int>>, coloring: Ket<Int, Int, Int, Int>) : Ket<Bool> =
+    if Count(edges) == 0 then
+            | true >
+    else
+        let e = Element(edges)
+        let rest = Remove(e, edges)
+        let x = e[0]
+        let y = e[1]
+        let one = is_valid_edge_coloring (coloring[x], coloring[y]) 
+        if Count(rest) == 0 then
+            one
+        else
+            one && classify_coloring(rest, coloring)
+        valid
+
 
 // A ket with the color combination for all nodes. Each node is an item of a tuple.
 let nodes_colors = (colors(), colors(), colors(), colors())

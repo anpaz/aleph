@@ -11,11 +11,6 @@ type Type =
     | Ket of Type list
     | Universe of Type list
 
-type Aggregation =
-    | Sum
-    | And
-    | Or
-
 type Expression =
     | Var of Id
     | Bool of bool
@@ -38,7 +33,6 @@ type Expression =
     | Project of tuple: Expression * index: Expression
     | Block of Statement list * Expression
     | If of cond: Expression * t : Expression * f: Expression
-    | Summarize of id: Id * enumeration : Expression * aggregation: Aggregation * body: Expression
 
     | Ket of values: Expression
     | KetAll of size: Expression

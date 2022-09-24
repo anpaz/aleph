@@ -84,7 +84,6 @@ module TypeChecker =
         | Expression.Project (value, index) -> typecheck_project (value, index, ctx)
         | Expression.Block (stmts, r) -> typecheck_block (stmts, r, ctx)
         | Expression.If (c, t, f) -> typecheck_if (c, t, f, ctx)
-        | Expression.Summarize  (id, enumeration, aggregation, body) -> typecheck_summarize (id, enumeration, aggregation, body, ctx)
 
         | Expression.Solve (ket, cond) -> typecheck_solve (ket, cond, ctx)        
         | Expression.Prepare ket -> typecheck_prepare (ket, ctx)
@@ -485,41 +484,6 @@ module TypeChecker =
                 | Universe (_, t) -> $"If condition must be a boolean, got {t}" |> Error
             else 
                 $"Both branches of if statement must be of the same type, got {tt} and {ft}" |> Error
-
-    and typecheck_summarize (varId, enumeration, aggregation, body, ctx) =
-        typecheck (enumeration, ctx)
-        ==> fun (enumeration, ctx) ->
-            // enumeration must be a set ...
-            match enumeration with
-            | Classic (values, (Type.Set t)) ->
-                // and the variable to the context, and typecheck the body:
-                let ctx = ctx |> add_to_typecontext [varId, t]
-                typecheck (body, ctx)
-                ==> fun (body, ctx) ->
-                    // the body must match the aggregation:
-                    match aggregation with
-                    | Aggregation.And
-                    | Aggregation.Or ->
-                        match body with
-                        | Classic (body, Type.Bool) ->
-                            (Classic (C.Summarize (varId, values, aggregation, body), Type.Bool), ctx) |> Ok
-                        | Quantum (body, Type.Ket [Type.Bool]) ->
-                            (Quantum (Q.Summarize (varId, values, aggregation, body), Type.Ket [Type.Bool]), ctx) |> Ok
-                        | Classic (_, t) -> $"Summarize body must be a boolean expression when aggregation is 'and' | 'or', got {t}" |> Error
-                        | Quantum (_, t) -> $"Summarize body must be a boolean expression when aggregation is 'and' | 'or', got {t}" |> Error
-                        | Universe (_, t) -> $"Summarize body must be a boolean expression when aggregation is 'and' | 'or', got {t}" |> Error
-                    | Aggregation.Sum ->
-                        match body with
-                        | Classic (body, Type.Int) ->
-                            (Classic (C.Summarize (varId, values, aggregation, body), Type.Int), ctx) |> Ok
-                        | Quantum (body, Type.Ket [Type.Int]) ->
-                            (Quantum (Q.Summarize (varId, values, aggregation, body), Type.Ket [Type.Int]), ctx) |> Ok
-                        | Classic (_, t) -> $"Summarize body must be an Int expression when aggregation is 'sum', got {t}" |> Error
-                        | Quantum (_, t) -> $"Summarize body must be an Int expression when aggregation is 'sum', got {t}" |> Error
-                        | Universe (_, t) -> $"Summarize body must be an Int expression when aggregation is 'sum', got {t}" |> Error
-            | Classic (_, t) -> $"Summarize expects a classic set of values, got: {t}" |> Error
-            | Quantum (_, t) -> $"Summarize expects a classic set of values, got: {t}" |> Error
-            | Universe (_, t) -> $"Summarize expects a classic set of values, got: {t}" |> Error
 
     and typecheck_solve (ket, cond, ctx) =
         typecheck (ket, ctx)

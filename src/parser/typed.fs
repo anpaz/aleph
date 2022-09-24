@@ -29,7 +29,6 @@ type C =
     | Index of source: C * index: C
     | Block of stmts: Statement list * value: C
     | If of cond: C * t : C * f: C
-    | Summarize of id: Id * enumeration : C * aggregation: Aggregation * body: C
 
     | Element of set: C
     | Append of item: C * set: C
@@ -58,7 +57,6 @@ and Q =
     | Block of stmts: Statement list * Q
     | IfClassic of cond: C * t : Q * f: Q
     | IfQuantum of cond: Q * t : Q * f: Q
-    | Summarize of id: Id * enumeration : C * aggregation: Aggregation * body: Q
 
     | CallMethod of method: C * arguments: E list
     | Solve of ket: Q * condition: Q

@@ -148,10 +148,6 @@ type Processor() =
 
         | Q.CallMethod (method, args) ->  prepare_callmethod(method, args, ctx)
 
-        | Summarize _ ->
-            $"`Not implemented: {q}" |> Error
-
-
     (*
         Finds the var as a Ket in the heap, and then calls prepare on the corresponding ket.
         After calling prepare on the ket it will be allocated in memory, as such

@@ -949,53 +949,6 @@ type TestTypecheck () =
 
 
     [<TestMethod>]
-    member this.TestSummarize() =
-        let ctx = this.TypeContext
-
-        [
-            // summarize e in s1 with and { e.1 < 10 } 
-            e.Summarize ("e", e.Var "s1", Aggregation.And, e.LessThan (e.Project (e.Var "e", e.Int 1), e.Int 10)),
-                Type.Bool,
-                C.Summarize ("e", C.Var "s1", Aggregation.And, C.LessThan (C.Project (C.Var "e", 1), C.IntLiteral 10))
-            // summarize e in s1 with or { e.1 == 10 } 
-            e.Summarize ("e", e.Var "s1", Aggregation.Or, e.Equals (e.Project (e.Var "e", e.Int 1), e.Int 10)),
-                Type.Bool,
-                C.Summarize ("e", C.Var "s1", Aggregation.Or, C.Equals (C.Project (C.Var "e", 1), C.IntLiteral 10))
-            // summarize e in [true, false] with or { true } 
-            e.Summarize ("e", e.Set [e.Bool true; e.Bool false], Aggregation.Or, e.Bool true),
-                Type.Bool,
-                C.Summarize ("e", C.Set [C.BoolLiteral true; C.BoolLiteral false], Aggregation.Or, C.BoolLiteral true)
-        ]
-        |> List.iter (this.TestClassicExpression ctx)
-
-        [
-            // summarize e in s1 with and { k2.0 == e.1 } 
-            e.Summarize ("e", e.Var "s1", Aggregation.And, e.Equals (e.Project (e.Var "k2", e.Int 0), e.Project (e.Var "e", e.Int 1))),
-                Type.Ket [Type.Bool],
-                Q.Summarize ("e", C.Var "s1", Aggregation.And, Q.Equals (Q.Project (Q.Var "k2", 0), (Q.Literal (C.Set [C.Project (C.Var "e", 1)]))))
-        ]
-        |> List.iter (this.TestQuantumExpression ctx)
-
-        [
-            // summarize e in s1 with and { e < 10 } 
-            e.Summarize ("e", e.Var "s1", Aggregation.And, e.LessThan ((e.Var "e"), e.Int 10)), "Both expressions for < must be int. Got Tuple [Bool; Int] < Int"
-            // summarize e in t1 with and { e.0 == true } 
-            e.Summarize ("e", e.Var "t1", Aggregation.And, e.Equals (e.Project (e.Var "e", e.Int 0), e.Bool true)), "Summarize expects a classic set of values, got: Tuple [Bool; Int]"
-            // summarize e in k1 with and { e.0 == |1> } 
-            e.Summarize ("e", e.Var "k1", Aggregation.And, e.Equals (e.Project (e.Var "e", e.Int 0), e.Ket (e.Int 1))), "Summarize expects a classic set of values, got: Ket [Int]"
-            // summarize e in s1 with and { k2.1 == e.1 } 
-            e.Summarize ("e", e.Var "s1", Aggregation.And, e.Equals (e.Project (e.Var "k2", e.Int 1), e.Project (e.Var "e", e.Int 1))), "Quantum == can only be applied to int Kets"
-            // summarize e in s1 with sum { true } 
-            e.Summarize ("e", e.Var "s1", Aggregation.Sum, e.Bool true), "Summarize body must be an Int expression when aggregation is 'sum', got Bool"
-            // summarize e in s1 with and { 1 } 
-            e.Summarize ("e", e.Var "s1", Aggregation.And, e.Int 1), "Summarize body must be a boolean expression when aggregation is 'and' | 'or', got Int"
-            // summarize e in s1 with or { 1 } 
-            e.Summarize ("e", e.Var "s1", Aggregation.Or, e.Int 1), "Summarize body must be a boolean expression when aggregation is 'and' | 'or', got Int"
-        ]
-        |> List.iter (this.TestInvalidExpression ctx)
-
-
-    [<TestMethod>]
     member this.TestSolve() =
         let ctx = this.TypeContext
 

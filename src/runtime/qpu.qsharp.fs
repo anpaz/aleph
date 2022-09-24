@@ -115,8 +115,7 @@ type Processor(sim: IOperationFactory) =
         | Q.Solve  _
         | Q.Block  _
         | Q.IfQuantum  _
-        | Q.IfClassic  _
-        | Q.Summarize _ ->
+        | Q.IfClassic  _->
             $"Not implemented: {q}" |> Error
 
     and prepare_var (id, ctx) =

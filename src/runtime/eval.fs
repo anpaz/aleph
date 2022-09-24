@@ -165,9 +165,6 @@ module Eval =
         | C.Remove (item, set) -> eval_remove(item, set, ctx)
         | C.Count (set) -> eval_count(set, ctx)
 
-        | C.Summarize _ ->
-            $"Not implemented: {c}" |> Error
-
     and eval_var (id, ctx) =
         match ctx.heap.TryFind id with
         | Some value -> (value, ctx) |> Ok
