@@ -3,10 +3,8 @@ namespace aleph.tests
 open Microsoft.VisualStudio.TestTools.UnitTesting
 
 open Microsoft.Quantum.Simulation.Simulators
-open Microsoft.Quantum.Simulation.Core
 
 open aleph.parser.ast
-
 open aleph.qsharp
 open aleph.runtime.Eval
 open aleph.runtime.qpu.qsharp
@@ -17,8 +15,9 @@ open aleph.tests.Utils
 
 [<TestClass>]
 type TestQPUQsharp() =
-    member this.Context =
-        { ClassicValueContext.ctx with qpu = aleph.runtime.qpu.qsharp.Processor(new QuantumSimulator()) }
+    member this.QPU = Processor(new QuantumSimulator())
+
+    member this.Prelude = ClassicValueContext.Prelude
 
     [<TestMethod>]
     member this.TestRawLiteral() =
@@ -46,17 +45,17 @@ type TestQPUQsharp() =
 
     [<TestMethod>]
     member this.TestLiteral() =
-        let ctx =
-            this.Context
-            |> add_to_context
-                "k"
-                (Type.Ket [ Type.Int; Type.Bool ])
-                (e.Ket(
-                    e.Set
-                        [ e.Tuple [ e.Int 0; e.Bool true ]
-                          e.Tuple [ e.Int 0; e.Bool false ]
-                          e.Tuple [ e.Int 1; e.Bool true ] ]
-                ))
+        let prelude =
+            this.Prelude
+            @ [ s.Let(
+                    "k",
+                    e.Ket(
+                        e.Set
+                            [ e.Tuple [ e.Int 0; e.Bool true ]
+                              e.Tuple [ e.Int 0; e.Bool false ]
+                              e.Tuple [ e.Int 1; e.Bool true ] ]
+                    )
+                ) ]
 
         [
           // |>
@@ -95,24 +94,24 @@ type TestQPUQsharp() =
           e.Project(e.Var "k", e.Int 0), [ Int 0; Int 1 ]
           // k.1
           e.Project(e.Var "k", e.Int 1), [ Bool true; Bool false ] ]
-        |> List.iter (verify_expression ctx)
+        |> List.iter (verify_expression (prelude, this.QPU))
 
 
     [<TestMethod>]
     member this.TestJoinLiterals() =
-        let ctx =
-            this.Context
-            |> add_to_context
-                "k"
-                (Type.Ket [ Type.Int; Type.Bool ])
-                (e.Ket(
-                    e.Set
-                        [ e.Tuple [ e.Int 0; e.Bool true ]
-                          e.Tuple [ e.Int 0; e.Bool false ]
-                          e.Tuple [ e.Int 1; e.Bool true ] ]
-                ))
-            |> add_to_context "all_1" (Type.Ket [ Type.Int ]) (e.KetAll(e.Int 2))
-            |> add_to_context "all_2" (Type.Ket [ Type.Int ]) (e.KetAll(e.Int 2))
+        let prelude =
+            this.Prelude
+            @ [ s.Let(
+                    "k",
+                    e.Ket(
+                        e.Set
+                            [ e.Tuple [ e.Int 0; e.Bool true ]
+                              e.Tuple [ e.Int 0; e.Bool false ]
+                              e.Tuple [ e.Int 1; e.Bool true ] ]
+                    )
+                )
+                s.Let("all_1", e.KetAll(e.Int 2))
+                s.Let("all_2", e.KetAll(e.Int 2)) ]
 
         [ e.Join(e.Ket(e.Set []), e.Ket(e.Set [])), []
           // (| false >, | true> )
@@ -169,24 +168,24 @@ type TestQPUQsharp() =
                   for j in 0..15 -> Tuple [ Int i; Int j; Bool(i = j) ]
           }
           |> Seq.toList ]
-        |> List.iter (verify_expression ctx)
+        |> List.iter (verify_expression (prelude, this.QPU))
 
 
     [<TestMethod>]
     member this.TestBoolExpressions() =
-        let ctx =
-            this.Context
-            |> add_to_context "k1" (Type.Ket [ Type.Bool ]) (e.Ket(e.Set [ e.Bool true; e.Bool false ]))
-            |> add_to_context "k2" (Type.Ket [ Type.Bool ]) (e.Ket(e.Set [ e.Bool true; e.Bool false ]))
-            |> add_to_context
-                "k3"
-                (Type.Ket [ Type.Int; Type.Bool; Type.Bool ])
-                (e.Ket(
-                    e.Set
-                        [ e.Tuple [ e.Int 0; e.Bool true; e.Bool true ]
-                          e.Tuple [ e.Int 1; e.Bool false; e.Bool true ]
-                          e.Tuple [ e.Int 2; e.Bool true; e.Bool false ] ]
-                ))
+        let prelude =
+            this.Prelude
+            @ [ s.Let("k1", e.Ket(e.Set [ e.Bool true; e.Bool false ]))
+                s.Let("k2", e.Ket(e.Set [ e.Bool true; e.Bool false ]))
+                s.Let(
+                    "k3",
+                    e.Ket(
+                        e.Set
+                            [ e.Tuple [ e.Int 0; e.Bool true; e.Bool true ]
+                              e.Tuple [ e.Int 1; e.Bool false; e.Bool true ]
+                              e.Tuple [ e.Int 2; e.Bool true; e.Bool false ] ]
+                    )
+                ) ]
 
         [
           // ((k1, k2), (k1 && k2))
@@ -215,16 +214,16 @@ type TestQPUQsharp() =
           [ Tuple [ Int 0; Bool false ]
             Tuple [ Int 1; Bool true ]
             Tuple [ Int 2; Bool true ] ] ]
-        |> List.iter (verify_expression ctx)
+        |> List.iter (verify_expression (prelude, this.QPU))
 
 
 
     [<TestMethod>]
     member this.TestArithmeticExpressions() =
-        let ctx =
-            this.Context
-            |> add_to_context "k1" (Type.Ket [ Type.Int ]) (e.Ket(e.Set [ e.Int 0; e.Int 1 ]))
-            |> add_to_context "k2" (Type.Ket [ Type.Int ]) (e.Ket(e.Set [ e.Int 1; e.Int 2 ]))
+        let prelude =
+            this.Prelude
+            @ [ s.Let("k1", e.Ket(e.Set [ e.Int 0; e.Int 1 ]))
+                s.Let("k2", e.Ket(e.Set [ e.Int 1; e.Int 2 ])) ]
 
         [
           // (k1, k2, k1 + k2)
@@ -270,11 +269,11 @@ type TestQPUQsharp() =
           //     Tuple [ Int 2; Int 4 ]
           // ]
           ]
-        |> List.iter (verify_expression ctx)
+        |> List.iter (verify_expression (prelude, this.QPU))
 
     [<TestMethod>]
     member this.TestCallMethod() =
-        let ctx = this.Context
+        let prelude = this.Prelude
 
         [
           // let colors() = |1,2,3>
@@ -313,4 +312,4 @@ type TestQPUQsharp() =
             Tuple [ Int 3; Int 1 ]
             Tuple [ Int 3; Int 2 ]
             Tuple [ Int 3; Int 3 ] ] ]
-        |> List.iter (verify_expression ctx)
+        |> List.iter (verify_expression (prelude, this.QPU))

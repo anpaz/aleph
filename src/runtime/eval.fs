@@ -101,18 +101,11 @@ module Eval =
     and EvalContext =
         { heap: Map<Id, Value>
           qpu: QPU
-          callerCtx: EvalContext option
-          typeCtx: TypeContext }
+          callerCtx: EvalContext option }
 
     let mutable max_ket = 0
 
-    let rec run (program: Expression, ctx) =
-        typecheck (program, ctx.typeCtx)
-        ==> fun (e, types') ->
-                let ctx = { ctx with typeCtx = types' }
-                eval (e, ctx)
-
-    and eval (e, ctx) =
+    let rec eval (e, ctx) =
         match e with
         | E.Quantum (q, _) -> eval_quantum (q, ctx)
         | E.Classic (c, _) -> eval_classic (c, ctx)
@@ -399,3 +392,12 @@ module Eval =
 
                             (body, ctx) |> Ok
                 | _ -> $"Expecting method, got {method}" |> Error
+
+    let start (program: Expression, qpu: QPU) =
+        aleph.parser.TypeChecker.start (program)
+        ==> fun (e, _) ->
+                let ctx =
+                    { heap = Map.empty
+                      qpu = qpu
+                      callerCtx = None }
+                eval (e, ctx)

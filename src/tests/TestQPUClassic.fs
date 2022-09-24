@@ -16,12 +16,13 @@ open aleph.tests.Utils
     from the preparation matches some expected values.
 *)
 type TestQPUClassic() =
-    member this.Context =
-        { ClassicValueContext.ctx with qpu = aleph.runtime.qpu.classic.Processor() }
+    member this.QPU = aleph.runtime.qpu.classic.Processor()
+
+    member this.Prelude = ClassicValueContext.Prelude
 
     [<TestMethod>]
     member this.TestBasicExpressions() =
-        let ctx = this.Context
+        let prelude = this.Prelude
 
         [
           // | false >
@@ -73,22 +74,22 @@ type TestQPUClassic() =
             [ Int 0; Int -6; Int 2 ]
             [ Int 0; Int -6; Int 3 ] ],
           [ 0; 1; 2 ] ]
-        |> List.iter (this.TestExpression ctx)
+        |> List.iter (this.TestExpression prelude)
 
 
     [<TestMethod>]
     member this.TestAddMultiply() =
-        let ctx =
-            this.Context
-            |> add_to_context
-                "k1"
-                (Type.Ket [ Type.Int; Type.Int ])
-                (e.Ket(
-                    e.Set
-                        [ e.Tuple [ e.Int 0; e.Int 0 ]
-                          e.Tuple [ e.Int 0; e.Int 1 ]
-                          e.Tuple [ e.Int 1; e.Int 1 ] ]
-                ))
+        let prelude =
+            this.Prelude
+            @ [ s.Let(
+                    "k1",
+                    e.Ket(
+                        e.Set
+                            [ e.Tuple [ e.Int 0; e.Int 0 ]
+                              e.Tuple [ e.Int 0; e.Int 1 ]
+                              e.Tuple [ e.Int 1; e.Int 1 ] ]
+                    )
+                ) ]
 
         [
           // k1.0 + k1.1
@@ -149,22 +150,22 @@ type TestQPUClassic() =
             [ Int 1; Int 1; Int 2; Int 2 ]
             [ Int 1; Int 1; Int 3; Int 3 ] ],
           [ 0; 3 ] ]
-        |> List.iter (this.TestExpression ctx)
+        |> List.iter (this.TestExpression prelude)
 
     [<TestMethod>]
     member this.TestJoin() =
-        let ctx =
-            this.Context
-            |> add_to_context
-                "k1"
-                (Type.Ket [ Type.Int; Type.Int ])
-                (e.Ket(
-                    e.Set
-                        [ e.Tuple [ e.Int 0; e.Int 0 ]
-                          e.Tuple [ e.Int 0; e.Int 1 ]
-                          e.Tuple [ e.Int 1; e.Int 1 ] ]
-                ))
-            |> add_to_context "k2" (Type.Ket [ Type.Int ]) (e.Ket(e.Set [ e.Tuple [ e.Int 1 ]; e.Tuple [ e.Int 3 ] ]))
+        let prelude =
+            this.Prelude
+            @ [ s.Let(
+                    "k1",
+                    e.Ket(
+                        e.Set
+                            [ e.Tuple [ e.Int 0; e.Int 0 ]
+                              e.Tuple [ e.Int 0; e.Int 1 ]
+                              e.Tuple [ e.Int 1; e.Int 1 ] ]
+                    )
+                )
+                s.Let("k2", e.Ket(e.Set [ e.Tuple [ e.Int 1 ]; e.Tuple [ e.Int 3 ] ])) ]
 
         [
           // let x = 10
@@ -242,22 +243,22 @@ type TestQPUClassic() =
           [ 0; 2; 4 ]
 
           ]
-        |> List.iter (this.TestExpression ctx)
+        |> List.iter (this.TestExpression prelude)
 
 
     [<TestMethod>]
     member this.TestIndex() =
-        let ctx =
-            this.Context
-            |> add_to_context
-                "k1"
-                (Type.Ket [ Type.Int; Type.Int ])
-                (e.Ket(
-                    e.Set
-                        [ e.Tuple [ e.Int 0; e.Int 0 ]
-                          e.Tuple [ e.Int 0; e.Int 1 ]
-                          e.Tuple [ e.Int 1; e.Int 1 ] ]
-                ))
+        let prelude =
+            this.Prelude
+            @ [ s.Let(
+                    "k1",
+                    e.Ket(
+                        e.Set
+                            [ e.Tuple [ e.Int 0; e.Int 0 ]
+                              e.Tuple [ e.Int 0; e.Int 1 ]
+                              e.Tuple [ e.Int 1; e.Int 1 ] ]
+                    )
+                ) ]
 
         [
           // k1.0 + k1.[0 + 1]
@@ -268,22 +269,22 @@ type TestQPUClassic() =
           e.Add(e.Project(e.Var "k1", e.Int 0), e.Project(e.Var "k1", e.Add(e.Int 0, e.Int 3))),
           [ [ Int 0; Int 0; Int 0 ]; [ Int 0; Int 1; Int 1 ]; [ Int 1; Int 1; Int 2 ] ],
           [ 2 ] ]
-        |> List.iter (this.TestExpression ctx)
+        |> List.iter (this.TestExpression prelude)
 
     [<TestMethod>]
     member this.TestIfQ() =
-        let ctx =
-            this.Context
-            |> add_to_context
-                "k1"
-                (Type.Ket [ Type.Int; Type.Int ])
-                (e.Ket(
-                    e.Set
-                        [ e.Tuple [ e.Int 0; e.Int 0 ]
-                          e.Tuple [ e.Int 0; e.Int 1 ]
-                          e.Tuple [ e.Int 1; e.Int 1 ] ]
-                ))
-            |> add_to_context "k2" (Type.Ket [ Type.Int ]) (e.Ket(e.Set [ e.Tuple [ e.Int 2 ]; e.Tuple [ e.Int 3 ] ]))
+        let prelude =
+            this.Prelude
+            @ [ s.Let(
+                    "k1",
+                    e.Ket(
+                        e.Set
+                            [ e.Tuple [ e.Int 0; e.Int 0 ]
+                              e.Tuple [ e.Int 0; e.Int 1 ]
+                              e.Tuple [ e.Int 1; e.Int 1 ] ]
+                    )
+                )
+                s.Let("k2", e.Ket(e.Set [ e.Tuple [ e.Int 2 ]; e.Tuple [ e.Int 3 ] ])) ]
 
         [
           // if k1.1 == k1.0 then k1.1 else 42
@@ -296,22 +297,22 @@ type TestQPUClassic() =
             [ Int 0; Int 1; Bool false; Int 42; Int 42 ]
             [ Int 1; Int 1; Bool true; Int 42; Int 1 ] ],
           [ 4 ] ]
-        |> List.iter (this.TestExpression ctx)
+        |> List.iter (this.TestExpression prelude)
 
     [<TestMethod>]
     member this.TestIfClassic() =
-        let ctx =
-            this.Context
-            |> add_to_context
-                "k1"
-                (Type.Ket [ Type.Int; Type.Int ])
-                (e.Ket(
-                    e.Set
-                        [ e.Tuple [ e.Int 0; e.Int 0 ]
-                          e.Tuple [ e.Int 0; e.Int 1 ]
-                          e.Tuple [ e.Int 1; e.Int 1 ] ]
-                ))
-            |> add_to_context "k2" (Type.Ket [ Type.Int ]) (e.Ket(e.Set [ e.Tuple [ e.Int 2 ]; e.Tuple [ e.Int 3 ] ]))
+        let prelude =
+            this.Prelude
+            @ [ s.Let(
+                    "k1",
+                    e.Ket(
+                        e.Set
+                            [ e.Tuple [ e.Int 0; e.Int 0 ]
+                              e.Tuple [ e.Int 0; e.Int 1 ]
+                              e.Tuple [ e.Int 1; e.Int 1 ] ]
+                    )
+                )
+                s.Let("k2", e.Ket(e.Set [ e.Tuple [ e.Int 2 ]; e.Tuple [ e.Int 3 ] ])) ]
 
         [
           // if true then k1.1 else 42
@@ -320,23 +321,23 @@ type TestQPUClassic() =
           [ 1 ]
           // if false then k1.1 else 42
           e.If(e.Bool false, e.Project(e.Var "k1", e.Int 1), e.Int 42), [ [ Int 42 ] ], [ 0 ] ]
-        |> List.iter (this.TestExpression ctx)
+        |> List.iter (this.TestExpression prelude)
 
 
     [<TestMethod>]
     member this.TestSolveEquals() =
-        let ctx =
-            this.Context
-            |> add_to_context
-                "k1"
-                (Type.Ket [ Type.Int; Type.Int ])
-                (e.Ket(
-                    e.Set
-                        [ e.Tuple [ e.Int 0; e.Int 0 ]
-                          e.Tuple [ e.Int 0; e.Int 1 ]
-                          e.Tuple [ e.Int 1; e.Int 1 ] ]
-                ))
-            |> add_to_context "k2" (Type.Ket [ Type.Int ]) (e.Ket(e.Set [ e.Tuple [ e.Int 2 ]; e.Tuple [ e.Int 3 ] ]))
+        let prelude =
+            this.Prelude
+            @ [ s.Let(
+                    "k1",
+                    e.Ket(
+                        e.Set
+                            [ e.Tuple [ e.Int 0; e.Int 0 ]
+                              e.Tuple [ e.Int 0; e.Int 1 ]
+                              e.Tuple [ e.Int 1; e.Int 1 ] ]
+                    )
+                )
+                s.Let("k2", e.Ket(e.Set [ e.Tuple [ e.Int 2 ]; e.Tuple [ e.Int 3 ] ])) ]
 
         [
           // k1.1 == 1
@@ -367,22 +368,22 @@ type TestQPUClassic() =
             [ Int 1; Int 1; Int 1; Int 2; Int 2; Bool true ]
             [ Int 1; Int 1; Int 3; Int 4; Int 4; Bool true ] ],
           [ 1 ] ]
-        |> List.iter (this.TestExpression ctx)
+        |> List.iter (this.TestExpression prelude)
 
 
     [<TestMethod>]
     member this.TestBoolOps() =
-        let ctx =
-            this.Context
-            |> add_to_context
-                "k"
-                (Type.Ket [ Type.Int; Type.Bool ])
-                (e.Ket(
-                    e.Set
-                        [ e.Tuple [ e.Int 0; e.Bool true ]
-                          e.Tuple [ e.Int 0; e.Bool false ]
-                          e.Tuple [ e.Int 1; e.Bool true ] ]
-                ))
+        let prelude =
+            this.Prelude
+            @ [ s.Let(
+                    "k",
+                    e.Ket(
+                        e.Set
+                            [ e.Tuple [ e.Int 0; e.Bool true ]
+                              e.Tuple [ e.Int 0; e.Bool false ]
+                              e.Tuple [ e.Int 1; e.Bool true ] ]
+                    )
+                ) ]
 
         [ e.Var "k",
           [
@@ -413,12 +414,12 @@ type TestQPUClassic() =
             [ Int 0; Bool true; Int 0; Bool true; Bool true; Bool false ]
             [ Int 1; Bool true; Int 0; Bool false; Bool false; Bool true ] ],
           [ 5 ] ]
-        |> List.iter (this.TestExpression ctx)
+        |> List.iter (this.TestExpression prelude)
 
 
     [<TestMethod>]
     member this.TestCallMethod() =
-        let ctx = this.Context
+        let prelude = this.Prelude
 
         [
           // // let colors() = |1,2,3>
@@ -534,21 +535,21 @@ type TestQPUClassic() =
           ),
           [ [ Int 1; Int 1 ]; [ Int 2; Int 2 ] ],
           [ 0; 1 ] ]
-        |> List.iter (this.TestExpression ctx)
+        |> List.iter (this.TestExpression prelude)
 
     [<TestMethod>]
     member this.TestMeasure() =
-        let ctx =
-            this.Context
-            |> add_to_context
-                "k"
-                (Type.Ket [ Type.Int; Type.Bool ])
-                (e.Ket(
-                    e.Set
-                        [ e.Tuple [ e.Int 0; e.Bool true ]
-                          e.Tuple [ e.Int 0; e.Bool false ]
-                          e.Tuple [ e.Int 1; e.Bool true ] ]
-                ))
+        let prelude =
+            this.Prelude
+            @ [ s.Let(
+                    "k",
+                    e.Ket(
+                        e.Set
+                            [ e.Tuple [ e.Int 0; e.Bool true ]
+                              e.Tuple [ e.Int 0; e.Bool false ]
+                              e.Tuple [ e.Int 1; e.Bool true ] ]
+                    )
+                ) ]
 
         [ e.Ket(e.Set []), []
           // Solve (k, k.0 == 2)
@@ -571,11 +572,11 @@ type TestQPUClassic() =
           // not (k.0 == 0 and k.1)
           e.Not(e.And(e.Equals(e.Project(e.Var "k", e.Int 0), e.Int 0), e.Project(e.Var "k", e.Int 1))),
           [ Bool false; Bool true ] ]
-        |> List.iter (verify_expression ctx)
+        |> List.iter (verify_expression (prelude, this.QPU))
 
     [<TestMethod>]
     member this.TestRecursiveMethod() =
-        let ctx = this.Context
+        let prelude = this.Prelude
 
         [
           // let sum (acc: Ket<Int>, set:Set<Int>) =
@@ -607,24 +608,27 @@ type TestQPUClassic() =
               e.CallMethod(e.Var "sum", [ e.Ket(e.Set [ e.Int 10; e.Int 20; e.Int 30 ]); e.Range(e.Int 1, e.Int 4) ])
           ),
           [ Int 16; Int 26; Int 36 ] ]
-        |> List.iter (verify_expression ctx)
+        |> List.iter (verify_expression (prelude, this.QPU))
 
 
-    member this.TestExpression (ctx: EvalContext) (expr, state, columns) =
-        let qpu = ctx.qpu
+    member this.TestExpression (prelude: Statement list) (expr, state, columns) =
+        printfn "expr: %A" expr
+
         // If it is not already a Prepare expression, wrap in Prepare...
-        let e =
-            match typecheck (expr, ctx.typeCtx) with
+        let body =
+            match aleph.parser.TypeChecker.start (e.Block(prelude, expr)) with
             | Ok (result, _) ->
                 match result with
                 | typed.E.Universe _ -> expr
                 | _ -> e.Prepare expr
             | Error msg ->
-                printfn "e: %A" expr
+                printfn "expr: %A" expr
                 Assert.AreEqual($"Expression failed type-checking.", $"Got Error msg: {msg}")
                 expr
 
-        match run (e, ctx) with
+        let block = e.Block(prelude, body)
+
+        match start (block, this.QPU) with
         | Ok (Universe universe, ctx) ->
             let universe = universe :?> aleph.runtime.qpu.classic.Universe
             let state' = universe.State
@@ -633,14 +637,16 @@ type TestQPUClassic() =
             Assert.AreEqual(state, state')
             Assert.AreEqual(columns, columns')
         | Ok (v, _) ->
-            printfn "e: %A" e
+            printfn "e: %A" expr
             Assert.AreEqual($"Expecting Universe value.", $"Got {v}")
         | Error msg ->
-            printfn "e: %A" e
+            printfn "e: %A" expr
             Assert.AreEqual($"Expecting valid expression.", $"Got Error msg: {msg}")
 
 
-    member this.TestInvalidExpression ctx (e, error) =
-        match run (e, ctx) with
+    member this.TestInvalidExpression (prelude: Statement list) (expr, error) =
+        let block = e.Block(prelude, expr)
+
+        match start (block, this.QPU) with
         | Ok (v, _) -> Assert.AreEqual($"Expected error: {error}", $"Got Value: {v}")
         | Error msg -> Assert.AreEqual(error, msg)

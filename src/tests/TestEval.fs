@@ -3,63 +3,63 @@ namespace aleph.tests
 open Microsoft.VisualStudio.TestTools.UnitTesting
 
 open aleph.parser.ast
+open aleph.parser.TypeChecker
 open aleph.parser.ast.typed
 open aleph.runtime.Eval
 
 
 module ClassicValueContext =
 
-    let ctx =
-        { qpu =
-            { new QPU with
-                member this.Measure(arg1: IUniverse) : Result<Value, string> = failwith "Not Implemented"
+    let NoQPU =
+        { new QPU with
+            member this.Measure(arg1: IUniverse) : Result<Value, string> = failwith "Not Implemented"
 
-                member this.Prepare(arg1: U, arg2: EvalContext) : Result<(Value * EvalContext), string> =
-                    failwith "Not Implemented" }
-          heap =
-            Map
-                [ "i1", Int 1
-                  "b1", Bool true
-                  "t1", Tuple [ Bool false; Int 1 ]
-                  "t2", Tuple [ Bool true; Int 2 ]
-                  "t3", Tuple [ Int 0; Int 1; Int 2 ]
-                  "s1",
-                  Set(
-                      Set.ofList
-                          [ Tuple [ Bool false; Int 0 ]
-                            Tuple [ Bool false; Int 1 ]
-                            Tuple [ Bool false; Int 2 ] ]
-                  ) ]
-          typeCtx =
-            { heap =
-                Map
-                    [ "i1", Type.Int
-                      "b1", Type.Bool
-                      "t1", Type.Tuple [ Type.Bool; Type.Int ]
-                      "t2", Type.Tuple [ Type.Bool; Type.Int ]
-                      "t3", Type.Tuple [ Type.Int; Type.Int; Type.Int ]
-                      "s1", Type.Set(Type.Tuple [ Type.Bool; Type.Int ]) ]
-              previousCtx = None }
-          callerCtx = None }
+            member this.Prepare(arg1: U, arg2: EvalContext) : Result<(Value * EvalContext), string> =
+                failwith "Not Implemented" }
+
+    let Prelude =
+        [ s.Let("i1", e.Int 1)
+          s.Let("b1", e.Bool true)
+          s.Let("t1", e.Tuple [ e.Bool false; e.Int 1 ])
+          s.Let("t2", e.Tuple [ e.Bool true; e.Int 2 ])
+          s.Let("t3", e.Tuple [ e.Int 0; e.Int 1; e.Int 2 ])
+          s.Let(
+              "s1",
+              e.Set
+                  [ e.Tuple [ e.Bool false; e.Int 0 ]
+                    e.Tuple [ e.Bool false; e.Int 1 ]
+                    e.Tuple [ e.Bool false; e.Int 2 ] ]
+          ) ]
 
 [<TestClass>]
 type TestEval() =
 
-    member this.TestExpression ctx (e, v) =
-        printfn "e: %A" e
+    member this.TestExpression stmts (expr, v) =
+        printfn "e: %A" expr
 
-        match run (e, ctx) with
+        let block = e.Block(stmts, expr)
+
+        match aleph.runtime.Eval.start (block, ClassicValueContext.NoQPU) with
         | Ok (v', _) -> Assert.AreEqual(v, v')
         | Error msg -> Assert.AreEqual($"Expecting Value {v}", $"Got Error msg: {msg}")
 
-    member this.TestInvalidExpression ctx (e, error) =
-        match run (e, ctx) with
+    member this.TestInvalidExpression stmts (expr, error) =
+        printfn "e: %A" expr
+
+        let block = e.Block(stmts, expr)
+
+        match aleph.runtime.Eval.start (block, ClassicValueContext.NoQPU) with
         | Ok (v, _) -> Assert.AreEqual($"Expected error: {error}", $"Got Value: {v}")
         | Error msg -> Assert.AreEqual(error, msg)
 
     [<TestMethod>]
     member this.TestClassicLiterals() =
-        let ctx = ClassicValueContext.ctx
+        let prelude = ClassicValueContext.Prelude
+
+        let emptyCtx: EvalContext =
+            { heap = Map.empty
+              qpu = ClassicValueContext.NoQPU
+              callerCtx = None }
 
         [
           // false
@@ -92,7 +92,7 @@ type TestEval() =
           Value.Method
               { Args = [ "a" ]
                 Body = (E.Classic(C.Add((C.Var "a", C.IntLiteral 1)), Type.Int))
-                Context = ctx }
+                Context = emptyCtx }
           // (k1: Ket<Int>, k2: Ket<Int, Bool>) -> (k1, k2)
           e.Method(
               arguments = [ "k1", (Type.Ket [ Type.Int ]); "k2", (Type.Ket [ Type.Int; Type.Bool ]) ],
@@ -102,7 +102,7 @@ type TestEval() =
           Value.Method
               { Args = [ "k1"; "k2" ]
                 Body = (E.Quantum(Q.Join(Q.Var "k1", Q.Var "k2"), (Type.Ket [ Type.Int; Type.Int; Type.Bool ])))
-                Context = ctx }
+                Context = emptyCtx }
           // (k1: Ket<Int>, k2: Ket<Int, Bool>) -> Prepare(k2)
           e.Method(
               arguments = [ "k1", (Type.Ket [ Type.Int ]); "k2", (Type.Ket [ Type.Int; Type.Bool ]) ],
@@ -112,18 +112,13 @@ type TestEval() =
           Value.Method
               { Args = [ "k1"; "k2" ]
                 Body = (E.Universe(U.Prepare(Q.Var "k2"), (Type.Universe [ Type.Int; Type.Bool ])))
-                Context = ctx } ]
-        |> List.iter (this.TestExpression ctx)
-
-        [
-          // Type check:
-          e.Set [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Int 1 ], "All elements in a set must be of the same type." ]
-        |> List.iter (this.TestInvalidExpression ctx)
+                Context = emptyCtx } ]
+        |> List.iter (this.TestExpression prelude)
 
 
     [<TestMethod>]
     member this.TestBinaryExpressions() =
-        let ctx = ClassicValueContext.ctx
+        let prelude = ClassicValueContext.Prelude
 
         [
           // true || true
@@ -148,28 +143,28 @@ type TestEval() =
           e.LessThan(e.Multiply(e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 100), Value.Bool true
           // not ((5 + 10) * 4 < 50)
           e.Not(e.LessThan(e.Multiply(e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 50)), Value.Bool true ]
-        |> List.iter (this.TestExpression ctx)
+        |> List.iter (this.TestExpression prelude)
 
     [<TestMethod>]
     member this.TestIfExpressions() =
-        let ctx = ClassicValueContext.ctx
+        let prelude = ClassicValueContext.Prelude
 
         [
           // if true then 10 else 20
           e.If(e.Bool true, e.Int 10, e.Int 20), Value.Int 10
           // if false then 10 else 20 + 20
           e.If(e.Bool false, e.Int 10, e.Add(e.Int 20, e.Int 20)), Value.Int 40 ]
-        |> List.iter (this.TestExpression ctx)
+        |> List.iter (this.TestExpression prelude)
 
         [
           // if 1 then 10 else 20
           e.If(e.Int 1, e.Int 10, e.Int 20), "If condition must be a boolean, got Int" ]
-        |> List.iter (this.TestInvalidExpression ctx)
+        |> List.iter (this.TestInvalidExpression prelude)
 
 
     [<TestMethod>]
     member this.TestProjectExpressions() =
-        let ctx = ClassicValueContext.ctx
+        let prelude = ClassicValueContext.Prelude
 
         [
           // t1[0]
@@ -184,52 +179,45 @@ type TestEval() =
           e.Project(e.Join(e.Var "t3", e.Var "t2"), e.Int 3), Value.Bool true
           // (t3, t3)[2 + 2]
           e.Project(e.Join(e.Var "t3", e.Var "t3"), e.Add(e.Int 2, e.Int 2)), Value.Int 1 ]
-        |> List.iter (this.TestExpression ctx)
+        |> List.iter (this.TestExpression prelude)
 
         [
           // t1[t2[0]]
           e.Project(e.Var "t2", e.Project(e.Var "t2", e.Int 0)),
           "Invalid projection index. Expected int expression, got: Classic (Project (Var \"t2\", 0), Bool)" ]
-        |> List.iter (this.TestInvalidExpression ctx)
+        |> List.iter (this.TestInvalidExpression prelude)
 
     [<TestMethod>]
     member this.TestCallMethodExpressions() =
-        let ctx =
-            ClassicValueContext.ctx
-            |> Utils.add_to_context
-                "m0"
-                (Type.Method([], ((Type.Tuple [ Type.Int; Type.Int ]))))
-                (e.Method(
-                    arguments = [],
-                    returns = Type.Tuple [ Type.Int; Type.Int ],
-                    body = e.Tuple [ e.Int 1; e.Int 2 ]
-                ))
-            |> Utils.add_to_context
-                "m1"
-                ((Type.Method([ Type.Int; Type.Int ], Type.Int)))
-                (e.Method(
-                    arguments = [ ("a", Type.Int); ("b", Type.Int) ],
-                    returns = Type.Int,
-                    body = e.Add(e.Var "a", e.Var "b")
-                ))
-            |> Utils.add_to_context
-                "m2"
-                (Type.Method(
-                    [ Type.Tuple[Type.Bool
-                                 Type.Bool
-                                 Type.Bool]
-                      Type.Bool
-                      Type.Int ],
-                    Type.Bool
-                ))
-                (e.Method(
-                    arguments =
-                        [ ("x", (Type.Tuple [ Type.Bool; Type.Bool; Type.Bool ]))
-                          ("y", Type.Bool)
-                          ("z", Type.Int) ],
-                    returns = Type.Bool,
-                    body = e.Or(e.Var "y", e.Project(e.Var "x", e.Var "z"))
-                ))
+        let prelude =
+            ClassicValueContext.Prelude
+            @ [ s.Let(
+                    "m0",
+                    e.Method(
+                        arguments = [],
+                        returns = Type.Tuple [ Type.Int; Type.Int ],
+                        body = e.Tuple [ e.Int 1; e.Int 2 ]
+                    )
+                )
+                s.Let(
+                    "m1",
+                    e.Method(
+                        arguments = [ ("a", Type.Int); ("b", Type.Int) ],
+                        returns = Type.Int,
+                        body = e.Add(e.Var "a", e.Var "b")
+                    )
+                )
+                s.Let(
+                    "m2",
+                    e.Method(
+                        arguments =
+                            [ ("x", (Type.Tuple [ Type.Bool; Type.Bool; Type.Bool ]))
+                              ("y", Type.Bool)
+                              ("z", Type.Int) ],
+                        returns = Type.Bool,
+                        body = e.Or(e.Var "y", e.Project(e.Var "x", e.Var "z"))
+                    )
+                ) ]
 
         [
           // m0 ()
@@ -242,12 +230,12 @@ type TestEval() =
           // m2 ((10, false, true), false, 1)
           e.CallMethod(e.Var "m2", [ e.Tuple [ e.Bool true; e.Bool false; e.Bool true ]; e.Bool false; e.Int 1 ]),
           Value.Bool false ]
-        |> List.iter (this.TestExpression ctx)
+        |> List.iter (this.TestExpression prelude)
 
 
     [<TestMethod>]
     member this.TestSetExpressions() =
-        let ctx = ClassicValueContext.ctx
+        let prelude = ClassicValueContext.Prelude
 
         [
           // (Append 3, {})
@@ -304,12 +292,12 @@ type TestEval() =
           Tuple [ Int 1; Int 2 ]
 
           ]
-        |> List.iter (this.TestExpression ctx)
+        |> List.iter (this.TestExpression prelude)
 
 
     [<TestMethod>]
     member this.TestVariableScope() =
-        let ctx = ClassicValueContext.ctx
+        let prelude = ClassicValueContext.Prelude
 
         [
           // let x = (1, 2)
@@ -460,7 +448,7 @@ type TestEval() =
               e.CallMethod(e.Var "foo", [ e.Int 4 ])
           ),
           Value.Int 7 ]
-        |> List.iter (this.TestExpression ctx)
+        |> List.iter (this.TestExpression prelude)
 
 
         [
@@ -484,12 +472,12 @@ type TestEval() =
               e.Tuple [ e.Var "x"; e.Var "y" ]
           ),
           "Variable not found: y" ]
-        |> List.iter (this.TestInvalidExpression ctx)
+        |> List.iter (this.TestInvalidExpression prelude)
 
 
     [<TestMethod>]
     member this.TestCaptureVariables() =
-        let ctx = ClassicValueContext.ctx
+        let prelude = ClassicValueContext.Prelude
 
         [
           // let alpha = true
@@ -530,11 +518,11 @@ type TestEval() =
           Tuple [ Bool true; Bool false; Value.Int 75; Value.Int 25; Value.Int 825 ]
 
           ]
-        |> List.iter (this.TestExpression ctx)
+        |> List.iter (this.TestExpression prelude)
 
     [<TestMethod>]
     member this.TestRecursiveMethod() =
-        let ctx = ClassicValueContext.ctx
+        let prelude = ClassicValueContext.Prelude
 
         [
           // let sum (set:Set<Int>) =
@@ -566,4 +554,4 @@ type TestEval() =
               e.CallMethod(e.Var "sum", [ e.Range(e.Int 1, e.Int 10) ])
           ),
           Int 45 ]
-        |> List.iter (this.TestExpression ctx)
+        |> List.iter (this.TestExpression prelude)

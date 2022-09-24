@@ -5,13 +5,7 @@ open Microsoft.Quantum.Simulation.Simulators
 open Microsoft.Quantum.IQSharp.ExecutionPathTracer
 
 let run qpu program =
-    let context =
-        { heap = Map.empty
-          typeCtx = { heap = Map.empty; previousCtx = None }
-          qpu = qpu
-          callerCtx = None }
-
-    match run (program, context) with
+    match start (program, qpu) with
     | Ok (v, _) ->
         printfn $"\nresult: {v}"
         0

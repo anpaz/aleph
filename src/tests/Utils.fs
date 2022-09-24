@@ -4,6 +4,7 @@ open System.Collections
 open Microsoft.VisualStudio.TestTools.UnitTesting
 
 open aleph.parser.ast
+open aleph.parser.TypeChecker
 open aleph.runtime.Eval
 
 // alias for untyped expressions
@@ -12,16 +13,17 @@ type s = Statement
 
 module Utils =
 
-    let add_to_context id t e ctx =
-        match run (e, ctx) with
-        | Ok (v, ctx) ->
-            { ctx with
-                heap = ctx.heap.Add(id, v)
-                typeCtx = { ctx.typeCtx with heap = ctx.typeCtx.heap.Add(id, t) } }
-        | Error msg -> failwith msg
+    // let add_to_context id e evalCtx =
+    //     match aleph.parser.TypeChecker.start e with
+    //     | Ok (e, _) ->
+    //         match eval (e, evalCtx) with
+    //         | Ok (v, evalCtx) ->
+    //             { evalCtx with heap = evalCtx.heap.Add (id, v) }
+    //         | Error msg -> failwith msg
+    //     | Error msg -> failwith msg
 
     let prepare (expr, ctx) =
-        match run (e.Prepare expr, ctx) with
+        match start (e.Prepare expr, ctx.qpu) with
         | Ok (Universe universe, _) -> universe
         | Ok (v, _) ->
             printfn "e: %A" expr
@@ -62,14 +64,21 @@ module Utils =
             | Some _ -> true
             | None -> false
 
-    let verify_expression (ctx: EvalContext) (e: Expression, answers: Value list) =
+    let verify_expression (prelude: Statement list, qpu: QPU) (body: Expression, answers: Value list) =
+        let ctx =
+            { heap = Map.empty
+              qpu = qpu
+              callerCtx = None }
+
+        let expr = Block(prelude, body)
+
         let checkRepeatMeasurement (u, v) =
             for i in 1..5 do
                 let v' = measure (u, ctx)
                 Assert.AreEqual(v, v')
         // samples the universe exactly once, doesn't check the answer
         let one () =
-            let u = prepare (e, ctx)
+            let u = prepare (expr, ctx)
             let v = measure (u, ctx)
             checkRepeatMeasurement (u, v)
             v

@@ -595,3 +595,7 @@ module TypeChecker =
                 previousCtx = ctx |> Some }
 
         stmts |> List.fold as_typed_stmt (([], ctx') |> Ok)
+
+    let start (e: Expression) =
+        let ctx = { heap = Map.empty; previousCtx = None }
+        typecheck (e, ctx)
