@@ -111,12 +111,12 @@ type Processor(sim: IOperationFactory) =
         | Q.Join (left, right) -> prepare_join (left, right, ctx)
         | Q.Block (stmts, value) -> prepare_block (stmts, value, ctx)
 
+        | Q.IfQuantum (c, t, e) -> prepare_if_q(c, t, e, ctx)
         | Q.IfClassic (c, t, e) -> prepare_if_c(c, t, e, ctx)
 
         | Q.CallMethod (method, args) -> prepare_callmethod (method, args, ctx)
 
-        | Q.Solve _
-        | Q.IfQuantum _ -> $"Not implemented: {q}" |> Error
+        | Q.Solve _ -> $"Not implemented: {q}" |> Error
 
     and prepare_var (id, ctx) =
         eval_var (id, ctx.evalCtx)
@@ -125,7 +125,7 @@ type Processor(sim: IOperationFactory) =
                 | Value.Ket ket ->
                     prepare_ket (ket, { ctx with evalCtx = evalCtx })
                     ==> fun (columns, ctx) -> (columns, ctx) |> Ok
-                | _ -> $"Unknown variable: {id}. Expecting ket." |> Error
+                | _ -> $"Invalid variable: {id}. Expecting ket." |> Error
 
     and prepare_literal (values, ctx) =
         eval_classic (values, ctx.evalCtx)
@@ -240,6 +240,21 @@ type Processor(sim: IOperationFactory) =
                         | _ ->
                             $"Invalid inputs for ket And. Expected one length registers, got: left:{left.Length} && right:{right.Length}"
                             |> Error
+
+
+    and prepare_if_q (condition, then_q, else_q, ctx) =
+        prepare (condition, ctx)
+        ==> fun (cond, ctx) ->
+                prepare (then_q, ctx)
+                ==> fun (then_q, ctx) ->
+                        prepare (else_q, ctx)
+                        ==> fun (else_q, ctx) ->
+                                match (cond.Length, then_q.Length, else_q.Length) with
+                                | (1L, 1L, 1L) ->
+                                    ket.If.Run(sim, cond.[0], then_q.[0], else_q.[0], ctx.universe).Result
+                                    |> qsharp_result ctx
+
+                                | _ -> $"Invalid inputs for ket if: {cond} then {then_q} else {else_q}" |> Error
 
     and prepare_if_c (condition, then_q, else_q, ctx) =
         eval_classic (condition, ctx.evalCtx)
