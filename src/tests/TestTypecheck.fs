@@ -316,28 +316,95 @@ type TestTypecheck () =
 
         [
             // let m () = true
-            e.Method ([], e.Bool true),
+            e.Method ([], Type Type.Bool, e.Bool true),
                 Type.Method ([], Type Type.Bool),
                 C.Method ([], Classic (C.BoolLiteral true, Type.Bool))
             // let m (a: Int; b: Tuple<Int, Bool>) = b
-            e.Method ([("a", Type Type.Int); ("b", Type (Type.Tuple [Type.Int; Type.Bool]))], e.Var "b"),
+            e.Method ([("a", Type Type.Int); ("b", Type (Type.Tuple [Type.Int; Type.Bool]))], Type (Type.Tuple [Type.Int; Type.Bool]), e.Var "b"),
                 Type.Method (
                     [Type Type.Int; Type (Type.Tuple [Type.Int; Type.Bool])], 
                     Type (Type.Tuple [Type.Int; Type.Bool])),
                 C.Method (["a"; "b"], Classic (C.Var "b",  (Type.Tuple [Type.Int; Type.Bool])))
             // let m (i:Int) = 
             //      lambda (y: Bool) = 42
-            e.Method ([("i", Type Type.Int)], e.Method (["y", Type Type.Bool], e.Int 42)),
-                Type.Method (
-                    [Type Type.Int], 
-                    Type (Type.Method ([Type Type.Bool], Type Type.Int))),
-                C.Method (["i"], (Classic (C.Method (
-                    ["y"], 
-                    Classic (C.IntLiteral 42, Type.Int)), Type.Method ([Type Type.Bool], Type Type.Int))))
+            e.Method (
+                arguments = [("i", Type Type.Int)], 
+                returns = Type (Type.Method ([Type Type.Bool], Type Type.Int)),
+                body = e.Method (
+                    arguments = ["y", Type Type.Bool],
+                    returns = Type (Type.Int), 
+                    body = e.Int 42)),
+            Type.Method (
+                [Type Type.Int], 
+                Type (Type.Method ([Type Type.Bool], Type Type.Int))),
+            C.Method (["i"], (Classic (C.Method (
+                ["y"], 
+                Classic (C.IntLiteral 42, Type.Int)), Type.Method ([Type Type.Bool], Type Type.Int))))
+
+            // let sum (set:Set<Int>) = 
+            //      if Count(set) == 0 then
+            //          0
+            //      else 
+            //          let elem = Element(set)
+            //          let rest = Remove(elem, set)
+            //          elem + sum(rest)
+            // sum
+            e.Block ([
+                s.Let ("sum",  e.Method (
+                    arguments = [ ("set", Type (Type.Set Type.Int))],
+                    returns = Type Type.Int,
+                    body =  
+                        e.If ((e.Equals(e.Count(e.Var "set"), e.Int 0),
+                            e.Int 0,
+                            e.Block ([
+                                s.Let ("elem", e.Element(e.Var "set"))
+                                s.Let ("rest", e.Remove(e.Var "elem", e.Var "set"))
+                            ], e.Add(e.Var "elem", e.CallMethod(e.Var "sum", [e.Var "rest"])))))))
+            ], (e.Var "sum")),
+
+            Type.Method (
+                [ Type (Type.Set Type.Int) ],
+                AnyType.Type Type.Int),
+            
+            C.Block ([
+                Statement.Let ("sum",  Classic (
+                    C.Method ( 
+                        ["set"], 
+                        Classic (
+                            C.If (
+                                (C.Equals(C.Count(C.Var "set"), C.IntLiteral 0),
+                                C.IntLiteral 0,
+                                C.Block ([
+                                    Statement.Let ("elem", Classic (C.Element (C.Var "set"), Type.Int))
+                                    Statement.Let ("rest", Classic (C.Remove(C.Var "elem", C.Var "set"), Type.Set Type.Int))
+                                ], C.Add(C.Var "elem", C.CallMethod(C.Var "sum", [Classic (C.Var "rest", Type.Set Type.Int)]))))),
+                            Type.Int)),
+                    Type.Method ([AnyType.Type (Type.Set Type.Int)], Type Type.Int)))
+            ], C.Var "sum")
         ]
         |> List.iter (this.TestClassicExpression ctx)
 
         [
+            // () : Int = false
+            e.Method (
+                arguments = [],
+                returns = Type Type.Int,
+                body = e.Bool false),
+            "Method return type doesn't match signature. Expecting Type Int, got Type Bool"
+
+            // () : Int = false
+            e.Method (
+                arguments = [],
+                returns = Type Type.Int,
+                body = e.Ket (e.Bool false)),
+            "Method return type doesn't match signature. Expecting Type Int, got QType (Ket [Bool])"
+
+            // () : Ket<Bool> = false
+            e.Method (
+                arguments = [],
+                returns = QType (QType.Ket [Type.Bool]),
+                body = e.Bool false),
+            "Method return type doesn't match signature. Expecting QType (Ket [Bool]), got Type Bool"
         ]
         |> List.iter (this.TestInvalidExpression ctx)
 
@@ -994,9 +1061,10 @@ type TestTypecheck () =
                 s.Let ("alpha", e.Bool true)
                 s.Let ("beta", e.Bool false)
                 s.Let ("foo",
-                    e.Method(
-                        ["beta", AnyType.Type Type.Int],
-                        e.Block ([
+                    e.Method (
+                        arguments = ["beta", AnyType.Type Type.Int],
+                        returns = AnyType.Type (Type.Tuple [ Type.Int; Type.Int; Type.Int ]),
+                        body = e.Block ([
                             s.Let ("alpha", e.If(
                                 e.Var "alpha",
                                 e.Multiply(e.Int 3, e.Var "beta"),

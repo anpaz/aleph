@@ -16,10 +16,22 @@ module Eval =
         inherit System.IComparable
         end
 
-    type Ket =
+    type [<CustomComparison; CustomEquality>] Ket =
         { Id : int
           StatePrep: Q
-          Heap: Map<Id, Value> }
+          Context: EvalContext }
+
+        override this.Equals x =
+            match x with
+            | :? Ket as {Id=id'} -> (this.Id = id')
+            | _ -> false
+
+        override this.GetHashCode () =
+            this.Id.GetHashCode() + this.StatePrep.GetHashCode() + this.Context.GetHashCode()
+
+        interface System.IComparable with
+            member this.CompareTo(obj: obj): int = 
+                failwith "Not Implemented"
 
     and [<CustomComparison; CustomEquality>] Method = 
         { args: Id list
@@ -116,7 +128,7 @@ module Eval =
             eval_var (id, ctx)
         | _ ->
             max_ket <- max_ket + 1
-            (Value.Ket {Id= max_ket; StatePrep = q; Heap = ctx.heap }, ctx) |> Ok
+            (Value.Ket {Id= max_ket; StatePrep = q; Context = ctx }, ctx) |> Ok
 
     and eval_classic (c, ctx) =
         match c with
@@ -299,7 +311,7 @@ module Eval =
             | _ -> $"Expecting Prepare to return Universe, got {u}" |> Error
 
     and eval_callmethod(method, args, ctx) =
-        prepare_method (method, args, ctx)
+        setup_method_body (method, args, ctx)
         ==> fun (body, ctx') ->
             eval (body, ctx')
             ==> fun (value, ctx') ->
@@ -380,7 +392,7 @@ module Eval =
         stmts
         |> List.fold eval_one (ctx |> Ok)
 
-    and prepare_args ids args ctx = 
+    and setup_args ids args ctx =
         let add_argument (heap': Result<Map<Id, Value>, string>) (id, value) =
             heap' ==> fun heap' ->
                 eval(value, ctx)
@@ -394,13 +406,19 @@ module Eval =
         |> List.zip ids
         |> List.fold add_argument (Map.empty |> Ok)
 
-    and prepare_method(method, args, ctx) =
+    and setup_method_body(method, args, ctx) =
         eval_classic (method, ctx)
-        ==> fun (method, ctx) ->
-            match method with
+        ==> fun (m, ctx) ->
+            match m with
             | Value.Method ( {args = ids; body = body; context = context}) ->
-                prepare_args ids args ctx
+                setup_args ids args ctx
                 ==> fun args_map ->
+                    let args_map = 
+                        // If the method comes from a variable, add it to the context
+                        // so it can be invoked recursively:
+                        match method with 
+                        | C.Var id -> args_map.Add (id, m)
+                        | _ -> args_map
                     let ctx = { ctx with heap = args_map; callerCtx = context |> Some }
                     (body, ctx) |> Ok
             | _ ->

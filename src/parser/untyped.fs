@@ -31,7 +31,7 @@ type Expression =
     | Int of int
     | Tuple of values: Expression list
     | Set of values: Expression list
-    | Method of arguments: (Id * AnyType) list * body: Expression
+    | Method of arguments: (Id * AnyType) list * returns: AnyType * body: Expression
     | Range of start: Expression * stop: Expression
 
     | Not of Expression

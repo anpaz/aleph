@@ -69,7 +69,7 @@ module TypeChecker =
 
         | Expression.Range (start, stop) -> typecheck_range (start, stop, ctx)
 
-        | Expression.Method (arguments, body) -> typecheck_method (arguments, body, ctx)
+        | Expression.Method (arguments, returnType, body) -> typecheck_method (arguments, returnType, body, ctx)
 
         | Expression.Ket values -> typecheck_ket (values,ctx)
         | Expression.KetAll size -> typecheck_ketall (size, ctx)
@@ -223,7 +223,7 @@ module TypeChecker =
             | _ ->
                 $"Start must be an int expression, got: {start}" |> Error
 
-    and typecheck_method (arguments, body, ctx) =
+    and typecheck_method (arguments, returnType, body, ctx) =
         let ctx' =
             { heap = Map.empty; previousCtx = ctx |> Some }
             |> add_to_typecontext arguments
@@ -233,11 +233,20 @@ module TypeChecker =
             let argTypes = arguments |> List.map (fun a -> (snd a))
             match body with
             | Classic (_, t) ->
-                (Classic (C.Method (argNames, body), Type.Method (argTypes, AnyType.Type t)), ctx) |> Ok
+                if returnType = AnyType.Type t then
+                    (Classic (C.Method (argNames, body), Type.Method (argTypes, AnyType.Type t)), ctx) |> Ok
+                else 
+                    $"Method return type doesn't match signature. Expecting {returnType}, got {AnyType.Type t}" |> Error
             | Quantum (_, qt) ->
-                (Classic (C.Method (argNames, body), Type.Method (argTypes, AnyType.QType qt)), ctx) |> Ok
+                if returnType = AnyType.QType qt then
+                    (Classic (C.Method (argNames, body), Type.Method (argTypes, AnyType.QType qt)), ctx) |> Ok
+                else 
+                    $"Method return type doesn't match signature. Expecting {returnType}, got {AnyType.QType qt}" |> Error
             | Universe (_, t) ->
-                (Classic (C.Method (argNames, body), Type.Method (argTypes, AnyType.UType t)), ctx) |> Ok
+                if returnType = AnyType.UType t then
+                    (Classic (C.Method (argNames, body), Type.Method (argTypes, AnyType.UType t)), ctx) |> Ok
+                else 
+                    $"Method return type doesn't match signature. Expecting {returnType}, got {AnyType.UType t}" |> Error
 
     and typecheck_add (left, right, ctx) =
         typecheck(left, ctx)
@@ -598,6 +607,13 @@ module TypeChecker =
                 let get_type =  function | Classic (_, t) -> AnyType.Type t | Quantum (_, t) -> AnyType.QType t | Universe (_, t) -> AnyType.UType t
                 match next with
                 | ast.Statement.Let (id, value) ->
+                    // if it's a method, add the method itself to the context to support
+                    // recursive calls:
+                    let ctx =
+                        match value with
+                        | Expression.Method (arguments, returns, _) -> 
+                            add_to_typecontext [ id, AnyType.Type (Type.Method (arguments |> List.map snd, returns)) ] ctx
+                        | _ -> ctx
                     typecheck (value, ctx)
                     ==> fun (value, ctx) ->
                         let t = value |> get_type

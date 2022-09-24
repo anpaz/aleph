@@ -107,7 +107,7 @@ type Processor() =
             (columns, ctx) |> Ok        // Already prepared...
         | None ->
             // need to prepare using the heap when the ket was created:
-            let ctx' = { ctx with evalCtx = { ctx.evalCtx with heap = ket.Heap } }
+            let ctx' = { ctx with evalCtx = ket.Context }
             prepare (ket.StatePrep, ctx')
             ==> fun (columns, ctx') ->
                 // Assign to the ket the columns returned by the preparation:
@@ -421,20 +421,18 @@ type Processor() =
         Calls the corresponding method, and automatically prepares the resulting Ket
     *)
     and prepare_callmethod (method, args, ctx) =
-        prepare_method (method, args, ctx.evalCtx)
+        setup_method_body(method, args, ctx.evalCtx)
         ==> fun (body, argsCtx) ->
-            eval (body, argsCtx)
-            ==> fun (value, argsCtx) ->
-                match value with
-                | Value.Ket k -> 
-                    let ctx' = { ctx with evalCtx = argsCtx }
-                    prepare_ket (k, ctx')
-                    ==> fun (value, ctx') ->
-                        // return the heap back to the original state
-                        let ctx = { ctx' with evalCtx = ctx.evalCtx }
-                        (value, ctx) |> Ok
-                | _ ->
-                    $"Expecting a Ket result, got {value}" |> Error
+            match body with
+            | Quantum (q, _) ->
+                let ctx' = { ctx with evalCtx = argsCtx }
+                prepare (q, ctx')
+                ==> fun (value, ctx') ->
+                    // return the heap back to the original state
+                    let ctx = { ctx' with evalCtx = ctx.evalCtx }
+                    (value, ctx) |> Ok
+            | _ ->
+                $"Expecting a method with a Quantum body, got {method}" |> Error
 
 
     and tensor_product left right : Value list list =

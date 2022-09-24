@@ -368,7 +368,10 @@ type TestQPUQsharp () =
             // colors()
             e.Block (
                 [
-                    Let ("colors", e.Method([], e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])))
+                    Let ("colors", e.Method(
+                        arguments = [],
+                        returns = QType (QType.Ket [Type.Int]),
+                        body = e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])))
                 ],
                 e.CallMethod (e.Var "colors", [])),
             [
@@ -380,7 +383,10 @@ type TestQPUQsharp () =
             // ( colors(), colors() )
             e.Block (
                 [
-                    Let ("colors", e.Method([], e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])))
+                    Let ("colors", e.Method(
+                        arguments = [],
+                        returns = QType (QType.Ket [Type.Int]),
+                        body = e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])))
                 ],
                 e.Join (e.CallMethod (e.Var "colors", []), e.CallMethod (e.Var "colors", []))),
             [

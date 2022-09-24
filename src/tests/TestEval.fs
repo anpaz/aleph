@@ -99,15 +99,22 @@ type TestEval () =
             e.Range (e.Int 1, e.Int 5),
                 Value.Set (Set.ofList [Int 1; Int 2; Int 3; Int 4])
             // (a: Int) -> a + 1
-            e.Method (["a", Type Type.Int], (e.Add (e.Var "a", e.Int 1))),
+            e.Method (
+                arguments = ["a", Type Type.Int], 
+                returns = Type Type.Int,
+                body = (e.Add (e.Var "a", e.Int 1))),
                 Value.Method { args = ["a"]; body = (E.Classic (C.Add ((C.Var "a", C.IntLiteral 1)), Type.Int)); context = ctx }
             // (k1: Ket<Int>, k2: Ket<Int, Bool>) -> (k1, k2)
-            e.Method (["k1", QType (QType.Ket [Type.Int]); "k2", QType (QType.Ket [Type.Int; Type.Bool])], 
-                (e.Join (e.Var "k1", e.Var "k2"))),
+            e.Method (
+                arguments = ["k1", QType (QType.Ket [Type.Int]); "k2", QType (QType.Ket [Type.Int; Type.Bool])], 
+                returns = QType (QType.Ket [Type.Int; Type.Int; Type.Bool]),
+                body = (e.Join (e.Var "k1", e.Var "k2"))),
                 Value.Method { args = ["k1"; "k2"]; body = (E.Quantum (Q.Join (Q.Var "k1", Q.Var "k2"), (QType.Ket [Type.Int; Type.Int; Type.Bool]))); context = ctx }
             // (k1: Ket<Int>, k2: Ket<Int, Bool>) -> Prepare(k2)
-            e.Method (["k1", QType (QType.Ket [Type.Int]); "k2", QType (QType.Ket [Type.Int; Type.Bool])], 
-                (e.Prepare (e.Var "k2"))),
+            e.Method (
+                arguments = ["k1", QType (QType.Ket [Type.Int]); "k2", QType (QType.Ket [Type.Int; Type.Bool])], 
+                returns = UType (UType.Universe [Type.Int; Type.Bool]),
+                body = (e.Prepare (e.Var "k2"))),
                 Value.Method { args = ["k1"; "k2"]; body = (E.Universe (U.Prepare (Q.Var "k2"), (UType.Universe [Type.Int; Type.Bool]))); context = ctx }
         ]
         |> List.iter (this.TestExpression ctx)
@@ -218,11 +225,20 @@ type TestEval () =
         let ctx = 
             ClassicValueContext.ctx
             |> Utils.add_to_context "m0" (Type (Type.Method ([], (Type (Type.Tuple [Type.Int; Type.Int]))))) (
-                e.Method ([], e.Tuple [e.Int 1; e.Int 2]))
+                e.Method (
+                    arguments = [], 
+                    returns = Type (Type.Tuple [Type.Int; Type.Int]), 
+                    body = e.Tuple [e.Int 1; e.Int 2]))
             |> Utils.add_to_context "m1" (Type (Type.Method ([Type Type.Int; Type Type.Int], Type Type.Int))) (
-                e.Method ([("a", Type Type.Int); ("b", Type Type.Int)], e.Add (e.Var "a", e.Var "b")))
+                e.Method (
+                    arguments = [("a", Type Type.Int); ("b", Type Type.Int)],
+                    returns = Type Type.Int,
+                    body = e.Add (e.Var "a", e.Var "b")))
             |> Utils.add_to_context  "m2" (Type (Type.Method ([Type Type.Tuple[Type.Bool; Type.Bool; Type.Bool]; Type Type.Bool; Type Type.Int], Type Type.Bool))) (
-                e.Method ([("x", Type (Type.Tuple [Type.Bool; Type.Bool; Type.Bool])); ("y", Type Type.Bool); ("z", Type Type.Int)],e.Or (e.Var "y", e.Project (e.Var "x", e.Var "z"))))
+                e.Method (
+                    arguments = [("x", Type (Type.Tuple [Type.Bool; Type.Bool; Type.Bool])); ("y", Type Type.Bool); ("z", Type Type.Int)],
+                    returns = Type Type.Bool,
+                    body = e.Or (e.Var "y", e.Project (e.Var "x", e.Var "z"))))
 
         [
             // m0 ()
@@ -325,7 +341,7 @@ type TestEval () =
             // x()
             e.Block ([
                 s.Let ("alpha", e.Int 1)
-                s.Let ("x", e.Method([], e.Var "alpha"))
+                s.Let ("x", e.Method([], Type (Type.Int), e.Var "alpha"))
             ], e.CallMethod (e.Var "x", [])), 
                 Value.Int 1
 
@@ -454,8 +470,9 @@ type TestEval () =
             e.Block ([
                 s.Let ("a", e.Int 3)
                 s.Let ("foo", e.Method(
-                    ["b", Type Type.Int], 
-                    e.Add(e.Var "a", e.Var "b")))
+                    arguments = ["b", Type Type.Int], 
+                    returns = Type (Type.Int),
+                    body = e.Add(e.Var "a", e.Var "b")))
             ], e.CallMethod(e.Var "foo", [e.Int 4])),
                 Value.Int 7
         ]
@@ -490,7 +507,6 @@ type TestEval () =
         let ctx = ClassicValueContext.ctx
 
         [
-
             // let alpha = true
             // let beta = false
             // let foo(beta:Int) =
@@ -506,8 +522,9 @@ type TestEval () =
                 s.Let ("beta", e.Bool false)
                 s.Let ("foo",
                     e.Method(
-                        ["beta", Type Type.Int],
-                        e.Block ([
+                        arguments = ["beta", Type Type.Int],
+                        returns = Type (Type.Tuple [Type.Int; Type.Int; Type.Int ]),
+                        body = e.Block ([
                             s.Let ("alpha", e.If(
                                 e.Var "alpha",
                                 e.Multiply(e.Int 3, e.Var "beta"),
@@ -524,5 +541,34 @@ type TestEval () =
                 e.CallMethod (e.Var "foo", [e.Int 25]))),
             Tuple [Bool true; Bool false; Value.Int 75; Value.Int 25; Value.Int 825]
 
+        ]
+        |> List.iter (this.TestExpression ctx)
+
+    [<TestMethod>]
+    member this.TestRecursiveMethod () =
+        let ctx = ClassicValueContext.ctx
+
+        [
+            // let sum (set:Set<Int>) = 
+            //      if Count(set) == 0 then
+            //          0
+            //      else 
+            //          let elem = Element(set)
+            //          let rest = Remove(elem, set)
+            //          elem + sum(rest)
+            // sum( 1 .. 10)
+            e.Block ([
+                s.Let ("sum",  e.Method (
+                    arguments = [ ("set", Type (Type.Set Type.Int))],
+                    returns = Type Type.Int,
+                    body =  
+                        e.If ((e.Equals(e.Count(e.Var "set"), e.Int 0),
+                            e.Int 0,
+                            e.Block ([
+                                s.Let ("elem", e.Element(e.Var "set"))
+                                s.Let ("rest", e.Remove(e.Var "elem", e.Var "set"))
+                            ], e.Add(e.Var "elem", e.CallMethod(e.Var "sum", [e.Var "rest"])))))))
+            ], e.CallMethod (e.Var "sum", [e.Range (e.Int 1, e.Int 10)])),
+            Int 45
         ]
         |> List.iter (this.TestExpression ctx)

@@ -80,7 +80,7 @@ type Processor(sim: IOperationFactory) =
             (registers, ctx) |> Ok
         | None ->
             // need to prepare using the heap when the ket was created:
-            let ctx' = { ctx with evalCtx = { ctx.evalCtx with heap = ket.Heap } }
+            let ctx' = { ctx with evalCtx = ket.Context }
             prepare (ket.StatePrep, ctx')
             ==> fun (registers, ctx') ->
                 // Assign to the ket the columns returned by the preparation:
@@ -256,20 +256,18 @@ type Processor(sim: IOperationFactory) =
             prepare (body, ctx)
 
     and prepare_callmethod (method, args, ctx) =
-        prepare_method (method, args, ctx.evalCtx)
+        setup_method_body (method, args, ctx.evalCtx)
         ==> fun (body, argsCtx) ->
-            eval (body, argsCtx)
-            ==> fun (value, argsCtx) ->
-                match value with
-                | Value.Ket k -> 
-                    let ctx' = { ctx with evalCtx = argsCtx }
-                    prepare_ket (k, ctx')
-                    ==> fun (value, ctx') ->
-                        // return the heap back to the original state
-                        let ctx = { ctx' with evalCtx = ctx.evalCtx }
-                        (value, ctx) |> Ok
-                | _ ->
-                    $"Expecting a Ket result, got {value}" |> Error
+            match body with
+            | Quantum (q, _) ->
+                let ctx' = { ctx with evalCtx = argsCtx }
+                prepare (q, ctx')
+                ==> fun (value, ctx') ->
+                    // return the heap back to the original state
+                    let ctx = { ctx' with evalCtx = ctx.evalCtx }
+                    (value, ctx) |> Ok
+            | _ ->
+                $"Expecting a method with a Quantum body, got {method}" |> Error
 
     and qsharp_result ctx value =
         let struct (u, r) = value

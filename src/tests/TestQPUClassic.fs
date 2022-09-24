@@ -491,7 +491,10 @@ type TestQPUClassic () =
             // // colors()
             e.Block (
                 [
-                    Let ("colors", e.Method([], e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])))
+                    Let ("colors", e.Method(
+                        arguments = [], 
+                        returns = QType (QType.Ket [Type.Int]),
+                        body = e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])))
                 ],
                 e.CallMethod (e.Var "colors", [])),
                 [
@@ -504,7 +507,10 @@ type TestQPUClassic () =
             // ( colors(), colors() )
             e.Block (
                 [
-                    Let ("colors", e.Method([], e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])))
+                    Let ("colors", e.Method(
+                        arguments = [],
+                        returns = QType (QType.Ket [Type.Int]),
+                        body = e.Ket (e.Set [e.Int 1; e.Int 2; e.Int 3])))
                 ],
                 e.Join (e.CallMethod (e.Var "colors", []), e.CallMethod (e.Var "colors", []))),
                 [
@@ -525,7 +531,10 @@ type TestQPUClassic () =
             e.Block (
                 [
                     Let ("k1", e.Ket (e.Set [e.Int 0; e.Int 1]))
-                    Let ("add_one", e.Method(["k", (AnyType.QType (QType.Ket [Type.Int]))], e.Add(e.Var "k", e.Int 1)))
+                    Let ("add_one", e.Method(
+                        arguments = ["k", (AnyType.QType (QType.Ket [Type.Int]))],
+                        returns = QType (QType.Ket [Type.Int]),
+                        body = e.Add(e.Var "k", e.Int 1)))
                 ],
                 e.CallMethod (e.Var "add_one", [e.Var "k1"])),
                 [
@@ -540,7 +549,10 @@ type TestQPUClassic () =
             e.Block (
                 [
                     Let ("k", e.Ket (e.Set [e.Int 0; e.Int 1]))
-                    Let ("add_one", e.Method(["k", (AnyType.QType (QType.Ket [Type.Int]))], e.Add(e.Var "k", e.Int 1)))
+                    Let ("add_one", e.Method(
+                        arguments = ["k", (AnyType.QType (QType.Ket [Type.Int]))],
+                        returns = QType (QType.Ket [Type.Int]),
+                        body =  e.Add(e.Var "k", e.Int 1)))
                     Let ("k", e.CallMethod (e.Var "add_one", [e.Var "k"]))
                 ],
                 e.Var "k"),
@@ -557,7 +569,10 @@ type TestQPUClassic () =
             e.Block (
                 [
                     Let ("k1", e.Ket (e.Set [e.Int 0; e.Int 1]))
-                    Let ("add_one", e.Method(["k", (AnyType.QType (QType.Ket [Type.Int]))], e.Add(e.Var "k", e.Int 1)))
+                    Let ("add_one", e.Method(
+                        arguments = ["k", (AnyType.QType (QType.Ket [Type.Int]))],
+                        returns = QType (QType.Ket [Type.Int]),
+                        body = e.Add(e.Var "k", e.Int 1)))
                     Let ("k2", e.CallMethod (e.Var "add_one", [e.Var "k1"]))
                     Let ("k1", e.Ket (e.Set [e.Int 2; e.Int 3]))
                 ],
@@ -572,8 +587,9 @@ type TestQPUClassic () =
             e.Block (
                 [
                     Let ("prepare_bell", e.Method(
-                        ["a", AnyType.Type (Type.Int); "b", AnyType.Type (Type.Int)], 
-                        e.Prepare (
+                        arguments = ["a", AnyType.Type (Type.Int); "b", AnyType.Type (Type.Int)], 
+                        returns = UType (UType.Universe [Type.Int; Type.Int]),
+                        body = e.Prepare (
                             e.Ket (e.Set [ e.Tuple [e.Var "a"; e.Var "a"]; e.Tuple [e.Var "b"; e.Var "b"] ]))))
                 ],
                 e.CallMethod (e.Var "prepare_bell", [e.Int 2; e.Var "i1"])),
@@ -637,6 +653,39 @@ type TestQPUClassic () =
                     Bool false;
                     Bool true;
                 ]
+        ]
+        |> List.iter (verify_expression ctx)
+
+    [<TestMethod>]
+    member this.TestRecursiveMethod () =
+        let ctx = this.Context
+
+        [
+            // let sum (acc: Ket<Int>, set:Set<Int>) = 
+            //      if Count(set) == 0 then
+            //          acc
+            //      else 
+            //          let elem = Element(set)
+            //          let rest = Remove(elem, set)
+            //          sum(acc + elem, rest)
+            // sum( |10, 20, 30>,  1 .. 4)
+            e.Block ([
+                s.Let ("sum",  e.Method (
+                    arguments = [ ("acc", AnyType.QType (QType.Ket [Type.Int])); ("set", Type (Type.Set Type.Int))],
+                    returns = QType (QType.Ket [Type.Int]),
+                    body =  
+                        e.If ((e.Equals(e.Count(e.Var "set"), e.Int 0),
+                            e.Var "acc",
+                            e.Block ([
+                                s.Let ("elem", e.Element(e.Var "set"))
+                                s.Let ("rest", e.Remove(e.Var "elem", e.Var "set"))
+                            ], e.CallMethod(e.Var "sum", [e.Add(e.Var "acc", e.Var "elem"); e.Var "rest"]))))))
+            ], e.CallMethod (e.Var "sum", [e.Ket (e.Set [e.Int 10; e.Int 20; e.Int 30]); e.Range (e.Int 1, e.Int 4)])),
+            [
+                Int 16
+                Int 26
+                Int 36
+            ]
         ]
         |> List.iter (verify_expression ctx)
 
