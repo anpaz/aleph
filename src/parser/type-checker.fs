@@ -80,7 +80,7 @@ module TypeChecker =
         | Expression.Block (stmts, r) -> typecheck_block (stmts, r, ctx)
         | Expression.If (c, t, f) -> typecheck_if (c, t, f, ctx)
 
-        | Expression.Solve (ket, cond) -> typecheck_solve (ket, cond, ctx)
+        | Expression.Filter (ket, cond) -> typecheck_solve (ket, cond, ctx)
         | Expression.Prepare ket -> typecheck_prepare (ket, ctx)
         | Expression.Sample universe -> typecheck_sample (universe, ctx)
 
@@ -491,7 +491,7 @@ module TypeChecker =
                     typecheck (cond, ctx)
                     ==> fun (cond, ctx) ->
                             match cond with
-                            | Quantum (cond, Type.Ket [ Type.Bool ]) -> (Quantum(Q.Solve(ket, cond), t), ctx) |> Ok
+                            | Quantum (cond, Type.Ket [ Type.Bool ]) -> (Quantum(Q.Filter(ket, cond), t), ctx) |> Ok
                             | Quantum (_, t) ->
                                 $"Solve condition must be a quantum boolean expression, got: {t}" |> Error
                             | Classic (_, t) ->

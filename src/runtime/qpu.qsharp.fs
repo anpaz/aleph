@@ -109,14 +109,15 @@ type Processor(sim: IOperationFactory) =
         | Q.Project (q, index) -> prepare_project (q, index, ctx)
         | Q.Index (q, index) -> prepare_index (q, index, ctx)
         | Q.Join (left, right) -> prepare_join (left, right, ctx)
+
+        | Q.IfQuantum (c, t, e) -> prepare_if_q (c, t, e, ctx)
+        | Q.IfClassic (c, t, e) -> prepare_if_c (c, t, e, ctx)
+        | Q.Filter (ket, cond) -> prepare_filter (ket, cond, ctx)
+
         | Q.Block (stmts, value) -> prepare_block (stmts, value, ctx)
-
-        | Q.IfQuantum (c, t, e) -> prepare_if_q(c, t, e, ctx)
-        | Q.IfClassic (c, t, e) -> prepare_if_c(c, t, e, ctx)
-
+        
         | Q.CallMethod (method, args) -> prepare_callmethod (method, args, ctx)
 
-        | Q.Solve _ -> $"Not implemented: {q}" |> Error
 
     and prepare_var (id, ctx) =
         eval_var (id, ctx.evalCtx)
@@ -241,6 +242,13 @@ type Processor(sim: IOperationFactory) =
                             $"Invalid inputs for ket And. Expected one length registers, got: left:{left.Length} && right:{right.Length}"
                             |> Error
 
+    and prepare_filter (k, condition, ctx) =
+        prepare (condition, ctx)
+        ==> fun (cond, ctx) ->
+                prepare (k, ctx)
+                ==> fun (k, ctx) ->
+                        let struct (u, r) = ket.Filter.Run(sim, cond.[0], ctx.universe).Result
+                        (k, { ctx with universe = u }) |> Ok
 
     and prepare_if_q (condition, then_q, else_q, ctx) =
         prepare (condition, ctx)

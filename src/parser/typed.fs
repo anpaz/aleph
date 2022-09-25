@@ -59,7 +59,7 @@ and Q =
     | IfQuantum of cond: Q * t: Q * f: Q
 
     | CallMethod of method: C * arguments: E list
-    | Solve of ket: Q * condition: Q
+    | Filter of ket: Q * condition: Q
 
 and U =
     | Var of Id

@@ -325,7 +325,7 @@ type TestQPUClassic() =
 
 
     [<TestMethod>]
-    member this.TestSolveEquals() =
+    member this.TestFilterEquals() =
         let prelude =
             this.Prelude
             @ [ s.Let(
@@ -346,16 +346,16 @@ type TestQPUClassic() =
             [ Int 0; Int 1; Int 1; Bool true ]
             [ Int 1; Int 1; Int 1; Bool true ] ],
           [ 3 ]
-          // (Solve k1, k1.1 == 1)
-          e.Solve(e.Var "k1", e.Equals(e.Project(e.Var "k1", e.Int 1), e.Int 1)),
+          // (Filter k1, k1.1 == 1)
+          e.Filter(e.Var "k1", e.Equals(e.Project(e.Var "k1", e.Int 1), e.Int 1)),
           [ [ Int 0; Int 1; Int 1; Bool true ]; [ Int 1; Int 1; Int 1; Bool true ] ],
           [ 0; 1 ]
-          // (Solve k1, k1.0 + k1.1 == 1)
-          e.Solve(e.Var "k1", e.Equals(e.Add(e.Project(e.Var "k1", e.Int 0), e.Project(e.Var "k1", e.Int 1)), e.Int 1)),
+          // (Filter k1, k1.0 + k1.1 == 1)
+          e.Filter(e.Var "k1", e.Equals(e.Add(e.Project(e.Var "k1", e.Int 0), e.Project(e.Var "k1", e.Int 1)), e.Int 1)),
           [ [ Int 0; Int 1; Int 1; Int 1; Bool true ] ],
           [ 0; 1 ]
-          // (Solve k1.0, k1.1 + | 1, 2, 3 > == |2, 4> )
-          e.Solve(
+          // (Filter k1.0, k1.1 + | 1, 2, 3 > == |2, 4> )
+          e.Filter(
               e.Project(e.Var "k1", e.Int 1),
               e.Equals(
                   e.Add(e.Project(e.Var "k1", e.Int 1), e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ])),
@@ -552,8 +552,8 @@ type TestQPUClassic() =
                 ) ]
 
         [ e.Ket(e.Set []), []
-          // Solve (k, k.0 == 2)
-          e.Solve(e.Var "k", e.Equals(e.Project(e.Var "k", e.Int 0), e.Int 2)), []
+          // Filter (k, k.0 == 2)
+          e.Filter(e.Var "k", e.Equals(e.Project(e.Var "k", e.Int 0), e.Int 2)), []
           // k
           e.Var "k",
           [

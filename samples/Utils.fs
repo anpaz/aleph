@@ -15,7 +15,7 @@ let run qpu program =
 
 let wrapup code =
     printfn ""
-    printfn ":ℵ-0.4:"
+    printfn ":ℵ-0.5:"
     code
 
 let simulate program =

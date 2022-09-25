@@ -142,12 +142,13 @@ type Processor() =
         | Project (q, index) -> prepare_project (q, index, ctx)
         | Index (q, index) -> prepare_index (q, index, ctx)
         | Join (left, right) -> prepare_join (left, right, ctx)
-        | Solve (ket, condition) -> prepare_solve (ket, condition, ctx)
-        | Q.Block (stmts, value) -> prepare_block (stmts, value, ctx)
 
         | IfQuantum (condition, then_q, else_q) -> prepare_if_q (condition, then_q, else_q, ctx)
         | IfClassic (condition, then_q, else_q) -> prepare_if_c (condition, then_q, else_q, ctx)
+        | Filter (ket, condition) -> prepare_filter (ket, condition, ctx)
 
+        | Q.Block (stmts, value) -> prepare_block (stmts, value, ctx)
+        
         | Q.CallMethod (method, args) -> prepare_callmethod (method, args, ctx)
 
     (*
@@ -395,7 +396,7 @@ type Processor() =
         Filters the state to only those records that match the given condition.
         It returns the columns of the specified ket.
      *)
-    and prepare_solve (ket, condition, ctx) =
+    and prepare_filter (ket, condition, ctx) =
         prepare (condition, ctx)
         ==> fun (cond, ctx) ->
                 prepare (ket, ctx)

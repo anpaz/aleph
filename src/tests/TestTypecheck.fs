@@ -905,14 +905,14 @@ type TestTypecheck() =
 
         [
           // k2 | k2.[0] == 1
-          e.Solve(e.Var "k2", e.Equals(e.Project(e.Var "k2", e.Int 0), e.Int 1)),
+          e.Filter(e.Var "k2", e.Equals(e.Project(e.Var "k2", e.Int 0), e.Int 1)),
           Type.Ket [ Type.Int; Type.Bool ],
-          Q.Solve(Q.Var "k2", Q.Equals(Q.Project(Q.Var "k2", 0), Q.Literal(C.Set [ C.IntLiteral 1 ]))) ]
+          Q.Filter(Q.Var "k2", Q.Equals(Q.Project(Q.Var "k2", 0), Q.Literal(C.Set [ C.IntLiteral 1 ]))) ]
         |> List.iter (this.TestQuantumExpression ctx)
 
-        [ e.Solve(e.Tuple [ e.Int 1; e.Int 2 ], e.Equals(e.Project(e.Var "k2", e.Int 1), e.Bool true)),
+        [ e.Filter(e.Tuple [ e.Int 1; e.Int 2 ], e.Equals(e.Project(e.Var "k2", e.Int 1), e.Bool true)),
           "Solve argument must be a quantum ket, got: Tuple [Int; Int]"
-          e.Solve(e.Var "k2", e.Bool true), "Solve condition must be a quantum boolean expression, got: Bool" ]
+          e.Filter(e.Var "k2", e.Bool true), "Solve condition must be a quantum boolean expression, got: Bool" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
 

@@ -39,9 +39,9 @@ type Expression =
 
     | CallMethod of method: Expression * arguments: Expression list
 
+    | Filter of ket: Expression * cond: Expression
     | Sample of ket: Expression
     | Prepare of universe: Expression
-    | Solve of ket: Expression * cond: Expression
 
     | Element of set: Expression
     | Append of item: Expression * set: Expression
