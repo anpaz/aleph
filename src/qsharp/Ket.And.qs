@@ -13,10 +13,10 @@ namespace aleph.qsharp.ket {
         let idx = oldColumns;
         let output = [Register(idx..idx)];
 
-        let oracle = _And_oracle(left, right, idx, oldOracle, _, _);
-        let universe = Universe(oldRows, oldColumns + 1, oracle);
+        let oracle = _And_oracle(left, right, idx, _, _);
+        let universe = Universe(oldRows, oldColumns + 1, oldOracle + [oracle]);
 
-        log.Info($"Ket.And::Init --> left: {left}; right: {right}");
+        log.Info($"Ket.And::Init --> left: {left}; right: {right}; output: {output}");
         return (universe, output);
     }
 
@@ -24,32 +24,27 @@ namespace aleph.qsharp.ket {
         left: Register,
         right: Register,
         idx: Int,
-        previous: (Qubit[], Qubit) => Unit is Adj + Ctl,
         all: Qubit[], target: Qubit) : Unit
     is Adj + Ctl {
-        log.Debug($"Ket.All::oracle --> target:{target}");
+        log.Debug($"Ket.And::oracle --> target:{target}");
         
         let answer = all[idx];
         use a1 = Qubit();
 
-        use t1 = Qubit();
-        use t2 = Qubit();
+        // a1 hold true if left ^ right
+        Controlled X (all[left!] + all[right!], a1);
 
-        within {
-            previous(all, t1);
+        // the true cases
+        Controlled X ([a1, answer], target);
 
-            // a1 hold true if left ^ right
-            Controlled X (all[left!] + all[right!], a1);
-
-            // the true cases
-            Controlled X ([a1, answer], t2);
-
-            // the false cases
-            X(a1);
-            X(answer);
-            Controlled X ([a1, answer], t2);
-        } apply {
-            Controlled X ([t1, t2], target);
-        }
+        // the false cases
+        X(a1);
+        X(answer);
+        Controlled X ([a1, answer], target);
+        
+        // Undo
+        Adjoint X(answer);
+        Adjoint X(a1);
+        Adjoint Controlled X (all[left!] + all[right!], a1);
     }
 }

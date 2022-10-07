@@ -18,8 +18,8 @@ namespace aleph.qsharp.ket {
         let idx = oldColumns;
         let output = Register(idx .. idx + size - 1);
 
-        let oracle = _If_oracle(c, t, e, output, oldOracle, _, _);
-        let universe = Universe(oldRows, oldColumns + size, oracle);
+        let oracle = _If_oracle(c, t, e, output, _, _);
+        let universe = Universe(oldRows, oldColumns + size, oldOracle + [oracle]);
 
         log.Info($"Ket.If::Init --> cond: {c}; then: {t}; else: {e}; output: {output}");
         return (universe, [output]);
@@ -30,35 +30,30 @@ namespace aleph.qsharp.ket {
         t: Register,
         e: Register,
         o: Register,
-        previous: (Qubit[], Qubit) => Unit is Adj + Ctl,
         all: Qubit[], target: Qubit) : Unit
     is Adj + Ctl {
-        log.Debug($"Ket.All::oracle --> target:{target}");
+        log.Debug($"Ket.If::oracle --> target:{target}");
         
         let cond_q = all[c!];
         let then_q = all[t!];
         let else_q = all[e!];
         let out_q = all[o!];
 
-        use t1 = Qubit();
-        use t2 = Qubit();
-        use t2a = Qubit();
-        use t2b = Qubit();
+        use a1 = Qubit();
+        use a2 = Qubit();
 
-        within {
-            previous(all, t1);
+        AreEqual(then_q, out_q, a1);
+        AreEqual(else_q, out_q, a2);
 
-            AreEqual(then_q, out_q, t2a);
-            AreEqual(else_q, out_q, t2b);
+        // if cond is true, pick then qubits
+        Controlled X (cond_q + [a1], target);
+        // if cond is false, then pick else qubits
+        ApplyToEachCA(X, cond_q);
+        Controlled X (cond_q + [a2], target);
 
-            // if cond is true, pick then qubits
-            Controlled X (cond_q + [t2a], t2);
-            // if cond is false, then pick else qubits
-            ApplyToEachCA(X, cond_q);
-            Controlled X (cond_q + [t2b], t2);
-
-        } apply {
-            Controlled X ([t1, t2], target);
-        }
+        // Undo
+        Adjoint ApplyToEachCA(X, cond_q);
+        Adjoint AreEqual(else_q, out_q, a2);
+        Adjoint AreEqual(then_q, out_q, a1);
     }
 }

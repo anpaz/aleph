@@ -22,8 +22,8 @@ namespace aleph.qsharp.ket {
         let rows = oldRows * Length(classic);
         let columns = start;
 
-        let oracle = _Literal_oracle(classic, output, oldColumns, start-1, oldOracle, _, _);
-        let universe = Universe(rows, columns, oracle);
+        let oracle = _Literal_oracle(classic, output, oldColumns, start-1, _, _);
+        let universe = Universe(rows, columns, oldOracle + [oracle]);
 
         log.Info($"Ket.Literal::Init --> classic: {classic}, output: {output}");
         return (universe, output);
@@ -34,41 +34,31 @@ namespace aleph.qsharp.ket {
         registers: Register[],
         first: Int,
         last: Int,
-        previous: (Qubit[], Qubit) => Unit is Adj + Ctl,
         all: Qubit[], target: Qubit) : Unit
     is Adj + Ctl {
         log.Debug($"Ket.Literal::oracle: all:{all}, target:{target}, first:{first}, last:{last}");
 
-        use t1 = Qubit();
-        use t2 = Qubit();
+        for i in 0..Length(classic) - 1 {
+            let value = classic[i];
 
-        within {
-            previous(all, t1);
+            within {
+                for k in 0..Length(value)-1 {
+                    let (v, _) = value[k]!;
+                    let q = all[registers[k]!];
+                    let n = Length(q);
+                    let bits = IntAsBoolArray(v, n);
+                    //log.Debug($"v:{v}, q:{q}, bits:{bits}, ");
 
-            for i in 0..Length(classic) - 1 {
-                let value = classic[i];
-
-                within {
-                    for k in 0..Length(value)-1 {
-                        let (v, _) = value[k]!;
-                        let q = all[registers[k]!];
-                        let n = Length(q);
-                        let bits = IntAsBoolArray(v, n);
-                        log.Debug($"v:{v}, q:{q}, bits:{bits}, ");
-
-                        for b in 0 .. n - 1 {
-                            if (bits[b] == false) {
-                                X(q[b]);
-                            }
+                    for b in 0 .. n - 1 {
+                        if (bits[b] == false) {
+                            X(q[b]);
                         }
                     }
-                } apply {
-                    let ctrls = all[first..last];
-                    Controlled X (ctrls, t2);
                 }
+            } apply {
+                let ctrls = all[first..last];
+                Controlled X (ctrls, target);
             }
-        } apply {
-            Controlled X ([t1, t2], target);
         }
     }
 }

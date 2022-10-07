@@ -14,10 +14,10 @@ namespace aleph.qsharp.ket {
         let idx = oldColumns;
         let output = [Register(idx..idx)];
 
-        let oracle = _Equals_oracle(left, right, idx, oldOracle, _, _);
-        let universe = Universe(oldRows, oldColumns + 1, oracle);
+        let oracle = _Equals_oracle(left, right, idx, _, _);
+        let universe = Universe(oldRows, oldColumns + 1,  oldOracle + [oracle]);
 
-        log.Info($"Ket.Equals::Init --> left: {left}; right: {right}");
+        log.Info($"Ket.Equals::Init --> left: {left}; right: {right}; output: {output}");
         return (universe, output);
     }
 
@@ -25,7 +25,6 @@ namespace aleph.qsharp.ket {
         l: Register,
         r: Register,
         idx: Int,
-        previous: (Qubit[], Qubit) => Unit is Adj + Ctl,
         all: Qubit[], target: Qubit) : Unit
     is Adj + Ctl {
         log.Debug($"Ket.Equals::oracle --> target:{target}");
@@ -36,34 +35,30 @@ namespace aleph.qsharp.ket {
 
         // return false for all records if registers are of different size.
         if (Length(left) != Length(right)) {
-            use t1 = Qubit();
             within {
-                previous(all, t1);
                 X (answer);
             } apply {
-                Controlled X ([t1, answer], target);
+                Controlled X ([answer], target);
             }
         } else {
             let n = Length(left);
-            use t1 = Qubit();
-            use t2 = Qubit();
             use a1 = Qubit();
 
-            within {
-                previous(all, t1);
-                
-                AreEqual(left, right, a1);
+            AreEqual(left, right, a1);
 
-                // the true cases.
-                Controlled X ([a1, answer], t2);
+            // the true cases.
+            Controlled X ([a1, answer], target);
 
-                // the false cases.
-                X(a1);
-                X(answer);
-                Controlled X ([a1, answer], t2);
-            } apply {
-                Controlled X ([t1, t2], target);
-            }
+            // the false cases.
+            X(a1);
+            X(answer);
+            Controlled X ([a1, answer], target);
+
+            // Undo
+            Adjoint X(answer);
+            Adjoint X(a1);
+            Adjoint AreEqual(left, right, a1);
+
         }
     }
 

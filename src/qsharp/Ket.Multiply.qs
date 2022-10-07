@@ -17,8 +17,8 @@ namespace aleph.qsharp.ket {
         let idx = oldColumns;
         let output = Register(idx .. idx + size - 1);
 
-        let oracle = _Multiply_oracle(left, right, output, oldOracle, _, _);
-        let universe = Universe(oldRows, oldColumns + size, oracle);
+        let oracle = _Multiply_oracle(left, right, output, _, _);
+        let universe = Universe(oldRows, oldColumns + size, oldOracle + [oracle]);
 
         log.Info($"Ket.Add::Init --> left: {left}; right: {right}; output: {output}");
         return (universe, [output]);
@@ -28,26 +28,20 @@ namespace aleph.qsharp.ket {
         l: Register,
         r: Register,
         o: Register,
-        previous: (Qubit[], Qubit) => Unit is Adj + Ctl,
         all: Qubit[], target: Qubit) : Unit
     is Adj + Ctl {
-        log.Debug($"Ket.All::oracle --> target:{target}");
+        log.Debug($"Ket.Multiply::oracle --> target:{target}");
         
         let left = all[l!];
         let right = all[r!];
         let output = all[o!];
 
-        use t1 = Qubit();
-        use t2 = Qubit();
         use a = Qubit[Length(output)];
 
         within {
-            previous(all, t1);
-
             MultiplyI(LittleEndian(left), LittleEndian(right), LittleEndian(a));
-            AreEqual(a, output, t2);
         } apply {
-            Controlled X ([t1, t2], target);
+            AreEqual(a, output, target);
         }
     }
 }

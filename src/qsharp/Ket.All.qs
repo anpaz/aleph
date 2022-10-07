@@ -18,7 +18,7 @@ namespace aleph.qsharp.ket {
 
         let universe = Universe(rows, oldColumns + size, oldOracle);
 
-        log.Info($"Ket.All::Init --> size: {size}");
+        log.Info($"Ket.All::Init --> size: {size}; output: {output}");
         return (universe, output);
     }
 }

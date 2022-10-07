@@ -10,7 +10,7 @@ namespace aleph.qsharp {
     newtype Universe = (
         rows: Int,
         columns: Int,
-        oracle: (Qubit[], Qubit) => Unit is Adj + Ctl
+        oracles: ((Qubit[], Qubit) => Unit is Adj + Ctl)[]
     );
 
 }

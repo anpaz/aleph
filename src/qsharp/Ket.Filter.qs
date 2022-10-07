@@ -14,8 +14,8 @@ namespace aleph.qsharp.ket {
 
         let rows = _calculate_rows(oldRows);
 
-        let oracle = _Filter_oracle(c, oldOracle, _, _);
-        let universe = Universe(rows, oldColumns, oracle);
+        let oracle = _Filter_oracle(c, _, _);
+        let universe = Universe(rows, oldColumns, oldOracle + [oracle]);
 
         log.Info($"Ket.Filter::Init --> cond: {c}");
         return (universe, []);
@@ -23,20 +23,12 @@ namespace aleph.qsharp.ket {
 
     operation _Filter_oracle(
         c: Register,
-        previous: (Qubit[], Qubit) => Unit is Adj + Ctl,
         all: Qubit[], target: Qubit) : Unit
     is Adj + Ctl {
-        log.Debug($"Ket.All::oracle --> target:{target}");
+        log.Debug($"Ket.Filter::oracle --> target:{target}");
         
         let cond_q = all[c!];
-
-        use t1 = Qubit();
-
-        within {
-            previous(all, t1);
-        } apply {
-            Controlled X (cond_q + [t1], target);
-        }
+        Controlled X (cond_q, target);
     }
 
     function _calculate_rows(oldRows: Int) : Int {

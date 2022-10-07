@@ -14,10 +14,10 @@ namespace aleph.qsharp.ket {
         let idx = oldColumns;
         let output = [Register(idx..idx)];
 
-        let oracle = _Or_oracle(left, right, idx, oldOracle, _, _);
-        let universe = Universe(oldRows, oldColumns + 1, oracle);
+        let oracle = _Or_oracle(left, right, idx, _, _);
+        let universe = Universe(oldRows, oldColumns + 1, oldOracle + [oracle]);
 
-        log.Info($"Ket.Or::Init --> left: {left}; right: {right}");
+        log.Info($"Ket.Or::Init --> left: {left}; right: {right}; output: {output}");
         return (universe, output);
     }
 
@@ -25,7 +25,6 @@ namespace aleph.qsharp.ket {
         l: Register,
         r: Register,
         idx: Int,
-        previous: (Qubit[], Qubit) => Unit is Adj + Ctl,
         all: Qubit[], target: Qubit) : Unit
     is Adj + Ctl {
         log.Debug($"Ket.Or::oracle --> target:{target}");
@@ -35,27 +34,26 @@ namespace aleph.qsharp.ket {
         let right = all[r!];
         use a1 = Qubit();
 
-        use t1 = Qubit();
-        use t2 = Qubit();
+        // a1 hold true if left || right == !(!left ^ !right)
+        ApplyToEachCA(X, left);
+        ApplyToEachCA(X, right);
+        Controlled X (left + right, a1);
+        X (a1);
 
-        within {
-            previous(all, t1);
+        // the true cases
+        Controlled X ([a1, answer], target);
 
-            // a1 hold true if left || right == !(!left ^ !right)
-            ApplyToEachCA(X, left);
-            ApplyToEachCA(X, right);
-            Controlled X (left + right, a1);
-            X (a1);
+        // the false cases
+        X(a1);
+        X(answer);
+        Controlled X ([a1, answer], target);
 
-            // the true cases
-            Controlled X ([a1, answer], t2);
+        // Undo
+        // a1 hold true if left || right == !(!left ^ !right)
 
-            // the false cases
-            X(a1);
-            X(answer);
-            Controlled X ([a1, answer], t2);
-        } apply {
-            Controlled X ([t1, t2], target);
-        }
+        Adjoint X(answer);
+        Adjoint Controlled X (left + right, a1);
+        Adjoint ApplyToEachCA(X, right);
+        Adjoint ApplyToEachCA(X, left);
     }
 }

@@ -9,15 +9,15 @@ namespace aleph.qsharp.ket {
 
     function Add(left: Register, right: Register, previous: Universe) : (Universe, Register[])
     {
-        let (oldRows, oldColumns, oldOracle) = previous!;
+        let (oldRows, oldColumns, oldOracles) = previous!;
 
         let size = RangeEnd(right!) - RangeStart(right!) + 1;
 
         let idx = oldColumns;
         let output = Register(idx .. idx + size - 1);
 
-        let oracle = _Add_oracle(left, right, output, oldOracle, _, _);
-        let universe = Universe(oldRows, oldColumns + size, oracle);
+        let oracle = _Add_oracle(left, right, output, _, _);
+        let universe = Universe(oldRows, oldColumns + size, oldOracles + [oracle]);
 
         log.Info($"Ket.Add::Init --> left: {left}; right: {right}; output: {output}");
         return (universe, [output]);
@@ -27,25 +27,18 @@ namespace aleph.qsharp.ket {
         l: Register,
         r: Register,
         o: Register,
-        previous: (Qubit[], Qubit) => Unit is Adj + Ctl,
         all: Qubit[], target: Qubit) : Unit
     is Adj + Ctl {
-        log.Debug($"Ket.All::oracle --> target:{target}");
+        log.Debug($"Ket.Add::oracle --> target:{target}");
         
         let left = all[l!];
         let right = all[r!];
         let output = all[o!];
 
-        use t1 = Qubit();
-        use t2 = Qubit();
-
         within {
-            previous(all, t1);
-
             AddI(LittleEndian(left), LittleEndian(right));
-            AreEqual(right, output, t2);
         } apply {
-            Controlled X ([t1, t2], target);
+            AreEqual(right, output, target);
         }
     }
 }

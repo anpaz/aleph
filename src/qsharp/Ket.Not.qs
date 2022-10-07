@@ -14,17 +14,16 @@ namespace aleph.qsharp.ket {
         let idx = oldColumns;
         let output = [Register(idx..idx)];
 
-        let oracle = _Not_oracle(source, idx, oldOracle, _, _);
-        let universe = Universe(oldRows, oldColumns + 1, oracle);
+        let oracle = _Not_oracle(source, idx, _, _);
+        let universe = Universe(oldRows, oldColumns + 1, oldOracle + [oracle]);
 
-        log.Info($"Ket.Not::Init --> source: {source}");
+        log.Info($"Ket.Not::Init --> source: {source}; output: {output}");
         return (universe, output);
     }
 
     operation _Not_oracle(
         source: Register,
         idx: Int,
-        previous: (Qubit[], Qubit) => Unit is Adj + Ctl,
         all: Qubit[], target: Qubit) : Unit
     is Adj + Ctl {
         log.Debug($"Ket.Not::oracle --> target:{target}");
@@ -32,19 +31,13 @@ namespace aleph.qsharp.ket {
         let answer = all[idx];
         let ctrls = all[source!] + [answer];
 
-        use t1 = Qubit();
-        use t2 = Qubit();
+        X (answer);
+        Controlled X (ctrls, target);
 
-        within {
-            previous(all, t1);
+        ApplyToEachCA(X, ctrls);
+        Controlled X (ctrls, target);
 
-            X (answer);
-            Controlled X (ctrls, t2);
-
-            ApplyToEachCA(X, ctrls);
-            Controlled X (ctrls, t2);
-        } apply {
-            Controlled X ([t1, t2], target);
-        }
+        Adjoint ApplyToEachCA(X, ctrls);
+        Adjoint X (answer);
     }
 }
