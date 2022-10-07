@@ -22,7 +22,8 @@ let program =
               Method(
                   arguments = List.empty,
                   returns = Type.Ket [ Type.Int ],
-                  body = Ket(Set [ Var "RED"; Var "BLUE"; Var "GREEN" ])
+                  //body = Ket(Set [ Var "RED"; Var "BLUE"; Var "GREEN" ])
+                  body = KetAll(Int 2)
               )
           )
 
@@ -38,8 +39,9 @@ let program =
               Set
                   [ Tuple [ Int 0; Int 1 ]
                     Tuple [ Int 1; Int 2 ]
-                    Tuple [ Int 3; Int 1 ]
-                    Tuple [ Int 2; Int 0 ] ]
+                    //Tuple [ Int 3; Int 1 ]
+                    //Tuple [ Int 2; Int 0 ] 
+                    ]
           )
           Print("edges", [ Var "edges" ])
 
@@ -79,7 +81,7 @@ let program =
               (Method(
                   arguments =
                       [ ("edges", Type.Set(Type.Tuple [ Type.Int; Type.Int ]))
-                        ("coloring", Type.Ket [ Type.Int; Type.Int; Type.Int; Type.Int ]) ],
+                        ("coloring", Type.Ket [ Type.Int; Type.Int; Type.Int ]) ],
                   returns = Type.Ket [ Type.Bool ],
                   body =
                       If(
@@ -119,15 +121,15 @@ let program =
           Let(
               "nodes_colors",
               (Join(
-                  Join(
-                      Join(CallMethod(Var "colors", List.empty), CallMethod(Var "colors", List.empty)),
-                      CallMethod(Var "colors", List.empty)
-                  ),
-                  CallMethod(Var "colors", List.empty)
+                  //Join(
+                Join(CallMethod(Var "colors", List.empty), CallMethod(Var "colors", List.empty)),
+                CallMethod(Var "colors", List.empty)
+                //   ),
+                //   CallMethod(Var "colors", List.empty)
               ))
           )
 
-          Print("nodes_colors: ", [ Var "nodes_colors" ])
+        //   Print("nodes_colors: ", [ Var "nodes_colors" ])
 
           // // To find a valid coloring, solve the valid_combination oracle and
           // // measure the result
@@ -140,19 +142,20 @@ let program =
           // let answers = Solve(nodes_colors, classification)
           Let("answers", Filter(Var "nodes_colors", Var "classification"))
 
-          Print("classification: ", [ Prepare(Join(Var "nodes_colors", Var "classification")) ])
-          Print("answers: ", [ Prepare(Var "answers") ])
+        //   Print("classification: ", [ Prepare(Join(Var "nodes_colors", Var "classification")) ])
+        //   Print("answers: ", [ Prepare(Var "answers") ])
 
           // let s1 = | Prepare (answers) |
           // let s2 = | Prepare (answers) |
           // let s2 = | Prepare (answers) |
-          Let("s1", Sample(Prepare(Var "answers")))
-          Let("s2", Sample(Prepare(Var "answers")))
+        //   Let("s1", Sample(Prepare(Var "answers")))
+        //   Let("s2", Sample(Prepare(Var "answers")))
           Let("s3", Sample(Prepare(Var "answers")))
 
-          Print("s1: ", [ Var "s1" ])
-          Print("s2: ", [ Var "s2" ])
-          Print("s3: ", [ Var "s3" ]) ],
+        //   Print("s1: ", [ Var "s1" ])
+        //   Print("s2: ", [ Var "s2" ])
+        //   Print("s3: ", [ Var "s3" ]) 
+        ],
         // s3
         Var("s3")
     )

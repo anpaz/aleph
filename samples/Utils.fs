@@ -21,11 +21,19 @@ let wrapup code =
 let simulate program =
     program |> run (aleph.runtime.qpu.classic.Processor())
 
-let trace program =
+let estimate program =
+    let res = new ResourcesEstimator()
     let tracer = new ExecutionPathTracer()
-    let sim = (new QuantumSimulator()).WithExecutionPathTracer(tracer)
+    let sim = res // (res).WithExecutionPathTracer(tracer)
+    let sim = new QuantumSimulator()
+
+    let r = program |> run (aleph.runtime.qpu.qsharp.Processor(res))
+    res.Data.Rows 
+    |> Seq.cast<System.Data.DataRow> 
+    |> Seq.iter (fun r -> 
+        r.ItemArray |> Seq.iter (printfn "r: %A"))
 
     let r = program |> run (aleph.runtime.qpu.qsharp.Processor(sim))
 
-    System.IO.File.WriteAllText("circuit.json", tracer.GetExecutionPath().ToJson())
+    //System.IO.File.WriteAllText("circuit.json", tracer.GetExecutionPath().ToJson())
     r
