@@ -35,15 +35,16 @@ namespace aleph.qsharp {
         let (rows, _, _) = universe!;
         let oracle = _oracle(universe, _, _);
         let tracker = qubits[0];
-        mutable max = 2;
+        let max = 3;
+        mutable count = 1;
 
         repeat {
             ResetAll(qubits);
             ApplyToEachA(H, qubits);
             grover.Apply(oracle, qubits, rows);
-        } until ((M(tracker) == One) or (rows == 0) or (max <= 0))
+        } until ((M(tracker) == One) or (rows == 0) or (count >= max))
         fixup {
-            set max = max - 1;
+            set count = count + 1;
         }
 
         // if (M(tracker) == Zero) {
@@ -67,9 +68,12 @@ namespace aleph.qsharp {
 
     operation _oracle(universe: Universe, all: Qubit[], target: Qubit) : Unit
     is Adj + Ctl {
-        let (_, _, oracles) = universe!;
+        let (rows, columns, oracles) = universe!;
 
         let n = Length(oracles);
+        
+        log.Info($"Universe::uber-oracle --> rows: {rows}; columns: {columns}; oracles count: {n}");
+
         use ancillas = Qubit[n];
 
         within {

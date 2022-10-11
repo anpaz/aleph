@@ -23,7 +23,7 @@ let program =
                   arguments = List.empty,
                   returns = Type.Ket [ Type.Int ],
                   //body = Ket(Set [ Var "RED"; Var "BLUE"; Var "GREEN" ])
-                  body = KetAll(Int 2)
+                  body = KetAll(Int 1)
               )
           )
 
@@ -38,7 +38,8 @@ let program =
               "edges",
               Set
                   [ Tuple [ Int 0; Int 1 ]
-                    Tuple [ Int 1; Int 2 ]
+                    Tuple [ Int 0; Int 2 ]
+                    Tuple [ Int 0; Int 3 ]
                     //Tuple [ Int 3; Int 1 ]
                     //Tuple [ Int 2; Int 0 ] 
                     ]
@@ -81,7 +82,7 @@ let program =
               (Method(
                   arguments =
                       [ ("edges", Type.Set(Type.Tuple [ Type.Int; Type.Int ]))
-                        ("coloring", Type.Ket [ Type.Int; Type.Int; Type.Int ]) ],
+                        ("coloring", Type.Ket [ Type.Int; Type.Int; Type.Int; Type.Int ]) ],
                   returns = Type.Ket [ Type.Bool ],
                   body =
                       If(
@@ -121,12 +122,13 @@ let program =
           Let(
               "nodes_colors",
               (Join(
-                  //Join(
-                Join(CallMethod(Var "colors", List.empty), CallMethod(Var "colors", List.empty)),
-                CallMethod(Var "colors", List.empty)
-                //   ),
-                //   CallMethod(Var "colors", List.empty)
-              ))
+                Join(
+                    Join(
+                        CallMethod(Var "colors", List.empty),
+                        CallMethod(Var "colors", List.empty)),
+                        CallMethod(Var "colors", List.empty)),
+                        CallMethod(Var "colors", List.empty))
+              )
           )
 
         //   Print("nodes_colors: ", [ Var "nodes_colors" ])

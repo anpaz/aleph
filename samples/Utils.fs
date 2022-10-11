@@ -24,16 +24,30 @@ let simulate program =
 let estimate program =
     let res = new ResourcesEstimator()
     let tracer = new ExecutionPathTracer()
-    let sim = res // (res).WithExecutionPathTracer(tracer)
-    let sim = new QuantumSimulator()
+    let sim = (res).WithExecutionPathTracer(tracer)
 
-    let r = program |> run (aleph.runtime.qpu.qsharp.Processor(res))
-    res.Data.Rows 
-    |> Seq.cast<System.Data.DataRow> 
-    |> Seq.iter (fun r -> 
-        r.ItemArray |> Seq.iter (printfn "r: %A"))
+    printfn ("==> Starting resources estimation...\n")
+    program |> run (aleph.runtime.qpu.qsharp.Processor(sim)) |> ignore
 
-    let r = program |> run (aleph.runtime.qpu.qsharp.Processor(sim))
+    let estimate (key: string) = 
+        let row = 
+            res.Data.Rows 
+            |> Seq.cast<System.Data.DataRow>
+            |> Seq.find( fun r -> r.[0] = key)
+        int64 (row.[1].ToString())
 
-    //System.IO.File.WriteAllText("circuit.json", tracer.GetExecutionPath().ToJson())
-    r
+    let depth = estimate "Depth"
+    let qubitCount = estimate "QubitCount"
+    printfn "\n==> Estimated resources:\n  - Qubits: %d\n  - Depth: %d" qubitCount depth
+
+    printf ("==> Saving circuit... ")
+    System.IO.File.WriteAllText("circuit.json", tracer.GetExecutionPath().ToJson())
+    printfn("done.")
+    
+    if qubitCount < 35 then
+        printfn ("==> Starting quantum execution...")
+        let sim = new QuantumSimulator()
+        program |> run (aleph.runtime.qpu.qsharp.Processor(sim)) |> ignore
+        0
+    else 
+        1

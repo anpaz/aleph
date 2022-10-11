@@ -13,7 +13,8 @@ namespace aleph.qsharp.grover {
     is Adj {
         let n = Length(register);
 
-        let iterations = GroverIterationsCount(n, answers);        
+        let iterations = GroverIterationsCount(n, answers);
+        log.Info($"Starting {iterations} iterations for {n} qubits with {answers} answers");
 
         for i in 1..iterations {
             GroverIteration(_toPhaseOracle(oracle, _), register);
