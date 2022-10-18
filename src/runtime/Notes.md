@@ -289,5 +289,195 @@ $P(a, b) = P_{k_a}(a) P_{k_b}( b | a )$
 
 
 
+# Universe with Oracles
+
+```
+let x = |(0,0), (0,1), (1,1)>
+let a = x.1 + 1
+let b = Filter(x, a = 0)
+|b|
+```
+
+The expected state of the system change on each statement as follows:
+
+`let x = |(0,0), (0,1), (1,1)>`
+
+| x.0 | x.1 | Prob |
+| --- | --- | --- |
+| 0 | 0 | *** (33%) |
+| 0 | 1 | *** |
+| 1 | 0 | |
+| 1 | 1 | *** |
 
 
+`let a = x.1 + 1`
+
+| x.0 | x.1 | a | Prob |
+| --- | --- | --- | --- |
+| 0 | 0 | 0 | |
+| 0 | 0 | 1 | *** (33%) |
+| 0 | 1 | 0 | *** |
+| 0 | 1 | 1 | |
+| 1 | 0 | 0 | |
+| 1 | 0 | 1 | |
+| 1 | 1 | 0 | *** |
+| 1 | 1 | 1 | |
+
+`let b = Filter(x, a = 0)`
+
+| x.0 | x.1 | a | Prob |
+| --- | --- | --- | --- |
+| 0 | 0 | 0 | |
+| 0 | 0 | 1 | |
+| 0 | 1 | 0 | ***** (50%) |
+| 0 | 1 | 1 | |
+| 1 | 0 | 0 | |
+| 1 | 0 | 1 | |
+| 1 | 1 | 0 | ***** |
+| 1 | 1 | 1 | |
+
+It might be possible, but it's not trivial to write Unitary operations that achieves each of these transformations.
+
+Instead, we use Grover to amplify the probability of the final states we would like to be measured.
+
+Grover works by starting on a state in which all output states (i.e. the value of any output register)
+have the same probability to be measured and accepting an oracle that sets a bit to 1 iff
+the probability of the corresponding state should be amplified.
+
+So starting with the state:
+
+| x.0 | x.1 | Probability |
+| --- | --- | --- |
+| 0 | 0 | * |
+| 0 | 1 | * |
+| 1 | 0 | * |
+| 1 | 1 | * |
+
+We have to create an oracle `T` that returns 1 if the corresponding state is part of the tuple, in
+our example:
+
+| x.0 | x.1 | `T` |
+| --- | --- | --- |
+| 0 | 0 | 1 |
+| 0 | 1 | 1 |
+| 1 | 0 |   |
+| 1 | 1 | 1 |
+
+
+Result of expressions are applied to new registers quantum registers. Because the input state is in full super-position, the result of the expression is calculated in parallel for all possible values. 
+
+| x.0 | x.1 | a | 
+| --- | --- |:---:|
+| 0 | 0 | 1 |
+| 0 | 1 | 0 |
+| 1 | 0 | 1 |
+| 1 | 1 | 0 |
+
+
+We can know create another oracle `A`, that returns 1 if the filtering condition a=0
+
+
+| x.0 | x.1 | a | `A` |
+| --- | --- |:---:|---|
+| 0 | 0 | 1 |   |
+| 0 | 1 | 0 | 1 |
+| 1 | 0 | 1 |   |
+| 1 | 1 | 0 | 1 |
+
+
+Conjoining both `T` and `A` achieves the final oracle.
+
+
+| x.0 | x.1 | a | `T` | `A` | Oralce |
+| --- | --- |:---:|---|-----| ------ |
+| 0 | 0 | 1 | 1 |   |   |
+| 0 | 1 | 0 | 1 | 1 | 1 |
+| 1 | 0 | 1 |   |   |   |
+| 1 | 1 | 0 | 1 | 1 | 1 |
+
+
+## Including expression values in outcome
+
+We mentioned that for Grover to work, it needs all the output states to start on a full 
+super-position state (i.e. any state has the same probability to be measured).
+
+Consider a program in which we want to sample the value of an expression, for example:
+
+```
+let x = |(0,0), (0,1), (1,1)>
+let a = x.1 + 1
+let b = (x,a)
+|b|
+```
+
+Assuming we procede as before and start on a state in which only the input
+variables are set in super-position. Consider the state after applying expression `a`
+
+| x.0 | x.1 | a | 
+| --- | --- |:---:|
+| 0 | 0 | 1 |
+| 0 | 1 | 0 |
+| 1 | 0 | 1 |
+| 1 | 1 | 0 |
+
+The 
+
+| x.0 | x.1 | a | Prob |
+| --- | --- | --- | --- |
+| 0 | 0 | 0 | |
+| 0 | 0 | 1 | *** |
+| 0 | 1 | 0 | *** |
+| 0 | 1 | 1 | |
+| 1 | 0 | 0 | |
+| 1 | 0 | 1 | *** |
+| 1 | 1 | 0 | *** |
+| 1 | 1 | 1 | |
+
+Trying to include `a` in the grover filter will fail, since `a` is not in full superposition. Instead, what aleph does is to add extra registers for any expression that needs to be in 
+
+
+| o | x.0 | x.1 | a | Prob |
+| --- | --- | --- | --- | --- |
+| 0 | 0 | 0 | 0 | |
+| 0 | 0 | 0 | 1 | *** |
+| 0 | 0 | 1 | 0 | *** |
+| 0 | 0 | 1 | 1 | |
+| 0 | 1 | 0 | 0 | |
+| 0 | 1 | 0 | 1 | *** |
+| 0 | 1 | 1 | 0 | *** |
+| 0 | 1 | 1 | 1 | |
+| 1 | 0 | 0 | 0 | |
+| 1 | 0 | 0 | 1 | *** |
+| 1 | 0 | 1 | 0 | *** |
+| 1 | 0 | 1 | 1 | |
+| 1 | 1 | 0 | 0 | |
+| 1 | 1 | 0 | 1 | *** |
+| 1 | 1 | 1 | 0 | *** |
+| 1 | 1 | 1 | 1 | |
+
+We then start by putting `o` and `x` in full superposition, and then add an oracle `O` in which the row is included only if `o` value matches the value of the expression:
+
+| o | x.0 | x.1 | Prob |
+| --- | --- | --- | --- |
+| 0 | 0 | 0 | * |
+| 0 | 0 | 1 | * |
+| 0 | 1 | 0 | * |
+| 0 | 1 | 1 | * |
+| 1 | 0 | 0 | * |
+| 1 | 0 | 1 | * |
+| 1 | 1 | 0 | * |
+| 1 | 1 | 1 | * |
+
+
+| o | x.0 | x.1 | a = x.1 + 1 | `T` | `O` | Oracle |
+| --- | --- | --- | --- | --- | --- | ---|
+| 0 | 0 | 0 | 1 | 1 |   |   |
+| 0 | 0 | 1 | 0 | 1 | 1 | 1 |
+| 0 | 1 | 0 | 1 |   |   |   |
+| 0 | 1 | 1 | 0 | 1 | 1 | 1 |
+| 1 | 0 | 0 | 1 | 1 | 1 | 1 |
+| 1 | 0 | 1 | 0 | 1 |   |   |
+| 1 | 1 | 0 | 1 |   | 1 |   |
+| 1 | 1 | 1 | 0 | 1 |   |   |
+
+When sampled, only the correct 3 rows will be returned.
