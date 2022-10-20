@@ -364,7 +364,7 @@ our example:
 | 1 | 1 | 1 |
 
 
-Result of expressions are applied to new registers quantum registers. Because the input state is in full super-position, the result of the expression is calculated in parallel for all possible values. 
+Result of expressions are applied to new quantum registers. Because the input state is in full super-position, the result of the expression is calculated in parallel for all possible values.   
 
 | x.0 | x.1 | a | 
 | --- | --- |:---:|
