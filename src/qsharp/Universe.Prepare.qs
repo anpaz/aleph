@@ -11,8 +11,6 @@ namespace aleph.qsharp.universe {
     open aleph.qsharp.register as r;
     open aleph.qsharp.universe as u;
 
-
-
     operation Prepare(universe: Universe, qubits: Qubit[]) : Unit {
         // Always add a tracker Qubit. This makes sure
         // there are always at most 1/2 of valid rows, and
@@ -75,13 +73,14 @@ namespace aleph.qsharp.universe {
         
         } else {
             use ancillas = Qubit[n];
+            let pairs =  Zipped(oracles, ancillas);
 
             within {
                 for e in u.GetExpressions(universe) {
                     e(all);
                 }
 
-                for (o, a) in Zipped(oracles, ancillas) {
+                for (o, a) in pairs {
                     o(all, a);
                 }
             }
