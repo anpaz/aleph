@@ -31,7 +31,7 @@ namespace aleph.qsharp.grover {
         let k = Max([1, answers]);
         let iterations = Floor(PI() * Sqrt(IntAsDouble(domain / k)) / 4.0);
         log.Debug($"Grover. iterations:{iterations} (n: {n}, a: {answers})");
-        return iterations;
+        return Max([1,iterations]);
     }
 
     operation GroverOperator (register : Qubit[]) : Unit is Adj {

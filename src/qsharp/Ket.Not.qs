@@ -4,40 +4,34 @@ namespace aleph.qsharp.ket {
     open Microsoft.Quantum.Convert;
     open Microsoft.Quantum.Intrinsic;
 
-    open aleph.qsharp;
     open aleph.qsharp.log as log;
+    open aleph.qsharp.universe;
+    open aleph.qsharp.register as r;
 
-    function Not(source: Register, previous: Universe) : (Universe, Register[])
+    function Not(left: r.Register, old: Universe) : (Universe, r.Register)
     {
-        let (oldRows, oldColumns, oldOracle) = previous!;
+        let (output, u) = AddExpressionOutput(1, old);
+        let expr = _Not_eval(left, output, _);
+        let universe = AddExpression(expr, u);
 
-        let idx = oldColumns;
-        let output = [Register(idx..idx)];
-
-        let oracle = _Not_oracle(source, idx, _, _);
-        let universe = Universe(oldRows, oldColumns + 1, oldOracle + [oracle]);
-
-        log.Info($"Ket.Not::Init --> source: {source}; output: {output}");
+        log.Info($"Ket.Or::Init --> left: {left}; output: {output}");
         return (universe, output);
     }
 
-    operation _Not_oracle(
-        source: Register,
-        idx: Int,
-        all: Qubit[], target: Qubit) : Unit
+    operation _Not_eval(
+        l: r.Register,
+        o: r.Register,
+        all: Qubit[]) : Unit
     is Adj + Ctl {
-        log.Debug($"Ket.Not::oracle --> target:{target}");
-        
-        let answer = all[idx];
-        let ctrls = all[source!] + [answer];
+        let left = all[r.GetRange(l)];
+        let output = all[r.GetRange(o)][0];
 
-        X (answer);
-        Controlled X (ctrls, target);
-
-        ApplyToEachCA(X, ctrls);
-        Controlled X (ctrls, target);
-
-        Adjoint ApplyToEachCA(X, ctrls);
-        Adjoint X (answer);
+        log.Debug($"Ket.Not::eval --> left{left}, output:{output}");
+        within {
+            ApplyToEachCA(X, left);
+        }
+        apply {
+            Controlled X (left, output);
+        }
     }
 }

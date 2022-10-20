@@ -72,6 +72,10 @@ type Universe(sim: IOperationFactory, state: QUniverse, registers: QRegisters) =
             value <- Some sample
             sample
 
+    override this.ToString() =
+        Print.Run(sim, state, registers).Result |> ignore
+        "[see above]"
+
 type Processor(sim: IOperationFactory) =
 
     let rec prepare_ket (ket: Ket, ctx: QsharpContext) =
