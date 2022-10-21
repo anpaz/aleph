@@ -13,9 +13,6 @@ namespace aleph.qsharp.universe {
         // Prepare the universe, then applied the expressions so users 
         // can see their values too:
         Prepare(universe, qubits, 1);
-        for e in u.GetExpressions(universe) {
-            e(qubits);
-        }
 
         Message($"[Q#] Dump Universe: (qubits: {Length(qubits)})");
         if (Length(qubits) > 1) {

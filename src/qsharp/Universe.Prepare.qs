@@ -44,6 +44,12 @@ namespace aleph.qsharp.universe {
             set count = count + 1;
         }
 
+        // Once the oracles have filtered the literals, apply the expressions once more
+        // to have their values are reflected correctly in the universe.
+        for e in u.GetExpressions(universe) {
+            e(qubits);
+        }
+
         if (log.DEBUG_ON()) {
             Message($"[Q#] Final state after Prepare: ");
             if (Length(qubits) > 1) {
