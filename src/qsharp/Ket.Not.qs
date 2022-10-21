@@ -5,17 +5,17 @@ namespace aleph.qsharp.ket {
     open Microsoft.Quantum.Intrinsic;
 
     open aleph.qsharp.log as log;
-    open aleph.qsharp.universe;
+    open aleph.qsharp.universe as u;
     open aleph.qsharp.register as r;
 
-    function Not(left: r.Register, old: Universe) : (Universe, r.Register)
+    function Not(left: r.Register, old: u.Universe) : (u.Universe, r.Register[])
     {
-        let (output, u) = AddExpressionOutput(1, old);
+        let (output, u) = u.AddExpressionOutput(1, old);
         let expr = _Not_eval(left, output, _);
-        let universe = AddExpression(expr, u);
+        let universe = u.AddExpression(expr, u);
 
         log.Info($"Ket.Or::Init --> left: {left}; output: {output}");
-        return (universe, output);
+        return (universe, [output]);
     }
 
     operation _Not_eval(

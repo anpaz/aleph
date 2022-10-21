@@ -5,17 +5,17 @@ namespace aleph.qsharp.ket {
     open Microsoft.Quantum.Intrinsic;
 
     open aleph.qsharp.register as r;
-    open aleph.qsharp.universe;
+    open aleph.qsharp.universe as u;
     open aleph.qsharp.log as log;
 
-    function Add(left: r.Register, right: r.Register, old: Universe) : (Universe, r.Register)
+    function Add(left: r.Register, right: r.Register, old: u.Universe) : (u.Universe, r.Register[])
     {
-        let (output, u) = AddExpressionOutput(r.GetSize(right), old);
+        let (output, u) = u.AddExpressionOutput(r.GetSize(right), old);
         let expr = _Add_eval(left, right, output, _);
-        let universe = AddExpression(expr, u);
+        let universe = u.AddExpression(expr, u);
 
         log.Info($"Ket.Add::Init --> left: {left}; right: {right}; output: {output}");
-        return (universe, output);
+        return (universe, [output]);
     }
 
     operation _Add_eval(

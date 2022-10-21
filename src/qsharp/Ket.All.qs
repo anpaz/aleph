@@ -1,14 +1,14 @@
 namespace aleph.qsharp.ket {
 
-    open aleph.qsharp.register;
-    open aleph.qsharp.universe;
+    open aleph.qsharp.register as r;
+    open aleph.qsharp.universe as u;
     open aleph.qsharp.log as log;
 
-    function All(size: Int, old: Universe) : (Universe, Register)
+    function All(size: Int, old: u.Universe) : (u.Universe, r.Register[])
     {
-        let (output, universe) = AddLiteral(size, old);
+        let (output, universe) = u.AddLiteral(size, old);
 
         log.Info($"Ket.All::Init --> size: {size}; output: {output}");
-        return (universe w/ rows <- GetRows(universe) * (1 <<< size), output);
+        return (universe w/ rows <- u.GetRows(universe) * (1 <<< size), [output]);
     }
 }

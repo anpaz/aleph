@@ -6,25 +6,25 @@ namespace aleph.qsharp.ket {
 
     open aleph.qsharp.log as log;
     open aleph.qsharp.register as r;
-    open aleph.qsharp.universe;
-    open aleph.qsharp.value;
+    open aleph.qsharp.universe as u;
+    open aleph.qsharp.value as v;
 
-    function Constant(v: Value, old: Universe) : (Universe, r.Register)
+    function Constant(value: v.Value, old: u.Universe) : (u.Universe, r.Register[])
     {
-        let (output, u) = AddExpressionOutput(GetSize(v), old);
-        let expr = _Constant_eval(v, output, _);
-        let universe = AddExpression(expr, u);
+        let (output, u) = u.AddExpressionOutput(v.GetSize(value), old);
+        let expr = _Constant_eval(value, output, _);
+        let universe = u.AddExpression(expr, u);
 
-        log.Info($"Ket.Constant::Init --> value: {v}; output: {output}");
-        return (universe, output);
+        log.Info($"Ket.Constant::Init --> value: {value}; output: {output}");
+        return (universe, [output]);
     }
 
     operation _Constant_eval(
-        v: Value,
+        v: v.Value,
         o: r.Register,
         all: Qubit[]) : Unit
     is Adj + Ctl {
-        let value = GetValue(v);
+        let value = v.GetValue(v);
         let output = all[r.GetRange(o)];
 
         log.Debug($"Ket.Constant::eval --> value:{value}, output:{output}");

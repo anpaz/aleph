@@ -29,7 +29,7 @@ namespace aleph.qsharp.universe {
             }
         }
 
-        let oracle = _uber_oracle(u2, all, _, _);
+        let oracle = _uber_oracle(u2, _, _);
 
         // Repeat max number of times:
         let rows = u.GetRows(u2);
@@ -39,7 +39,7 @@ namespace aleph.qsharp.universe {
         repeat {
             ResetAll(literals);
             ApplyToEachA(H, literals);
-            grover.Apply(oracle, literals, rows);
+            grover.Apply(oracle, all, literals, rows);
         }
         until ((M(tracker) == One) or (rows == 0) or (count >= max))
         fixup {
@@ -57,11 +57,12 @@ namespace aleph.qsharp.universe {
 
     operation _tracker_oracle(tracker: r.Register, qubits: Qubit[], target: Qubit) : Unit
     is Adj + Ctl {
-        log.Debug($".tracker.");
-        Controlled X(qubits[r.GetRange(tracker)], target);
+        let t = qubits[r.GetRange(tracker)];
+        log.Debug($".tracker. {t}");
+        Controlled X(t, target);
     }
 
-    operation _uber_oracle(universe: Universe, all: Qubit[], output: Qubit[], target: Qubit) : Unit
+    operation _uber_oracle(universe: Universe, all: Qubit[], target: Qubit) : Unit
     is Adj + Ctl {
         let oracles = u.GetOracles(universe);
         let n = Length(oracles);
@@ -73,7 +74,7 @@ namespace aleph.qsharp.universe {
         
         } else {
             use ancillas = Qubit[n];
-            let pairs =  Zipped(oracles, ancillas);
+            let pairs = Zipped(oracles, ancillas);
 
             within {
                 for e in u.GetExpressions(universe) {

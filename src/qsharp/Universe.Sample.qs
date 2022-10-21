@@ -42,11 +42,11 @@ namespace aleph.qsharp.universe {
                 let n = r.GetSize(head);
                 let (u1, o1) = aleph.qsharp.ket.All(n, universe);
                 // Create and add anoracle that matches this register with the new output
-                let oracle = _equal(head, o1, _, _);
+                let oracle = _equal(head, o1[0], _, _);
                 let u2 = u.AddOracle(oracle, u1);
                 // Continue recursively:
                 let (u3, o3) = _map_outputs(u2, rest);
-                return (u3, [o1] + o3);
+                return (u3, o1 + o3);
             }
         }
     }

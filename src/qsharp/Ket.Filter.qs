@@ -5,15 +5,15 @@ namespace aleph.qsharp.ket {
     open Microsoft.Quantum.Convert;
     open Microsoft.Quantum.Intrinsic;
 
-    open aleph.qsharp.universe;
+    open aleph.qsharp.universe as u;
     open aleph.qsharp.register as r;
     open aleph.qsharp.log as log;
 
-    function Filter(c: r.Register, hint: Int, old: Universe) : Universe
+    function Filter(c: r.Register, hint: Int, old: u.Universe) : u.Universe
     {
         let rowsHint = _rows_heuristic(hint, old);
         let oracle = _Filter_oracle(c, _, _);
-        let universe = AddOracle(oracle, old) w/ rows <- rowsHint;
+        let universe = u.AddOracle(oracle, old) w/ rows <- rowsHint;
 
         log.Info($"Ket.Filter::Init --> cond: {r.GetRange(c)}");
         return universe;
@@ -30,12 +30,12 @@ namespace aleph.qsharp.ket {
         Controlled X (cond_q, target);
     }
 
-    function _rows_heuristic(hint: Int, universe: Universe) : Int {
+    function _rows_heuristic(hint: Int, universe: u.Universe) : Int {
         if (hint > 0) {
             return hint;
         }
 
-        let result = GetRows(universe) >>> 1;
+        let result = u.GetRows(universe) >>> 1;
 
         if result <= 0 {
             return 1;
