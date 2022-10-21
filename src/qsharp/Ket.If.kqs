@@ -10,16 +10,16 @@ namespace aleph.qsharp.ket {
 
     function If(c: Register, t: Register, e: Register, previous: Universe) : (Universe, Register[])
     {
-        let (oldRows, oldColumns, oldOracle) = previous!;
+        let (oldDepth, oldWidth, oldOracle) = previous!;
 
         // Assume t/e conditions have same length
         let size = RangeEnd(t!) - RangeStart(t!) + 1;
 
-        let idx = oldColumns;
+        let idx = oldWidth;
         let output = Register(idx .. idx + size - 1);
 
         let oracle = _If_oracle(c, t, e, output, _, _);
-        let universe = Universe(oldRows, oldColumns + size, oldOracle + [oracle]);
+        let universe = Universe(oldDepth, oldWidth + size, oldOracle + [oracle]);
 
         log.Info($"Ket.If::Init --> cond: {c}; then: {t}; else: {e}; output: {output}");
         return (universe, [output]);

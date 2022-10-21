@@ -9,8 +9,8 @@ namespace aleph.qsharp.universe {
     open aleph.qsharp.value as v;
 
     operation Sample(universe: Universe, outputs: r.Register[], maxTries: Int) : v.Value[] {
-        let columns = u.GetColumns(universe);
-        use qubits = Qubit[columns];
+        let width = u.GetWidth(universe);
+        use qubits = Qubit[width];
 
         Prepare(universe, qubits, maxTries);
 

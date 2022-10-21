@@ -13,7 +13,7 @@ namespace aleph.qsharp.universe {
 
     operation Prepare(universe: Universe, qubits: Qubit[], maxTries: Int) : Unit {
         // Always add a tracker Qubit. This makes sure
-        // there are always at most 1/2 of valid rows, and
+        // there are always at most 1/2 of valid depth, and
         // we also use it to verify grover returned a valid row
         use tracker = Qubit();
         let (t, u1) = u.AddLiteral(1, universe);
@@ -32,14 +32,14 @@ namespace aleph.qsharp.universe {
         let oracle = _uber_oracle(u2, _, _);
 
         // Repeat max number of times:
-        let rows = u.GetRows(u2);
+        let depth = u.GetDepth(u2);
         mutable count = 1;
         repeat {
             ResetAll(literals);
             ApplyToEachA(H, literals);
-            grover.Apply(oracle, all, literals, rows);
+            grover.Apply(oracle, all, literals, depth);
         }
-        until ((M(tracker) == One) or (rows == 0) or (count >= maxTries))
+        until ((M(tracker) == One) or (depth == 0) or (count >= maxTries))
         fixup {
             set count = count + 1;
         }

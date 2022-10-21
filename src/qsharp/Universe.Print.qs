@@ -7,8 +7,8 @@ namespace aleph.qsharp.universe {
     open aleph.qsharp.universe as u;
 
     operation Print(universe: Universe) : Unit {
-        let columns = u.GetColumns(universe);
-        use qubits = Qubit[columns];
+        let width = u.GetWidth(universe);
+        use qubits = Qubit[width];
 
         // Prepare the universe, then applied the expressions so users 
         // can see their values too:

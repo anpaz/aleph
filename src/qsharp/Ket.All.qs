@@ -9,6 +9,6 @@ namespace aleph.qsharp.ket {
         let (output, universe) = u.AddLiteral(size, old);
 
         log.Info($"Ket.All::Init --> size: {size}; output: {output}");
-        return (universe w/ rows <- u.GetRows(universe) * (1 <<< size), [output]);
+        return (universe w/ depth <- u.GetDepth(universe) * (1 <<< size), [output]);
     }
 }

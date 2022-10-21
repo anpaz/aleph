@@ -21,11 +21,11 @@ namespace aleph.qsharp.ket {
             set u = u_i;
         }
 
-        let first = u.GetColumns(old);
-        let last = u.GetColumns(u) - 1;
-        let oracle = _Tuples_oracle(values, outputs, first, last, _, _);
+        let start = u.GetWidth(old);
+        let end = u.GetWidth(u) - 1;
+        let oracle = _Tuples_oracle(values, outputs, start, end, _, _);
         let universe = u.AddOracle(oracle, u)
-            w/ rows <- u.GetRows(old) * Length(values);
+            w/ depth <- u.GetDepth(old) * Length(values);
 
         log.Info($"Ket.Tuples::Init --> values: {values}, output: {outputs}");
         return (universe, outputs);

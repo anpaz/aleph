@@ -3,8 +3,8 @@ namespace aleph.qsharp.universe {
     open aleph.qsharp.register;
 
     newtype Universe = (
-        rows: Int,
-        columns: Int,
+        depth: Int,
+        width: Int,
         registers: Register[],
         expressions: (Qubit[] => Unit is Adj + Ctl)[],
         oracles: ((Qubit[], Qubit) => Unit is Adj + Ctl)[]
@@ -38,20 +38,20 @@ namespace aleph.qsharp.universe {
 
         let output = ctr(start..end);
         let universe = old
-                w/ columns <- cols + size
+                w/ width <- cols + size
                 w/ registers <- regs + [output];
 
         return (output, universe);
     }
 
-    function GetRows(universe: Universe) : Int {
-        let (rows,_,_,_,_) = universe!;
-        return rows;
+    function GetDepth(universe: Universe) : Int {
+        let (depth,_,_,_,_) = universe!;
+        return depth;
     }
 
-    function GetColumns(universe: Universe) : Int {
-        let (_,columns,_,_,_) = universe!;
-        return columns;
+    function GetWidth(universe: Universe) : Int {
+        let (_,width,_,_,_) = universe!;
+        return width;
     }
 
     function GetRegisters(universe: Universe) : Register[] {

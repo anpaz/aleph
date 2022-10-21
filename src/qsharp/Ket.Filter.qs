@@ -11,9 +11,9 @@ namespace aleph.qsharp.ket {
 
     function Filter(c: r.Register, hint: Int, old: u.Universe) : u.Universe
     {
-        let rowsHint = _rows_heuristic(hint, old);
+        let depthHint = _depth_heuristic(hint, old);
         let oracle = _Filter_oracle(c, _, _);
-        let universe = u.AddOracle(oracle, old) w/ rows <- rowsHint;
+        let universe = u.AddOracle(oracle, old) w/ depth <- depthHint;
 
         log.Info($"Ket.Filter::Init --> cond: {r.GetRange(c)}");
         return universe;
@@ -30,12 +30,12 @@ namespace aleph.qsharp.ket {
         Controlled X (cond_q, target);
     }
 
-    function _rows_heuristic(hint: Int, universe: u.Universe) : Int {
+    function _depth_heuristic(hint: Int, universe: u.Universe) : Int {
         if (hint > 0) {
             return hint;
         }
 
-        let result = u.GetRows(universe) >>> 1;
+        let result = u.GetDepth(universe) >>> 1;
 
         if result <= 0 {
             return 1;
