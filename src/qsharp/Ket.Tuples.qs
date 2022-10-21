@@ -8,26 +8,26 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.value as v;
     open aleph.qsharp.log as log;
 
-    function Tuples(classic: v.Value[][], old: u.Universe) : (u.Universe, r.Register[])
+    function Tuples(values: v.Value[][], old: u.Universe) : (u.Universe, r.Register[])
     {
-        let width = Length(classic[0]);
+        let width = Length(values[0]);
 
         // Add a literal for every item in the tuple
         mutable u = old;
         mutable outputs = [];
         for i in 0..width-1 {
-            let (r_i, u_i) = u.AddLiteral(v.GetSize(classic[0][i]), u);
+            let (r_i, u_i) = u.AddLiteral(v.GetSize(values[0][i]), u);
             set outputs = outputs + [r_i];
             set u = u_i;
         }
 
         let first = u.GetColumns(old);
         let last = u.GetColumns(u) - 1;
-        let oracle = _Tuples_oracle(classic, outputs, first, last, _, _);
+        let oracle = _Tuples_oracle(values, outputs, first, last, _, _);
         let universe = u.AddOracle(oracle, u)
-            w/ rows <- u.GetRows(old) * Length(classic);
+            w/ rows <- u.GetRows(old) * Length(values);
 
-        log.Info($"Ket.Literal::Init --> classic: {classic}, output: {outputs}");
+        log.Info($"Ket.Tuples::Init --> values: {values}, output: {outputs}");
         return (universe, outputs);
     }
 
@@ -38,7 +38,7 @@ namespace aleph.qsharp.ket {
         last: Int,
         all: Qubit[], target: Qubit) : Unit
     is Adj + Ctl {
-        log.Debug($"Ket.Literal::oracle: target:{target}, first:{first}, last:{last}");
+        log.Debug($"Ket.Tuples::oracle: target:{target}, first:{first}, last:{last}");
 
         for i in 0..Length(values) - 1 {
             within {

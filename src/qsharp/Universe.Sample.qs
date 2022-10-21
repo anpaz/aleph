@@ -8,12 +8,12 @@ namespace aleph.qsharp.universe {
     open aleph.qsharp.universe as u;
     open aleph.qsharp.value as v;
 
-    operation Sample(u: Universe, o: r.Register[]) : v.Value[] {
+    operation Sample(u: Universe, o: r.Register[], maxTries: Int) : v.Value[] {
         let (universe, output) = _map_outputs(u, o);
         let columns = u.GetColumns(universe);
         use qubits = Qubit[columns];
 
-        Prepare(universe, qubits);
+        Prepare(universe, qubits, maxTries);
 
         mutable result = [];
         for r in output {

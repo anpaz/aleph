@@ -12,7 +12,7 @@ namespace aleph.qsharp.universe {
 
         // Prepare the universe, then applied the expressions so users 
         // can see their values too:
-        Prepare(universe, qubits);
+        Prepare(universe, qubits, 1);
         for e in u.GetExpressions(universe) {
             e(qubits);
         }

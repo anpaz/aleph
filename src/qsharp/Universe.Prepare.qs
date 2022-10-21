@@ -11,7 +11,7 @@ namespace aleph.qsharp.universe {
     open aleph.qsharp.register as r;
     open aleph.qsharp.universe as u;
 
-    operation Prepare(universe: Universe, qubits: Qubit[]) : Unit {
+    operation Prepare(universe: Universe, qubits: Qubit[], maxTries: Int) : Unit {
         // Always add a tracker Qubit. This makes sure
         // there are always at most 1/2 of valid rows, and
         // we also use it to verify grover returned a valid row
@@ -33,15 +33,13 @@ namespace aleph.qsharp.universe {
 
         // Repeat max number of times:
         let rows = u.GetRows(u2);
-        let max = 1;
         mutable count = 1;
-
         repeat {
             ResetAll(literals);
             ApplyToEachA(H, literals);
             grover.Apply(oracle, all, literals, rows);
         }
-        until ((M(tracker) == One) or (rows == 0) or (count >= max))
+        until ((M(tracker) == One) or (rows == 0) or (count >= maxTries))
         fixup {
             set count = count + 1;
         }
