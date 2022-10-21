@@ -8,7 +8,7 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.value as v;
     open aleph.qsharp.log as log;
 
-    function Tuple(classic: v.Value[][], old: u.Universe) : (u.Universe, r.Register[])
+    function Tuples(classic: v.Value[][], old: u.Universe) : (u.Universe, r.Register[])
     {
         let width = Length(classic[0]);
 
@@ -23,7 +23,7 @@ namespace aleph.qsharp.ket {
 
         let first = u.GetColumns(old);
         let last = u.GetColumns(u) - 1;
-        let oracle = _Tuple_oracle(classic, outputs, first, last, _, _);
+        let oracle = _Tuples_oracle(classic, outputs, first, last, _, _);
         let universe = u.AddOracle(oracle, u)
             w/ rows <- u.GetRows(old) * Length(classic);
 
@@ -31,7 +31,7 @@ namespace aleph.qsharp.ket {
         return (universe, outputs);
     }
 
-    operation _Tuple_oracle(
+    operation _Tuples_oracle(
         values: v.Value[][],
         registers: r.Register[],
         first: Int,
