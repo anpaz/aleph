@@ -140,5 +140,5 @@ let program =
           Let("answers", Filter(Var "all_colorings", Var "is_valid", Int 2)) ],
 
         // | answers |
-        Sample(Prepare(Var "answers"))
+        Sample(Var "answers")
     )

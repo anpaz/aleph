@@ -131,5 +131,5 @@ let program =
 
         ],
         // |answers|
-        Sample(Prepare(Var "answers"))
+        Sample(Var "answers")
     )

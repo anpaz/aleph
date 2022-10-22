@@ -9,6 +9,6 @@ let main argv =
           GraphColoring.program 
         ]
 
-    //let programs = [ Sandbox.program ]
+    // let programs = [ Sandbox.program ]
 
     programs |> List.map Utils.qsharp |> List.sum |> Utils.wrapup

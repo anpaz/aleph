@@ -521,6 +521,7 @@ module TypeChecker =
         ==> fun (universe, ctx) ->
                 match universe with
                 | Universe (u, Type.Universe t) -> (Classic(C.Sample u, Type.Tuple t), ctx) |> Ok
+                | Quantum (k, Type.Ket t) -> (Classic(C.Sample (U.Prepare k), Type.Tuple t), ctx) |> Ok
                 | Universe (_, t) -> $"Sample argument must be a quantum universe, got: {t}" |> Error
                 | Quantum (_, t) -> $"Sample argument must be a quantum universe, got: {t}" |> Error
                 | Classic (_, t) -> $"Sample argument must be a quantum universe, got: {t}" |> Error

@@ -925,6 +925,8 @@ type TestTypecheck() =
           // | |> |
           e.Sample(e.Prepare(e.Ket(e.Set []))), Type.Tuple [], C.Sample(U.Prepare(Q.Ket(C.Set [])))
           // | k1 |
+          e.Sample(e.Var "k1"), Type.Tuple [ Type.Int ], C.Sample(U.Prepare(Q.Var "k1"))
+          // | k1 |
           e.Sample(e.Prepare(e.Var "k1")), Type.Tuple [ Type.Int ], C.Sample(U.Prepare(Q.Var "k1"))
           // | k2 |
           e.Sample(e.Prepare(e.Var "k2")), Type.Tuple [ Type.Int; Type.Bool ], C.Sample(U.Prepare(Q.Var "k2")) ]

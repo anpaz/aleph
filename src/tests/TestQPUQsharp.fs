@@ -15,13 +15,13 @@ open aleph.tests.Utils
 
 [<TestClass>]
 type TestQPUQsharp() =
-    member this.QPU = Processor(new QuantumSimulator())
+    member this.QPU = Processor(new SparseSimulator(), 3)
 
     member this.Prelude = ClassicValueContext.Prelude
 
     [<TestMethod>]
     member this.TestRawLiteral() =
-        let sim = new QuantumSimulator()
+        let sim = new SparseSimulator()
 
         let test_one (values: Value list, qubits: int) =
             let bigbang = universe.BigBang.Run(sim).Result

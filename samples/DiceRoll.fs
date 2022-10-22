@@ -13,6 +13,6 @@ let program =
           // let roll = dice1 + dice2
           Let("roll", Add(Var "dice1", Var "dice2")) ],
 
-        // | Prepare coin |
-        Sample(Prepare(Var "roll"))
+        // | coin |
+        Sample(Var "roll")
     )
