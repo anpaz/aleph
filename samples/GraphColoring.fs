@@ -142,10 +142,10 @@ let program =
           )
 
           // let answers = Solve(nodes_colors, classification)
-          Let("answers", Filter(Var "nodes_colors", Var "classification"))
+          Let("answers", Filter(Var "nodes_colors", Var "classification", Int 4))
 
         //   Print("classification: ", [ Prepare(Join(Var "nodes_colors", Var "classification")) ])
-        //   Print("answers: ", [ Prepare(Var "answers") ])
+          Print("answers: ", [ Prepare(Var "answers") ])
 
           // let s1 = | Prepare (answers) |
           // let s2 = | Prepare (answers) |

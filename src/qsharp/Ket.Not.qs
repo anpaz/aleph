@@ -14,7 +14,7 @@ namespace aleph.qsharp.ket {
         let expr = _Not_eval(left, output, _);
         let universe = u.AddExpression(expr, u);
 
-        log.Info($"Ket.Or::Init --> left: {left}; output: {output}");
+        log.Info($"Ket.Not::Init --> left: {left}; output: {output}");
         return (universe, [output]);
     }
 

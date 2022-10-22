@@ -16,7 +16,7 @@ let program =
           Let("eq2", (Add(Multiply(Int -6, Var "x"), (Multiply(Int 20, Var "y")))))
 
           // let solution = Solve ((x, y), eq1 == eq2)
-          Let("solution", Filter((Join(Var "x", Var "y")), Equals(Var "eq1", Var "eq2"))) ],
+          Let("solution", Filter((Join(Var "x", Var "y")), Equals(Var "eq1", Var "eq2"), Int 0)) ],
 
         // | Prepare (solution) |
         Sample(Prepare(Var "solution"))

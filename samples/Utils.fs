@@ -36,15 +36,15 @@ let estimate program =
             |> Seq.find( fun r -> r.[0] = key)
         int64 (row.[1].ToString())
 
+    let width = estimate "Width"
     let depth = estimate "Depth"
-    let qubitCount = estimate "QubitCount"
-    printfn "\n==> Estimated resources:\n  - Qubits: %d\n  - Depth: %d" qubitCount depth
+    printfn "\n==> Estimated resources:\n  - Width: %d\n  - Depth: %d" width depth
 
     printf ("==> Saving circuit... ")
     System.IO.File.WriteAllText("circuit.json", tracer.GetExecutionPath().ToJson())
     printfn("done.")
     
-    if qubitCount < 35 then
+    if width < 35 then
         printfn ("==> Starting quantum execution...")
         let sim = new QuantumSimulator()
         program |> run (aleph.runtime.qpu.qsharp.Processor(sim)) |> ignore
