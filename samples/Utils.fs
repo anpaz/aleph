@@ -27,7 +27,7 @@ let estimate program =
     let sim = (res).WithExecutionPathTracer(tracer)
 
     printfn ("==> Starting resources estimation...\n")
-    program |> run (aleph.runtime.qpu.qsharp.Processor(sim)) |> ignore
+    start (program, aleph.runtime.qpu.qsharp.Processor(sim, 1)) |> ignore
 
     let estimate (key: string) = 
         let row = 
@@ -38,16 +38,22 @@ let estimate program =
 
     let width = estimate "Width"
     let depth = estimate "Depth"
-    printfn "\n==> Estimated resources:\n  - Width: %d\n  - Depth: %d" width depth
+    printfn "\n==> Estimated resources:\n  - Width: %d\n  - Depth: %d\n" width depth
 
-    printf ("==> Saving circuit... ")
-    System.IO.File.WriteAllText("circuit.json", tracer.GetExecutionPath().ToJson())
-    printfn("done.")
+    if depth < 1000 then
+        printf ("==> Saving circuit... ")
+        System.IO.File.WriteAllText("circuit.json", tracer.GetExecutionPath().ToJson())
+        printfn ("done.\n")
     
-    if width < 35 then
+    (width, depth)
+
+let qsharp program =
+    let (width, depth) = estimate program
+
+    if width < 40 then
         printfn ("==> Starting quantum execution...")
-        let sim = new QuantumSimulator()
-        program |> run (aleph.runtime.qpu.qsharp.Processor(sim)) |> ignore
+        let sim = new SparseSimulator()
+        program |> run (aleph.runtime.qpu.qsharp.Processor(sim, 3)) |> ignore
         0
     else 
         1

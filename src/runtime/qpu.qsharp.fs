@@ -15,7 +15,7 @@ open aleph.runtime.Eval
 
 module Convert =
     let BOOL_REGISTER_SIZE = 1
-    let INT_REGISTER_DEFAULT_SIZE = 2
+    let INT_REGISTER_DEFAULT_SIZE = 3
 
     let toQValue =
         function
@@ -76,7 +76,7 @@ type Universe(sim: IOperationFactory, state: QUniverse, registers: QRegisters) =
         universe.Print.Run(sim, state).Result |> ignore
         "[see above]"
 
-type Processor(sim: IOperationFactory) =
+type Processor(sim: IOperationFactory, maxTries: int64) =
 
     let rec prepare_ket (ket: Ket, ctx: QsharpContext) =
         match ctx.allocations.TryFind ket.Id with
@@ -321,7 +321,7 @@ type Processor(sim: IOperationFactory) =
 
         member this.Measure(universe: IUniverse) =
             let u = universe :?> Universe
-            u.Sample(3) |> Ok
+            u.Sample(maxTries) |> Ok
 
         member this.Prepare(u, evalCtx) =
             assert (evalCtx.qpu = this)

@@ -3,10 +3,11 @@ let main argv =
 
     let programs =
         [ //Sandbox.program
-          //CoinFlip.program
-          // DiceRoll.program
-          // SolveEquation.program
+          CoinFlip.program
+          DiceRoll.program
+          //SolveEquation.program
+          TinyGraphColoring.program 
           GraphColoring.program 
         ]
 
-    programs |> List.map Utils.estimate |> List.sum |> Utils.wrapup
+    programs |> List.map Utils.qsharp |> List.sum |> Utils.wrapup

@@ -16,7 +16,14 @@ namespace aleph.qsharp.universe {
 
         Message($"[Q#] Dump Universe: (qubits: {Length(qubits)})");
         if (Length(qubits) > 1) {
-            DumpMachine(());
+            // Print to console only if less than 10 qubits in total
+            if (Length(qubits) < 10) {
+                DumpMachine(());
+            }
+            DumpMachine("universe.txt");
+            Message("  see: universe.txt ");
+        } else {
+            Message(" --> empty universe <--");
         }
         Message("");
 

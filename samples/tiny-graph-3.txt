@@ -5,16 +5,17 @@ answers: [Q#] Ket.All::Init --> size: 1; output: Register((0..1..0, 0))
 [Q#] Ket.All::Init --> size: 1; output: Register((1..1..1, 0))
 [Q#] Ket.All::Init --> size: 1; output: Register((2..1..2, 0))
 [Q#] Ket.All::Init --> size: 1; output: Register((3..1..3, 0))
-[Q#] Ket.Equals::Init --> left: Register((0..1..0, 0)); right: Register((3..1..3, 0)); output: Register((4..1..4, 1))
+[Q#] Ket.Equals::Init --> left: Register((0..1..0, 0)); right: Register((1..1..1, 0)); output: Register((4..1..4, 1))
 [Q#] Ket.Not::Init --> left: Register((4..1..4, 1)); output: Register((5..1..5, 1))
-[Q#] Ket.Equals::Init --> left: Register((0..1..0, 0)); right: Register((1..1..1, 0)); output: Register((6..1..6, 1))
+[Q#] Ket.Equals::Init --> left: Register((0..1..0, 0)); right: Register((2..1..2, 0)); output: Register((6..1..6, 1))
 [Q#] Ket.Not::Init --> left: Register((6..1..6, 1)); output: Register((7..1..7, 1))
-[Q#] Ket.Equals::Init --> left: Register((0..1..0, 0)); right: Register((2..1..2, 0)); output: Register((8..1..8, 1))
+[Q#] Ket.Equals::Init --> left: Register((0..1..0, 0)); right: Register((3..1..3, 0)); output: Register((8..1..8, 1))
 [Q#] Ket.Not::Init --> left: Register((8..1..8, 1)); output: Register((9..1..9, 1))
 [Q#] Ket.And::Init --> left: Register((7..1..7, 1)); right: Register((9..1..9, 1)); output: Register((10..1..10, 1))
 [Q#] Ket.And::Init --> left: Register((5..1..5, 1)); right: Register((10..1..10, 1)); output: Register((11..1..11, 1))
 [Q#] Ket.Filter::Init --> cond: 11..1..11
-[Q#] Starting 2 iterations for output:[q:0,q:1,q:2,q:3,q:12] with 4 answers (total qubits: 13)
+[Q#] Starting 3 iterations for output:[q:0,q:1,q:2,q:3,q:12] with 2 answers (total qubits: 13)
+[Q#] Universe::uber-oracle --> oracles count: 2
 [Q#] Universe::uber-oracle --> oracles count: 2
 [Q#] Universe::uber-oracle --> oracles count: 2
 [Q#] Dump Universe: (qubits: 12)
@@ -25,22 +26,25 @@ Universe [see above]
 [Q#] Ket.All::Init --> size: 1; output: Register((1..1..1, 0))
 [Q#] Ket.All::Init --> size: 1; output: Register((2..1..2, 0))
 [Q#] Ket.All::Init --> size: 1; output: Register((3..1..3, 0))
-[Q#] Ket.Equals::Init --> left: Register((0..1..0, 0)); right: Register((1..1..1, 0)); output: Register((4..1..4, 1))
+[Q#] Ket.Equals::Init --> left: Register((0..1..0, 0)); right: Register((2..1..2, 0)); output: Register((4..1..4, 1))
 [Q#] Ket.Not::Init --> left: Register((4..1..4, 1)); output: Register((5..1..5, 1))
-[Q#] Ket.Equals::Init --> left: Register((0..1..0, 0)); right: Register((2..1..2, 0)); output: Register((6..1..6, 1))
+[Q#] Ket.Equals::Init --> left: Register((0..1..0, 0)); right: Register((1..1..1, 0)); output: Register((6..1..6, 1))
 [Q#] Ket.Not::Init --> left: Register((6..1..6, 1)); output: Register((7..1..7, 1))
 [Q#] Ket.Equals::Init --> left: Register((0..1..0, 0)); right: Register((3..1..3, 0)); output: Register((8..1..8, 1))
 [Q#] Ket.Not::Init --> left: Register((8..1..8, 1)); output: Register((9..1..9, 1))
 [Q#] Ket.And::Init --> left: Register((7..1..7, 1)); right: Register((9..1..9, 1)); output: Register((10..1..10, 1))
 [Q#] Ket.And::Init --> left: Register((5..1..5, 1)); right: Register((10..1..10, 1)); output: Register((11..1..11, 1))
 [Q#] Ket.Filter::Init --> cond: 11..1..11
-[Q#] Starting 2 iterations for output:[q:11,q:10,q:9,q:8,q:12] with 4 answers (total qubits: 13)
+[Q#] Starting 3 iterations for output:[q:11,q:10,q:9,q:8,q:12] with 2 answers (total qubits: 13)
 [Q#] Universe::uber-oracle --> oracles count: 2
 [Q#] Universe::uber-oracle --> oracles count: 2
-[Q#] Starting 2 iterations for output:[q:11,q:10,q:9,q:8,q:12] with 4 answers (total qubits: 13)
+[Q#] Universe::uber-oracle --> oracles count: 2
+[Q#] Starting 3 iterations for output:[q:11,q:10,q:9,q:8,q:12] with 2 answers (total qubits: 13)
 [Q#] Universe::uber-oracle --> oracles count: 2
 [Q#] Universe::uber-oracle --> oracles count: 2
-[Q#] Starting 2 iterations for output:[q:11,q:10,q:9,q:8,q:12] with 4 answers (total qubits: 13)
+[Q#] Universe::uber-oracle --> oracles count: 2
+[Q#] Starting 3 iterations for output:[q:11,q:10,q:9,q:8,q:12] with 2 answers (total qubits: 13)
+[Q#] Universe::uber-oracle --> oracles count: 2
 [Q#] Universe::uber-oracle --> oracles count: 2
 [Q#] Universe::uber-oracle --> oracles count: 2
 
@@ -48,7 +52,7 @@ result: Tuple [Bool false; Bool false; Bool false; Bool false]
 
 ==> Estimated resources:
   - Width: 16
-  - Depth: 490
+  - Depth: 720
 ==> Saving circuit... done.
 ==> Starting quantum execution...
 edgesSet (set [Tuple [Int 0; Int 1]; Tuple [Int 0; Int 2]; Tuple [Int 0; Int 3]])
@@ -65,7 +69,8 @@ answers: [Q#] Ket.All::Init --> size: 1; output: Register((0..1..0, 0))
 [Q#] Ket.And::Init --> left: Register((7..1..7, 1)); right: Register((9..1..9, 1)); output: Register((10..1..10, 1))
 [Q#] Ket.And::Init --> left: Register((5..1..5, 1)); right: Register((10..1..10, 1)); output: Register((11..1..11, 1))
 [Q#] Ket.Filter::Init --> cond: 11..1..11
-[Q#] Starting 2 iterations for output:[q:0,q:1,q:2,q:3,q:12] with 4 answers (total qubits: 13)
+[Q#] Starting 3 iterations for output:[q:0,q:1,q:2,q:3,q:12] with 2 answers (total qubits: 13)
+[Q#] Universe::uber-oracle --> oracles count: 2
 [Q#] Universe::uber-oracle --> oracles count: 2
 [Q#] Universe::uber-oracle --> oracles count: 2
 [Q#] Dump Universe: (qubits: 12)
@@ -211,7 +216,7 @@ answers: [Q#] Ket.All::Init --> size: 1; output: Register((0..1..0, 0))
 |231⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |250⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |402⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
-|421⟩	 0.056643 +  0.000000 i	 == 	*                    [ 0.003208 ]     --- [  0.00000 rad ]
+|421⟩	 0.036284 +  0.000000 i	 == 	*                    [ 0.001317 ]     --- [  0.00000 rad ]
 |440⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |611⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |630⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
@@ -345,7 +350,7 @@ answers: [Q#] Ket.All::Init --> size: 1; output: Register((0..1..0, 0))
 |180⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |313⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |332⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
-|351⟩	 0.056643 +  0.000000 i	 == 	*                    [ 0.003208 ]     --- [  0.00000 rad ]
+|351⟩	 0.036284 +  0.000000 i	 == 	*                    [ 0.001317 ]     --- [  0.00000 rad ]
 |370⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |503⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |522⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
@@ -385,7 +390,7 @@ answers: [Q#] Ket.All::Init --> size: 1; output: Register((0..1..0, 0))
 |432⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |451⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |470⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
-|603⟩	 0.056643 +  0.000000 i	 == 	*                    [ 0.003208 ]     --- [  0.00000 rad ]
+|603⟩	 0.036284 +  0.000000 i	 == 	*                    [ 0.001317 ]     --- [  0.00000 rad ]
 |622⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |641⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |660⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
@@ -620,7 +625,7 @@ answers: [Q#] Ket.All::Init --> size: 1; output: Register((0..1..0, 0))
 |443⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |462⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |481⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
-|614⟩	 0.056643 +  0.000000 i	 == 	*                    [ 0.003208 ]     --- [  0.00000 rad ]
+|614⟩	 0.036284 +  0.000000 i	 == 	*                    [ 0.001317 ]     --- [  0.00000 rad ]
 |633⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |652⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |671⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
@@ -830,7 +835,7 @@ answers: [Q#] Ket.All::Init --> size: 1; output: Register((0..1..0, 0))
 |183⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |316⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |335⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
-|354⟩	 0.056643 +  0.000000 i	 == 	*                    [ 0.003208 ]     --- [  0.00000 rad ]
+|354⟩	 0.036284 +  0.000000 i	 == 	*                    [ 0.001317 ]     --- [  0.00000 rad ]
 |373⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |392⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |506⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
@@ -976,8 +981,8 @@ answers: [Q#] Ket.All::Init --> size: 1; output: Register((0..1..0, 0))
 |255⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |274⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |293⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
-|407⟩	 0.056643 +  0.000000 i	 == 	*                    [ 0.003208 ]     --- [  0.00000 rad ]
-|426⟩	 0.056643 +  0.000000 i	 == 	*                    [ 0.003208 ]     --- [  0.00000 rad ]
+|407⟩	 0.036284 +  0.000000 i	 == 	*                    [ 0.001317 ]     --- [  0.00000 rad ]
+|426⟩	 0.036284 +  0.000000 i	 == 	*                    [ 0.001317 ]     --- [  0.00000 rad ]
 |445⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |464⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |483⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
@@ -1017,7 +1022,7 @@ answers: [Q#] Ket.All::Init --> size: 1; output: Register((0..1..0, 0))
 |165⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |184⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |317⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
-|336⟩	 0.056643 +  0.000000 i	 == 	*                    [ 0.003208 ]     --- [  0.00000 rad ]
+|336⟩	 0.036284 +  0.000000 i	 == 	*                    [ 0.001317 ]     --- [  0.00000 rad ]
 |355⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |374⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |393⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
@@ -1118,7 +1123,7 @@ answers: [Q#] Ket.All::Init --> size: 1; output: Register((0..1..0, 0))
 |308⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |327⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |346⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
-|365⟩	 0.056643 +  0.000000 i	 == 	*                    [ 0.003208 ]     --- [  0.00000 rad ]
+|365⟩	 0.036284 +  0.000000 i	 == 	*                    [ 0.001317 ]     --- [  0.00000 rad ]
 |384⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |517⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |536⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
@@ -1178,12 +1183,12 @@ answers: [Q#] Ket.All::Init --> size: 1; output: Register((0..1..0, 0))
 |256⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |275⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |294⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
-|408⟩	 0.056643 +  0.000000 i	 == 	*                    [ 0.003208 ]     --- [  0.00000 rad ]
+|408⟩	 0.036284 +  0.000000 i	 == 	*                    [ 0.001317 ]     --- [  0.00000 rad ]
 |427⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |446⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |465⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |484⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
-|617⟩	 0.056643 +  0.000000 i	 == 	*                    [ 0.003208 ]     --- [  0.00000 rad ]
+|617⟩	 0.036284 +  0.000000 i	 == 	*                    [ 0.001317 ]     --- [  0.00000 rad ]
 |636⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |655⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |674⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
@@ -1778,7 +1783,7 @@ answers: [Q#] Ket.All::Init --> size: 1; output: Register((0..1..0, 0))
 |539⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |558⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |577⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
-|596⟩	 0.056643 +  0.000000 i	 == 	*                    [ 0.003208 ]     --- [  0.00000 rad ]
+|596⟩	 0.036284 +  0.000000 i	 == 	*                    [ 0.001317 ]     --- [  0.00000 rad ]
 |729⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |748⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |767⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
@@ -2623,7 +2628,7 @@ answers: [Q#] Ket.All::Init --> size: 1; output: Register((0..1..0, 0))
 |1635⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |1654⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |1673⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
-|1692⟩	 0.056643 +  0.000000 i	 == 	*                    [ 0.003208 ]     --- [  0.00000 rad ]
+|1692⟩	 0.036284 +  0.000000 i	 == 	*                    [ 0.001317 ]     --- [  0.00000 rad ]
 |1806⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |1825⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |1844⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
@@ -2778,7 +2783,7 @@ answers: [Q#] Ket.All::Init --> size: 1; output: Register((0..1..0, 0))
 |1626⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |1645⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |1664⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
-|1683⟩	 0.056643 +  0.000000 i	 == 	*                    [ 0.003208 ]     --- [  0.00000 rad ]
+|1683⟩	 0.036284 +  0.000000 i	 == 	*                    [ 0.001317 ]     --- [  0.00000 rad ]
 |1816⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |1835⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |1854⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
@@ -2956,7 +2961,7 @@ answers: [Q#] Ket.All::Init --> size: 1; output: Register((0..1..0, 0))
 |3593⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |3707⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |3726⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
-|3745⟩	 0.691043 +  0.000000 i	 == 	**********           [ 0.477541 ]     --- [  0.00000 rad ]
+|3745⟩	-0.700560 +  0.000000 i	 == 	**********           [ 0.490784 ] ---     [  3.14159 rad ]
 |3764⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |3783⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |3916⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
@@ -3888,7 +3893,7 @@ answers: [Q#] Ket.All::Init --> size: 1; output: Register((0..1..0, 0))
 |3568⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |3587⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |3739⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
-|3758⟩	 0.691043 +  0.000000 i	 == 	**********           [ 0.477541 ]     --- [  0.00000 rad ]
+|3758⟩	-0.700560 +  0.000000 i	 == 	**********           [ 0.490784 ] ---     [  3.14159 rad ]
 |3777⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |3796⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
 |3929⟩	 0.000000 +  0.000000 i	 == 	                     [ 0.000000 ]                   
@@ -4171,16 +4176,17 @@ Universe [see above]
 [Q#] Ket.All::Init --> size: 1; output: Register((1..1..1, 0))
 [Q#] Ket.All::Init --> size: 1; output: Register((2..1..2, 0))
 [Q#] Ket.All::Init --> size: 1; output: Register((3..1..3, 0))
-[Q#] Ket.Equals::Init --> left: Register((0..1..0, 0)); right: Register((3..1..3, 0)); output: Register((4..1..4, 1))
+[Q#] Ket.Equals::Init --> left: Register((0..1..0, 0)); right: Register((1..1..1, 0)); output: Register((4..1..4, 1))
 [Q#] Ket.Not::Init --> left: Register((4..1..4, 1)); output: Register((5..1..5, 1))
-[Q#] Ket.Equals::Init --> left: Register((0..1..0, 0)); right: Register((2..1..2, 0)); output: Register((6..1..6, 1))
+[Q#] Ket.Equals::Init --> left: Register((0..1..0, 0)); right: Register((3..1..3, 0)); output: Register((6..1..6, 1))
 [Q#] Ket.Not::Init --> left: Register((6..1..6, 1)); output: Register((7..1..7, 1))
-[Q#] Ket.Equals::Init --> left: Register((0..1..0, 0)); right: Register((1..1..1, 0)); output: Register((8..1..8, 1))
+[Q#] Ket.Equals::Init --> left: Register((0..1..0, 0)); right: Register((2..1..2, 0)); output: Register((8..1..8, 1))
 [Q#] Ket.Not::Init --> left: Register((8..1..8, 1)); output: Register((9..1..9, 1))
 [Q#] Ket.And::Init --> left: Register((7..1..7, 1)); right: Register((9..1..9, 1)); output: Register((10..1..10, 1))
 [Q#] Ket.And::Init --> left: Register((5..1..5, 1)); right: Register((10..1..10, 1)); output: Register((11..1..11, 1))
 [Q#] Ket.Filter::Init --> cond: 11..1..11
-[Q#] Starting 2 iterations for output:[q:11,q:10,q:9,q:8,q:12] with 4 answers (total qubits: 13)
+[Q#] Starting 3 iterations for output:[q:11,q:10,q:9,q:8,q:12] with 2 answers (total qubits: 13)
+[Q#] Universe::uber-oracle --> oracles count: 2
 [Q#] Universe::uber-oracle --> oracles count: 2
 [Q#] Universe::uber-oracle --> oracles count: 2
 

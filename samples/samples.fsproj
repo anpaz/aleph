@@ -11,6 +11,7 @@
     <Compile Include="SolveEquation.fs" />
     <Compile Include="GraphColoring.fs" />
     <Compile Include="Sandbox.fs" />
+    <Compile Include="TinyGraphColoring.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
