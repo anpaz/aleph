@@ -41,7 +41,7 @@ let program =
                     Tuple [ Int 3; Int 1 ]
                     Tuple [ Int 2; Int 0 ] ]
           )
-          Print("edges", [ Var "edges" ])
+          //Print("edges", [ Var "edges" ])
 
           // // checks if the coloring for the nodes x and y is invalid.
           // // invalid is when the 2 nodes of an edge have the same color.

@@ -7,7 +7,7 @@ open Microsoft.Quantum.IQSharp.ExecutionPathTracer
 let run qpu program =
     match start (program, qpu) with
     | Ok (v, _) ->
-        printfn $"\nresult: {v}"
+        printfn $"\n   result: {v}\n"
         0
     | Error msg ->
         printfn $"\n!! Failed: {msg} !!"
@@ -23,10 +23,10 @@ let simulate program =
 
 let estimate program =
     let res = new ResourcesEstimator()
-    let tracer = new ExecutionPathTracer()
-    let sim = (res).WithExecutionPathTracer(tracer)
+    //let tracer = new ExecutionPathTracer()
+    let sim = res // (res).WithExecutionPathTracer(tracer)
 
-    printfn ("==> Starting resources estimation...\n")
+    printfn ("==> Starting resources estimation...")
     start (program, aleph.runtime.qpu.qsharp.Processor(sim, 1)) |> ignore
 
     let estimate (key: string) = 
@@ -38,12 +38,12 @@ let estimate program =
 
     let width = estimate "Width"
     let depth = estimate "Depth"
-    printfn "\n==> Estimated resources:\n  - Width: %d\n  - Depth: %d\n" width depth
+    printfn "  resources: width: %d; depth: %d" width depth
 
-    if depth < 1000 then
-        printf ("==> Saving circuit... ")
-        System.IO.File.WriteAllText("circuit.json", tracer.GetExecutionPath().ToJson())
-        printfn ("done.\n")
+    // if depth < 1000 then
+    //     printf ("==> Saving circuit... ")
+    //     System.IO.File.WriteAllText("circuit.json", tracer.GetExecutionPath().ToJson())
+    //     printfn ("done.\n")
     
     (width, depth)
 
