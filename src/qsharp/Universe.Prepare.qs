@@ -12,36 +12,46 @@ namespace aleph.qsharp.universe {
     open aleph.qsharp.universe as u;
 
     operation Prepare(universe: Universe, qubits: Qubit[], maxTries: Int) : Unit {
-        // Always add a tracker Qubit. This makes sure
-        // there are always at most 1/2 of valid depth, and
-        // we also use it to verify grover returned a valid row
-        use tracker = Qubit();
-        let (t, u1) = u.AddLiteral(1, universe);
-        let u2 = u.AddOracle(_tracker_oracle(t, _, _), u1);
-
-        let all = qubits + [tracker];
-
         // Identify literal qubits, these are the ones Grover is applied to:
         mutable literals = [];
-        for r in u.GetRegisters(u2) {
+        for r in u.GetRegisters(universe) {
             if (r.IsLiteral(r)) {
-                set literals = literals + all[r.GetRange(r)];
+                set literals = literals + qubits[r.GetRange(r)];
             }
         }
 
-        let oracle = _uber_oracle(u2, _, _);
+        let oraclesCount = Length(u.GetOracles(universe));
 
-        // Repeat max number of times:
-        let depth = u.GetDepth(u2);
-        mutable count = 1;
-        repeat {
+        // If no oracles defined in this universe, no need to apply grover:
+        if (oraclesCount == 0) {
+            log.Info("No oracles found. Skipping Grover");
             ResetAll(literals);
             ApplyToEachA(H, literals);
-            grover.Apply(oracle, all, literals, depth);
-        }
-        until ((M(tracker) == One) or (depth == 0) or (count >= maxTries))
-        fixup {
-            set count = count + 1;
+        } else {
+            // When doing Grover, always add a tracker Qubit. This makes sure
+            // there are always at most 1/2 valid answers, and
+            // we also use it to verify grover returned a valid row
+            use tracker = Qubit();
+            let (t, u1) = u.AddLiteral(1, universe);
+            let u2 = u.AddOracle(_tracker_oracle(t, _, _), u1);
+
+            let all = qubits + [tracker];
+            set literals += [tracker];
+
+            let oracle = _uber_oracle(u2, _, _);
+
+            // Repeat max number of times:
+            let depth = u.GetDepth(u2);
+            mutable count = 1;
+            repeat {
+                ResetAll(literals);
+                ApplyToEachA(H, literals);
+                grover.Apply(oracle, all, literals, depth);
+            }
+            until ((M(tracker) == One) or (depth == 0) or (count >= maxTries))
+            fixup {
+                set count = count + 1;
+            }
         }
 
         // Once the oracles have filtered the literals, apply the expressions once more
