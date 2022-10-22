@@ -9,19 +9,14 @@ namespace aleph.qsharp.grover {
 
     open aleph.qsharp.log as log;
 
-    operation Apply(oracle: (Qubit[], Qubit) => Unit is Adj, register : Qubit[], answers: Int) : Unit 
+    operation Apply(oracle: (Qubit[], Qubit) => Unit is Adj, all: Qubit[], output: Qubit[], answers: Int) : Unit 
     is Adj {
-        let n = Length(register);
-
-        let iterations = GroverIterationsCount(n, answers);        
+        let n = Length(output);
+        let iterations = GroverIterationsCount(n, answers);
+        log.Info($"Starting {iterations} iterations for output:{output} with {answers} answers (total qubits: {Length(all)})");
 
         for i in 1..iterations {
-            GroverIteration(_toPhaseOracle(oracle, _), register);
-            if (log.DEBUG_ON()) {
-                Message($"[Q#] -- Grover iteration {i} --");
-                DumpRegister((), register);
-                Message("");
-            }
+            GroverIteration(_toPhaseOracle(oracle, _), all, output, log.DEBUG_ON() and i == 1);
         }
     }
 
@@ -30,24 +25,43 @@ namespace aleph.qsharp.grover {
         let k = Max([1, answers]);
         let iterations = Floor(PI() * Sqrt(IntAsDouble(domain / k)) / 4.0);
         log.Debug($"Grover. iterations:{iterations} (n: {n}, a: {answers})");
-        return iterations;
+        return Max([1,iterations]);
     }
 
-    operation GroverOperator (register : Qubit[]) : Unit is Adj {
-        // ...
-        let n = Length(register);
+    operation GroverOperator (output: Qubit[]) : Unit is Adj {
+        let n = Length(output);
         within {
-            ApplyToEachA(H, register);
-            ApplyToEachA(X, register);
-        } apply {
-            Controlled Z(register[1..n-1], register[0]);
+            ApplyToEachA(H, output);
+            ApplyToEachA(X, output);
+        }
+        apply {
+            Controlled Z(output[1..n-1], output[0]);
         }
     }
     
-    operation GroverIteration (oracle : (Qubit[] => Unit is Adj), register : Qubit[]) : Unit 
+    operation GroverIteration (oracle : (Qubit[] => Unit is Adj), all: Qubit[], output: Qubit[], debug: Bool) : Unit
     is Adj {
-        oracle(register);
-        GroverOperator(register);
+        if (debug) {
+            Message($"[Q#] -- Before oracle --");
+            DumpRegister((), output);
+            Message("");
+        }
+
+        oracle(all);
+
+        if (debug) {
+            Message($"[Q#] -- After oracle --");
+            DumpRegister((), output);
+            Message("");
+        }
+
+        GroverOperator(output);
+
+        if (debug) {
+            Message($"[Q#] -- After grover operator --");
+            DumpRegister((), output);
+            Message("");
+        }
     }
     
     operation _toPhaseOracle(oracle : (Qubit[], Qubit) => Unit is Adj, register: Qubit[]) : Unit 
@@ -56,8 +70,9 @@ namespace aleph.qsharp.grover {
             within {
                 X(target);
                 H(target);
-            } apply {
-                oracle(register, target);
+            }
+            apply {
+                oracle(register, target); 
             }
         }
     }

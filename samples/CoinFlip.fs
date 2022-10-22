@@ -7,6 +7,6 @@ let program =
         [
           // let coin = | 1, 0 >
           Let("coin", Ket(Set [ Int 1; Int 0 ])) ],
-        // | Prepare coin |
-        Sample(Prepare(Var "coin"))
+        // | coin |
+        Sample(Var "coin")
     )

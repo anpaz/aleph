@@ -4,41 +4,37 @@ namespace aleph.qsharp.ket {
     open Microsoft.Quantum.Convert;
     open Microsoft.Quantum.Intrinsic;
 
-    open aleph.qsharp;
+    open aleph.qsharp.register as r;
+    open aleph.qsharp.universe as u;
     open aleph.qsharp.log as log;
 
-    function Add(left: Register, right: Register, previous: Universe) : (Universe, Register[])
+    function Add(left: r.Register, right: r.Register, old: u.Universe) : (u.Universe, r.Register[])
     {
-        let (oldRows, oldColumns, oldOracles) = previous!;
-
-        let size = RangeEnd(right!) - RangeStart(right!) + 1;
-
-        let idx = oldColumns;
-        let output = Register(idx .. idx + size - 1);
-
-        let oracle = _Add_oracle(left, right, output, _, _);
-        let universe = Universe(oldRows, oldColumns + size, oldOracles + [oracle]);
+        let (output, u) = u.AddExpressionOutput(r.GetSize(right), old);
+        let expr = _Add_eval(left, right, output, _);
+        let universe = u.AddExpression(expr, u);
 
         log.Info($"Ket.Add::Init --> left: {left}; right: {right}; output: {output}");
         return (universe, [output]);
     }
 
-    operation _Add_oracle(
-        l: Register,
-        r: Register,
-        o: Register,
-        all: Qubit[], target: Qubit) : Unit
+    operation _Add_eval(
+        l: r.Register,
+        r: r.Register,
+        o: r.Register,
+        all: Qubit[]) : Unit
     is Adj + Ctl {
-        log.Debug($"Ket.Add::oracle --> target:{target}");
+        log.Debug($"Ket.Add::eval --> target:{o}");
         
-        let left = all[l!];
-        let right = all[r!];
-        let output = all[o!];
+        let left = all[r.GetRange(l)];
+        let right = all[r.GetRange(r)];
+        let output = all[r.GetRange(o)];
 
-        within {
-            AddI(LittleEndian(left), LittleEndian(right));
-        } apply {
-            AreEqual(right, output, target);
+        // AddI is in-place, copy right into output first:
+        for i in 0 .. r.GetSize(r) - 1 {
+            CNOT(right[i], output[i]);
         }
+
+        AddI(LittleEndian(left), LittleEndian(output));
     }
 }

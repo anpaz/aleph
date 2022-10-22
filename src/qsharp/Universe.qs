@@ -1,85 +1,71 @@
-namespace aleph.qsharp {
+namespace aleph.qsharp.universe {
 
-    open Microsoft.Quantum.Canon;
-    open Microsoft.Quantum.Arrays;
-    open Microsoft.Quantum.Convert;
-    open Microsoft.Quantum.Intrinsic;
-    open Microsoft.Quantum.Diagnostics;
+    open aleph.qsharp.register;
 
-    open aleph.qsharp.grover as grover;
-    open aleph.qsharp.log as log;
+    newtype Universe = (
+        depth: Int,
+        width: Int,
+        registers: Register[],
+        expressions: (Qubit[] => Unit is Adj + Ctl)[],
+        oracles: ((Qubit[], Qubit) => Unit is Adj + Ctl)[]
+    );
 
-    function BigBang(): Universe {
-        return Universe(1, 1, [_tracker(_, _)]);
+    function AddOracle(o: (Qubit[], Qubit) => Unit is Adj + Ctl, universe: Universe) : Universe {
+        let (_,_,_,_,orcls) = universe!;
+        return universe
+            w/ oracles <- orcls + [o];
+    }
+
+    function AddExpression(e: Qubit[] => Unit is Adj + Ctl, universe: Universe) : Universe {
+        let (_,_,_,exprs,_) = universe!;
+        return universe
+            w/ expressions <- exprs + [e];
+    }
+
+    function AddLiteral(size: Int, universe: Universe) : (Register, Universe) {
+        return _addRegister(Literal, size, universe);
+    }
+
+    function AddExpressionOutput(size: Int, universe: Universe) : (Register, Universe) {
+        return _addRegister(Expression, size, universe);
+    }
+
+    function _addRegister(ctr: Range -> Register, size: Int, old: Universe) : (Register, Universe) {
+        let (_, cols, regs, _, _) = old!;
+
+        let start = cols;
+        let end = start + size - 1;
+
+        let output = ctr(start..end);
+        let universe = old
+                w/ width <- cols + size
+                w/ registers <- regs + [output];
+
+        return (output, universe);
+    }
+
+    function GetDepth(universe: Universe) : Int {
+        let (depth,_,_,_,_) = universe!;
+        return depth;
+    }
+
+    function GetWidth(universe: Universe) : Int {
+        let (_,width,_,_,_) = universe!;
+        return width;
+    }
+
+    function GetRegisters(universe: Universe) : Register[] {
+        let (_,_,registers,_,_) = universe!;
+        return registers;
     }
     
-    operation Sample(universe: Universe, register: Register[]) : Value[] {
-        let (_, columns, oracle) = universe!;
-
-        use qubits = Qubit[columns]; // One extra for tracker
-
-        Prepare(universe, qubits);
-
-        mutable result = [];
-        for r in register {
-            let value = ResultArrayAsInt(ForEach(M, qubits[r!]));
-            let size = Length(RangeAsIntArray(r!));
-            set result += [ Value(value, size) ];
-        }
-
-        ResetAll(qubits);
-        return result;
+    function GetExpressions(universe: Universe) : (Qubit[] => Unit is Adj + Ctl)[] {
+        let (_,_,_,exprs,_) = universe!;
+        return exprs;
     }
 
-    operation Prepare(universe: Universe, qubits: Qubit[]) : Unit {
-        let (rows, _, _) = universe!;
-        let oracle = _oracle(universe, _, _);
-        let tracker = qubits[0];
-        mutable max = 2;
-
-        repeat {
-            ResetAll(qubits);
-            ApplyToEachA(H, qubits);
-            grover.Apply(oracle, qubits, rows);
-        } until ((M(tracker) == One) or (rows == 0) or (max <= 0))
-        fixup {
-            set max = max - 1;
-        }
-
-        // if (M(tracker) == Zero) {
-        //     fail "Fail to prepare Universe.";
-        // }
-
-        if (log.DEBUG_ON()) {
-            Message($"[Q#] Final state after Prepare: ");
-            if (Length(qubits) > 1) {
-                DumpRegister((), qubits[1..Length(qubits)-1]);
-            }
-            Message("");
-        }
-    }
-    
-    operation _tracker (qubits: Qubit[], target: Qubit) : Unit
-    is Adj + Ctl {
-        log.Debug($".tracker.");
-        CNOT(qubits[0], target);
-    }
-
-    operation _oracle(universe: Universe, all: Qubit[], target: Qubit) : Unit
-    is Adj + Ctl {
-        let (_, _, oracles) = universe!;
-
-        let n = Length(oracles);
-        use ancillas = Qubit[n];
-
-        within {
-            for i in 0..n-1 {
-                let o = oracles[i];
-                let a = ancillas[i];
-                o(all, a);
-            }
-        } apply {
-            Controlled X (ancillas, target);
-        }
+    function GetOracles(universe: Universe) : ((Qubit[], Qubit) => Unit is Adj + Ctl)[] {
+        let (_,_,_,_,oracles) = universe!;
+        return oracles;
     }
 }

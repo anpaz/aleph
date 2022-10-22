@@ -1,4 +1,4 @@
-module GraphColoring
+module TinyGraphColoring
 
 open aleph.parser.ast
 
@@ -6,40 +6,30 @@ open aleph.parser.ast
 let program =
     Block(
         [
-          // let RED   = 0
-          // let BLUE  = 1
-          // let GREEN = 2
-          Let("RED", Int 0)
-          Let("BLUE", Int 1)
-          Let("GREEN", Int 2)
-
-
-          // // Return the list of all available colors:
-          // let colors() Ket<Int> =
-          //     | RED, BLUE, GREEN >
+          // // Return the list of all available colors (only 2):
+          // let colors() Ket<Int> = | @, 1 >
           Let(
               "colors",
               Method(
                   arguments = List.empty,
                   returns = Type.Ket [ Type.Int ],
-                  body = Ket(Set [ Var "RED"; Var "BLUE"; Var "GREEN" ])
+                  body = KetAll(Int 1)
               )
           )
 
           // // Edges are listed classically, so we can iterate through them
           // let edges = {
           //   (0, 1);
-          //   (1, 2);
-          //   (3, 1);
-          //   (2, 0)
+          //   (0, 2);
+          //   (0, 3);
           // }
           Let(
               "edges",
               Set
                   [ Tuple [ Int 0; Int 1 ]
-                    Tuple [ Int 1; Int 2 ]
-                    Tuple [ Int 3; Int 1 ]
-                    Tuple [ Int 2; Int 0 ] ]
+                    Tuple [ Int 0; Int 2 ]
+                    Tuple [ Int 0; Int 3 ]
+                    ]
           )
           //Print("edges", [ Var "edges" ])
 
@@ -69,7 +59,7 @@ let program =
           //         let y = e[1]
           //         let one = is_valid_edge_coloring (coloring[x], coloring[y])
           //         if Count(rest) == 0 then
-          //              one
+          //             one
           //         else
           //             one && classify_coloring(rest, coloring)
           //         valid
@@ -115,30 +105,31 @@ let program =
           )
 
           // // A ket with the color combination for all nodes. Each node is an item of a tuple.
-          // let all_colorings = (((colors(), colors()), colors()), colors())
+          // let nodes_colors = (((colors(), colors()), colors()), colors())
           Let(
               "all_colorings",
               (Join(
-                  Join(
-                      Join(CallMethod(Var "colors", List.empty), CallMethod(Var "colors", List.empty)),
-                      CallMethod(Var "colors", List.empty)
-                  ),
-                  CallMethod(Var "colors", List.empty)
-              ))
+                Join(
+                    Join(
+                        CallMethod(Var "colors", List.empty),
+                        CallMethod(Var "colors", List.empty)),
+                        CallMethod(Var "colors", List.empty)),
+                        CallMethod(Var "colors", List.empty))
+              )
           )
 
           // // To find a valid coloring, solve the valid_combination oracle and
           // // measure the result
-          // let is_valid = classify_coloring (edges, all_colorings)
+          // let is_valid = classify_coloring (edges, nodes_colors)
           Let(
               "is_valid",
               (CallMethod(method = Var "classify_coloring", arguments = [ Var "edges"; Var "all_colorings" ]))
           )
 
-          // Filter out only those colorings that are valid:
           // let answers = all_colorings ~ is_valid : 2
-          Let("answers", Filter(Var "all_colorings", Var "is_valid", Int 2)) ],
+          Let("answers", Filter(Var "all_colorings", Var "is_valid", Int 2))
 
-        // | answers |
+        ],
+        // |answers|
         Sample(Var "answers")
     )

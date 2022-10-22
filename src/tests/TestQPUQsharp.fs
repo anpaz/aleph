@@ -15,21 +15,21 @@ open aleph.tests.Utils
 
 [<TestClass>]
 type TestQPUQsharp() =
-    member this.QPU = Processor(new QuantumSimulator())
+    member this.QPU = Processor(new SparseSimulator(), 3)
 
     member this.Prelude = ClassicValueContext.Prelude
 
     [<TestMethod>]
     member this.TestRawLiteral() =
-        let sim = new QuantumSimulator()
+        let sim = new SparseSimulator()
 
         let test_one (values: Value list, qubits: int) =
-            let bigbang = BigBang.Run(sim).Result
+            let bigbang = universe.BigBang.Run(sim).Result
             let v = Set(new Set<Value>(values)) |> toQSet
-            let struct (u, o) = ket.Literal.Run(sim, v, bigbang).Result
+            let struct (u, o) = ket.Tuples.Run(sim, v, bigbang).Result
             printfn "Universe = %A" u
-            Assert.AreEqual(int64 (values.Length), u.rows)
-            Assert.AreEqual(int64 (qubits + 1), u.columns)
+            Assert.AreEqual(int64 (values.Length), u.depth)
+            Assert.AreEqual(int64 qubits, u.width)
 
         [ [ Bool true ], BOOL_REGISTER_SIZE
           [ Bool true; Bool false ], BOOL_REGISTER_SIZE
@@ -280,11 +280,11 @@ type TestQPUQsharp() =
 
         [
           // (Filter k1, k1.0)
-          e.Filter(e.Var "k1", e.Project(e.Var "k1", e.Int 0)),
+          e.Filter(e.Var "k1", e.Project(e.Var "k1", e.Int 0), e.Int 2),
           [ Tuple [ Bool true; Int 3; Int 0 ]; Tuple [ Bool true; Int 3; Int 3 ] ]
 
           // (Filter (k2, k3), k2 == k3)
-          e.Filter(e.Join(e.Var "k2", e.Var "k3"), e.Equals(e.Var "k2", e.Var "k3")),
+          e.Filter(e.Join(e.Var "k2", e.Var "k3"), e.Equals(e.Var "k2", e.Var "k3"), e.Int 8),
           [ Tuple [ Int 0; Int 0 ]
             Tuple [ Int 1; Int 1 ]
             Tuple [ Int 2; Int 2 ]
@@ -334,18 +334,19 @@ type TestQPUQsharp() =
             Tuple [ Int 0; Int 2; Int 0 ]
             Tuple [ Int 1; Int 1; Int 1 ]
             Tuple [ Int 1; Int 2; Int 2 ] ]
-          // // (k2, k2 = (k1 * k2))
-          // e.Join(
-          //     e.Var ("k2"),
-          //     e.Add(
-          //         e.Var ("k2"),
-          //         e.Multiply(e.Var "k1", e.Var "k2"))),
-          // [
-          //     Tuple [ Int 1; Int 1 ]
-          //     Tuple [ Int 2; Int 2 ]
-          //     Tuple [ Int 1; Int 2 ]
-          //     Tuple [ Int 2; Int 4 ]
-          // ]
+          // (k2, k2 == (k1 * k2))
+          e.Join(
+              e.Var ("k2"),
+              e.Join(
+                e.Var ("k1"),
+                e.Equals(
+                    e.Var ("k2"),
+                    e.Multiply(e.Var "k1", e.Var "k2")))),
+          [
+              Tuple [ Int 1; Int 0; Bool false ]
+              Tuple [ Int 1; Int 1; Bool true ]
+              Tuple [ Int 2; Int 0; Bool false ]
+              Tuple [ Int 2; Int 1; Bool true ] ]
           ]
         |> List.iter (verify_expression (prelude, this.QPU))
 

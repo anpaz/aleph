@@ -4,7 +4,7 @@ namespace aleph.qsharp.log
     open Microsoft.Quantum.Intrinsic;
 
     function INFO_ON() : Bool {
-        return true;
+        return false;
     }
 
     function DEBUG_ON() : Bool {

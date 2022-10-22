@@ -1,24 +1,14 @@
 namespace aleph.qsharp.ket {
 
-    open Microsoft.Quantum.Convert;
-    open Microsoft.Quantum.Intrinsic;
-
-    open aleph.qsharp;
+    open aleph.qsharp.register as r;
+    open aleph.qsharp.universe as u;
     open aleph.qsharp.log as log;
 
-    function All(size: Int, previous: Universe) : (Universe, Register[])
+    function All(size: Int, old: u.Universe) : (u.Universe, r.Register[])
     {
-        let (oldRows, oldColumns, oldOracle) = previous!;
-
-        let start = oldColumns;
-        let end = start + size - 1;
-        let output = [Register(start..end)];
-
-        let rows = oldRows * (1 <<< size);
-
-        let universe = Universe(rows, oldColumns + size, oldOracle);
+        let (output, universe) = u.AddLiteral(size, old);
 
         log.Info($"Ket.All::Init --> size: {size}; output: {output}");
-        return (universe, output);
+        return (universe w/ depth <- u.GetDepth(universe) * (1 <<< size), [output]);
     }
 }

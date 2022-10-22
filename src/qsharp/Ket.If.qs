@@ -1,59 +1,52 @@
 namespace aleph.qsharp.ket {
 
-    open Microsoft.Quantum.Canon;
-    open Microsoft.Quantum.Arithmetic;
-    open Microsoft.Quantum.Convert;
+    open Microsoft.Quantum.Math;
     open Microsoft.Quantum.Intrinsic;
-
-    open aleph.qsharp;
+    open Microsoft.Quantum.Canon;
+    
+    open aleph.qsharp.register as r;
+    open aleph.qsharp.universe as u;
     open aleph.qsharp.log as log;
 
-    function If(c: Register, t: Register, e: Register, previous: Universe) : (Universe, Register[])
+    function If(cond: r.Register, onTrue: r.Register, onFalse: r.Register, old: u.Universe) : (u.Universe, r.Register[])
     {
-        let (oldRows, oldColumns, oldOracle) = previous!;
+        let size = Max([r.GetSize(onTrue), r.GetSize(onFalse)]);
+        let (output, u) = u.AddExpressionOutput(size, old);
+        let expr = _If_eval(cond, onTrue, onFalse, output, _);
+        let universe = u.AddExpression(expr, u);
 
-        // Assume t/e conditions have same length
-        let size = RangeEnd(t!) - RangeStart(t!) + 1;
-
-        let idx = oldColumns;
-        let output = Register(idx .. idx + size - 1);
-
-        let oracle = _If_oracle(c, t, e, output, _, _);
-        let universe = Universe(oldRows, oldColumns + size, oldOracle + [oracle]);
-
-        log.Info($"Ket.If::Init --> cond: {c}; then: {t}; else: {e}; output: {output}");
+        log.Info($"Ket.If::Init --> cond: {cond}; onTrue: {onTrue}; onFalse: {onFalse} output: {output}");
         return (universe, [output]);
     }
 
-    operation _If_oracle(
-        c: Register,
-        t: Register,
-        e: Register,
-        o: Register,
-        all: Qubit[], target: Qubit) : Unit
+    operation _If_eval(
+        c: r.Register,
+        t: r.Register,
+        e: r.Register,
+        o: r.Register,
+        all: Qubit[]) : Unit
     is Adj + Ctl {
-        log.Debug($"Ket.If::oracle --> target:{target}");
+        log.Debug($"Ket.If::eval");
         
-        let cond_q = all[c!];
-        let then_q = all[t!];
-        let else_q = all[e!];
-        let out_q = all[o!];
+        let cond_q = all[r.GetRange(c)];
+        let then_q = all[r.GetRange(t)];
+        let else_q = all[r.GetRange(e)];
+        let out_q = all[r.GetRange(o)];
 
-        use a1 = Qubit();
-        use a2 = Qubit();
+        // Copy then_q controlled on cond_q
+        for i in 0 .. Length(then_q) - 1 {
+            Controlled X (cond_q + [then_q[i]], out_q[i]);
+        }
 
-        AreEqual(then_q, out_q, a1);
-        AreEqual(else_q, out_q, a2);
-
-        // if cond is true, pick then qubits
-        Controlled X (cond_q + [a1], target);
-        // if cond is false, then pick else qubits
+        // Negate condition
         ApplyToEachCA(X, cond_q);
-        Controlled X (cond_q + [a2], target);
 
-        // Undo
-        Adjoint ApplyToEachCA(X, cond_q);
-        Adjoint AreEqual(else_q, out_q, a2);
-        Adjoint AreEqual(then_q, out_q, a1);
+        // Now copy else_q controlled on cond_q
+        for i in 0 .. Length(else_q) - 1 {
+            Controlled X (cond_q + [else_q[i]], out_q[i]);
+        }
+
+        // Undo condition:
+        ApplyToEachCA(X, cond_q);
     }
 }

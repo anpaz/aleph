@@ -1,50 +1,32 @@
 namespace aleph.qsharp.ket {
 
-    open Microsoft.Quantum.Convert;
     open Microsoft.Quantum.Intrinsic;
 
-    open aleph.qsharp;
+    open aleph.qsharp.register as r;
+    open aleph.qsharp.universe as u;
     open aleph.qsharp.log as log;
 
-    function And(left: Register, right: Register, previous: Universe) : (Universe, Register[])
+    function And(left: r.Register, right: r.Register, old: u.Universe) : (u.Universe, r.Register[])
     {
-        let (oldRows, oldColumns, oldOracle) = previous!;
-
-        let idx = oldColumns;
-        let output = [Register(idx..idx)];
-
-        let oracle = _And_oracle(left, right, idx, _, _);
-        let universe = Universe(oldRows, oldColumns + 1, oldOracle + [oracle]);
+        let (output, u) = u.AddExpressionOutput(1, old);
+        let expr = _And_eval(left, right, output, _);
+        let universe = u.AddExpression(expr, u);
 
         log.Info($"Ket.And::Init --> left: {left}; right: {right}; output: {output}");
-        return (universe, output);
+        return (universe, [output]);
     }
 
-    operation _And_oracle(
-        left: Register,
-        right: Register,
-        idx: Int,
-        all: Qubit[], target: Qubit) : Unit
+    operation _And_eval(
+        l: r.Register,
+        r: r.Register,
+        a: r.Register,
+        all: Qubit[]) : Unit
     is Adj + Ctl {
-        log.Debug($"Ket.And::oracle --> target:{target}");
-        
-        let answer = all[idx];
-        use a1 = Qubit();
+        let left = r.GetRange(l);
+        let right = r.GetRange(r);
+        let answer = all[r.GetRange(a)];
 
-        // a1 hold true if left ^ right
-        Controlled X (all[left!] + all[right!], a1);
-
-        // the true cases
-        Controlled X ([a1, answer], target);
-
-        // the false cases
-        X(a1);
-        X(answer);
-        Controlled X ([a1, answer], target);
-        
-        // Undo
-        Adjoint X(answer);
-        Adjoint X(a1);
-        Adjoint Controlled X (all[left!] + all[right!], a1);
+        log.Debug($"Ket.And::eval --> left{left}, right{right}, answer:{answer}");        
+        Controlled X (all[left] + all[right], answer[0]);
     }
 }

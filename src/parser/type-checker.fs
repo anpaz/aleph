@@ -29,11 +29,11 @@ module TypeChecker =
     let make_q e =
         match e with
         | Quantum (l, t) -> (l, t) |> Ok
-        | Classic (l, Type.Set (Type.Tuple t)) -> (Literal l, Type.Ket t) |> Ok
-        | Classic (l, Type.Set t) -> (Literal l, Type.Ket [ t ]) |> Ok
-        | Classic (l, Type.Int) -> (Literal(C.Set [ l ]), Type.Ket [ Type.Int ]) |> Ok
-        | Classic (l, Type.Bool) -> (Literal(C.Set [ l ]), Type.Ket [ Type.Bool ]) |> Ok
-        | Classic (l, Type.Tuple t) -> (Literal(C.Set [ l ]), Type.Ket t) |> Ok
+        | Classic (l, Type.Set (Type.Tuple t)) -> (Ket l, Type.Ket t) |> Ok
+        | Classic (l, Type.Set t) -> (Ket l, Type.Ket [ t ]) |> Ok
+        | Classic (l, Type.Tuple t) -> (Ket(C.Set [ l ]), Type.Ket t) |> Ok
+        | Classic (l, Type.Int) -> (Constant l , Type.Ket [ Type.Int ]) |> Ok
+        | Classic (l, Type.Bool) -> (Constant l , Type.Ket [ Type.Bool ]) |> Ok
         | _ -> "Cannot create quantum literal from {e}" |> Error
 
     type TypeContext =
@@ -80,7 +80,7 @@ module TypeChecker =
         | Expression.Block (stmts, r) -> typecheck_block (stmts, r, ctx)
         | Expression.If (c, t, f) -> typecheck_if (c, t, f, ctx)
 
-        | Expression.Filter (ket, cond) -> typecheck_solve (ket, cond, ctx)
+        | Expression.Filter (ket, cond, hint) -> typecheck_filter (ket, cond, hint, ctx)
         | Expression.Prepare ket -> typecheck_prepare (ket, ctx)
         | Expression.Sample universe -> typecheck_sample (universe, ctx)
 
@@ -483,23 +483,29 @@ module TypeChecker =
                             $"Both branches of if statement must be of the same type, got {tt} and {ft}"
                             |> Error
 
-    and typecheck_solve (ket, cond, ctx) =
+    and typecheck_filter (ket, cond, hint, ctx) =
         typecheck (ket, ctx)
         ==> fun (ket, ctx) ->
                 match ket with
                 | Quantum (ket, t) ->
                     typecheck (cond, ctx)
                     ==> fun (cond, ctx) ->
-                            match cond with
-                            | Quantum (cond, Type.Ket [ Type.Bool ]) -> (Quantum(Q.Filter(ket, cond), t), ctx) |> Ok
-                            | Quantum (_, t) ->
-                                $"Solve condition must be a quantum boolean expression, got: {t}" |> Error
-                            | Classic (_, t) ->
-                                $"Solve condition must be a quantum boolean expression, got: {t}" |> Error
-                            | Universe (_, t) ->
-                                $"Solve condition must be a quantum boolean expression, got: {t}" |> Error
-                | Classic (_, t) -> $"Solve argument must be a quantum ket, got: {t}" |> Error
-                | Universe (_, t) -> $"Solve argument must be a quantum ket, got: {t}" |> Error
+                        typecheck(hint, ctx)
+                        ==> fun (hint, ctx) ->
+                            match hint with
+                            | Classic (hint, Type.Int) ->
+                                match cond with
+                                | Quantum (cond, Type.Ket [ Type.Bool ]) ->
+                                    (Quantum(Q.Filter(ket, cond, hint), t), ctx) |> Ok
+                                | Quantum (_, t)
+                                | Classic (_, t)
+                                | Universe (_, t) ->
+                                    $"Filter condition must be a quantum boolean expression, got: {t}" |> Error
+                            | Quantum (_, t)
+                            | Classic (_, t)
+                            | Universe (_, t) -> $"Filter hint must be an integer, got: {t}" |> Error
+                | Classic (_, t)
+                | Universe (_, t) -> $"Filter argument must be a quantum ket, got: {t}" |> Error
 
     and typecheck_prepare (ket, ctx) =
         typecheck (ket, ctx)
@@ -515,6 +521,7 @@ module TypeChecker =
         ==> fun (universe, ctx) ->
                 match universe with
                 | Universe (u, Type.Universe t) -> (Classic(C.Sample u, Type.Tuple t), ctx) |> Ok
+                | Quantum (k, Type.Ket t) -> (Classic(C.Sample (U.Prepare k), Type.Tuple t), ctx) |> Ok
                 | Universe (_, t) -> $"Sample argument must be a quantum universe, got: {t}" |> Error
                 | Quantum (_, t) -> $"Sample argument must be a quantum universe, got: {t}" |> Error
                 | Classic (_, t) -> $"Sample argument must be a quantum universe, got: {t}" |> Error

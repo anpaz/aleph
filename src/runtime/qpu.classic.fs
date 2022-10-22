@@ -127,7 +127,9 @@ type Processor() =
     and prepare (q, ctx) =
         match q with
         | Q.Var id -> prepare_var (id, ctx)
-        | Literal c -> prepare_literal (c, ctx)
+
+        | Q.Constant value -> prepare_constant (value, ctx)
+        | Q.Ket c -> prepare_literal (c, ctx)
         | KetAll size -> prepare_ketall (size, ctx)
 
         | Equals (left, right) -> prepare_equals (left, right, ctx)
@@ -145,7 +147,7 @@ type Processor() =
 
         | IfQuantum (condition, then_q, else_q) -> prepare_if_q (condition, then_q, else_q, ctx)
         | IfClassic (condition, then_q, else_q) -> prepare_if_c (condition, then_q, else_q, ctx)
-        | Filter (ket, condition) -> prepare_filter (ket, condition, ctx)
+        | Filter (ket, condition, hint) -> prepare_filter (ket, condition, hint, ctx)
 
         | Q.Block (stmts, value) -> prepare_block (stmts, value, ctx)
         
@@ -207,6 +209,34 @@ type Processor() =
 
                     (new_columns, ctx) |> Ok
                 | _ -> $"Invalid ket_all size, expected int got: {size}" |> Error
+
+    (*
+        Adds a new column to the state, whose value is 
+        the same for all rows.
+     *)
+    and prepare_constant (value, ctx) =
+        eval_classic (value, ctx.evalCtx)
+        ==> fun (value, evalCtx) ->
+            if ctx.state.IsEmpty then
+                let new_columns = [ 0 ] // last column
+                let new_state = [ [ value ] ]
+                let ctx = { ctx with state = new_state; evalCtx = evalCtx }
+                (new_columns, ctx) |> Ok
+            else
+                let mem_size = ctx.state.Head.Length
+                let new_columns = [ mem_size ] // last column
+
+                let new_state =
+                    seq {
+                        for row in ctx.state do
+                            row @ [ value ]
+                    }
+                    |> Seq.toList
+                let ctx = { ctx with state = new_state; evalCtx = evalCtx }
+                (new_columns, ctx) |> Ok
+
+            
+
     (*
         Adds a new column to the state, whose value is 
         the addition of the values in the columns from the corresponding input expressions.
@@ -396,11 +426,13 @@ type Processor() =
         Filters the state to only those records that match the given condition.
         It returns the columns of the specified ket.
      *)
-    and prepare_filter (ket, condition, ctx) =
+    and prepare_filter (ket, condition, hint, ctx) =
         prepare (condition, ctx)
         ==> fun (cond, ctx) ->
                 prepare (ket, ctx)
                 ==> fun (ket, ctx) ->
+                    eval_classic (hint, ctx.evalCtx)
+                    ==> fun (_, _) ->
                         let new_state =
                             List.filter (fun (r: Value list) -> r.[cond.Head] = (Bool true)) ctx.state
 
