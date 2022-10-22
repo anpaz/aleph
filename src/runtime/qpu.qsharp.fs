@@ -4,9 +4,9 @@ open Microsoft.Quantum.Simulation.Core
 
 open aleph.qsharp
 
-type QUniverse = Universe
-type QValue = Value
-type QRegister = Register
+type QUniverse = universe.Universe
+type QValue = value.Value
+type QRegister = register.Register
 type QRegisters = IQArray<QRegister>
 
 open aleph.parser.ast.typed
@@ -64,16 +64,16 @@ type Universe(sim: IOperationFactory, state: QUniverse, registers: QRegisters) =
     interface IUniverse with
         member this.CompareTo(obj: obj) : int = failwith "Not Implemented"
 
-    member this.Sample() =
+    member this.Sample(maxTries: int64) =
         match value with
         | Some v -> v
         | None ->
-            let sample = Sample.Run(sim, state, registers).Result |> Convert.toValue
+            let sample = universe.Sample.Run(sim, state, registers, maxTries).Result |> Convert.toValue
             value <- Some sample
             sample
 
     override this.ToString() =
-        Print.Run(sim, state, registers).Result |> ignore
+        universe.Print.Run(sim, state).Result |> ignore
         "[see above]"
 
 type Processor(sim: IOperationFactory) =
@@ -99,7 +99,9 @@ type Processor(sim: IOperationFactory) =
     and prepare (q, ctx) =
         match q with
         | Q.Var id -> prepare_var (id, ctx)
-        | Q.Literal values -> prepare_literal (values, ctx)
+
+        | Q.Constant value -> prepare_constant (value, ctx)
+        | Q.Ket values -> prepare_literal (values, ctx)
         | Q.KetAll size -> prepare_ketall (size, ctx)
 
         | Q.Add (left, right) -> prepare_add (left, right, ctx)
@@ -116,7 +118,7 @@ type Processor(sim: IOperationFactory) =
 
         | Q.IfQuantum (c, t, e) -> prepare_if_q (c, t, e, ctx)
         | Q.IfClassic (c, t, e) -> prepare_if_c (c, t, e, ctx)
-        | Q.Filter (ket, cond) -> prepare_filter (ket, cond, ctx)
+        | Q.Filter (ket, cond, hint) -> prepare_filter (ket, cond, hint, ctx)
 
         | Q.Block (stmts, value) -> prepare_block (stmts, value, ctx)
         
@@ -137,9 +139,9 @@ type Processor(sim: IOperationFactory) =
         ==> fun (values, evalCtx) ->
                 match values with
                 | Value.Set w when w.IsEmpty ->
-                    (new QArray<Register>() :> QRegisters, { ctx with evalCtx = evalCtx }) |> Ok
+                    (new QArray<register.Register>() :> QRegisters, { ctx with evalCtx = evalCtx }) |> Ok
                 | Value.Set _ ->
-                    ket.Literal.Run(sim, values |> Convert.toQSet, ctx.universe).Result
+                    ket.Tuples.Run(sim, values |> Convert.toQSet, ctx.universe).Result
                     |> qsharp_result { ctx with evalCtx = evalCtx }
                 | _ -> $"Invalid classic value for a ket literal: {values}" |> Error
 
@@ -152,6 +154,12 @@ type Processor(sim: IOperationFactory) =
                     |> qsharp_result { ctx with evalCtx = evalCtx }
                 | _ -> $"Invalid ket_all size, expected int got: {size}" |> Error
 
+    and prepare_constant (value, ctx) =
+        eval_classic (value, ctx.evalCtx)
+        ==> fun (value, evalCtx) ->
+            let value = value |> Convert.toQValue
+            ket.Constant.Run(sim, value, ctx.universe).Result
+            |> qsharp_result { ctx with evalCtx = evalCtx }
 
     and prepare_add (left, right, ctx) =
         prepare (left, ctx)
@@ -246,13 +254,19 @@ type Processor(sim: IOperationFactory) =
                             $"Invalid inputs for ket And. Expected one length registers, got: left:{left.Length} && right:{right.Length}"
                             |> Error
 
-    and prepare_filter (k, condition, ctx) =
+    and prepare_filter (k, condition, hint, ctx) =
         prepare (condition, ctx)
         ==> fun (cond, ctx) ->
                 prepare (k, ctx)
                 ==> fun (k, ctx) ->
-                        let struct (u, r) = ket.Filter.Run(sim, cond.[0], ctx.universe).Result
-                        (k, { ctx with universe = u }) |> Ok
+                    eval_classic (hint, ctx.evalCtx)
+                    ==> fun(hint, _) ->
+                        match hint with
+                        | Value.Int i ->
+                            let u = ket.Filter.Run(sim, cond.[0], i, ctx.universe).Result
+                            (k, { ctx with universe = u }) |> Ok
+                        | _ ->
+                            $"Hint must be an integer" |> Error
 
     and prepare_if_q (condition, then_q, else_q, ctx) =
         prepare (condition, ctx)
@@ -307,7 +321,7 @@ type Processor(sim: IOperationFactory) =
 
         member this.Measure(universe: IUniverse) =
             let u = universe :?> Universe
-            u.Sample() |> Ok
+            u.Sample(3) |> Ok
 
         member this.Prepare(u, evalCtx) =
             assert (evalCtx.qpu = this)
@@ -320,7 +334,7 @@ type Processor(sim: IOperationFactory) =
                         | Value.Ket ket ->
                             let ctx =
                                 { allocations = Map.empty
-                                  universe = BigBang.Run(sim).Result
+                                  universe = universe.BigBang.Run(sim).Result
                                   evalCtx = evalCtx }
 
                             prepare_ket (ket, ctx)

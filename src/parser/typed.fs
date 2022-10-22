@@ -40,7 +40,8 @@ type C =
 and Q =
     | Var of Id
 
-    | Literal of C
+    | Constant of C
+    | Ket of C
     | KetAll of size: C
 
     | Not of Q
@@ -59,7 +60,7 @@ and Q =
     | IfQuantum of cond: Q * t: Q * f: Q
 
     | CallMethod of method: C * arguments: E list
-    | Filter of ket: Q * condition: Q
+    | Filter of ket: Q * condition: Q * hint : C
 
 and U =
     | Var of Id
