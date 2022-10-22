@@ -1,5 +1,6 @@
 namespace aleph.qsharp.ket {
 
+    open Microsoft.Quantum.Math;
     open Microsoft.Quantum.Intrinsic;
 
     open aleph.qsharp.universe as u;
@@ -29,26 +30,25 @@ namespace aleph.qsharp.ket {
         let answer = all[r.GetRange(o)][0];
 
         // return false for all records if registers are of different size.
-        if (Length(left) == Length(right)) {
-            AreEqual(left, right, answer);
-        }
+        AreEqual(left, right, answer);
     }
 
     operation AreEqual(left: Qubit[], right: Qubit[], answer: Qubit) : Unit
     is Adj + Ctl {
-        if (Length(left) == Length(right)) {
-            within {
-                // Store in-place if the two qubits are equal
-                for i in 0..Length(left) -1 {
-                    CNOT(left[i], right[i]);
-                    X(right[i]);
-                }
+        let (x, y) = Length(left) < Length(right) ? (left, right) | (right, left);
+
+        within {
+            // In-place equal
+            for i in 0 .. Length(x) - 1 {
+                CNOT(x[i], y[i]);
+                X(y[i]);
             }
-            apply {
-                Controlled X (right, answer);
+            for i in Length(x) .. Length(y) -1 {
+                X(y[i]);
             }
-        } else {
-            fail ($"Invalid input for AreEqual: both registers must be of the same length");
+        }
+        apply {
+            Controlled X (y, answer);
         }
     }
 }
