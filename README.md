@@ -8,21 +8,109 @@ This superpower comes at a price: instead of Boolean tables quantum algorithms u
 
 Existing quantum programming languages do not offer real abstractions to remove this complexity. Even languages that are explicitly designed to be high-level like [Silq](https://silq.ethz.ch/) or [Q#](https://github.com/microsoft/qsharp-language/tree/main/Specifications/Language) are more reminiscent of Verilog than C#, or even C.
 
-Aleph aims to be a true high-level quantum programming language that leverages quantum specific properties and algorithms -like superposition, quantum parallelism, entanglement, amplitude amplification and amplitude estimation- to achieve scale and speed-up. These are implicitly leveraged by the language, as such, users don't have to deal with quantum mechanics concepts like probabilities, complex numbers or matrices.
+Aleph has a very different approach as it is designed to be a language for large scale hybrid quantum applications, not quantum kernels. Aleph uses only high-level expressions and data types. Like existing high-level classical languages, users don't need to think in terms of circuits or native device instructions. There are no quantum-mechanics concepts in the language and in fact, it can be described using pure classical terms which makes it possible to easyly model, simulate and test small programs. 
 
-## Universes, kets and outcomes
+Programs in Aleph are not meant to specify individual qubit manipulations, as such they are not capable of many things you can do with a more traditional quantum programming language. In fact, the current operations enable "only" quadratic speed ups compared to their classical counterpart. This is a known limitation that we believe can be overcome by introducing new high-level intrinsic operations (period-finding comes to mind) and by enabling a robust interop interface with other quantum circuits programming languages like Q# or OpenQASM. This features will be implemented in the near future.
 
-In Aleph all outcomes of a computation are calculated simultaneously in a quantum universe. You can think of a quantum universe as a table in which each column contains all the possible values of a register and each row represents a single outcome of the computation.
 
-> *Note: on a quantum device, each column holds the values of a quantum register in super position.*
+## Programming Model: Universes, kets and outcomes
 
-A quantum universe is defined using quantum expressions. We call the result of a quantum expression a `ket`. Each `ket` points to one or more columns from a quantum universe. 
 
-A quantum universe must be explicitly prepared using the `Prepare` method. `Prepare` takes a `ket` and prepares the minimum universe needed to calculate the corresponding expression.
+Typically in a programming language an expression takes a single value, for example in the program:
+```ocaml
+let x = 0
+let y = x + 1
+```
+variable $x$ takes the value 0, and variable $y$ takes the value 1 after evaluating $x + 1$.
 
-Values of the universe can only be retrieved by sampling the universe, which selects values by randomly selecting a single row from the universe. 
+Aleph extends this model by allowing expressions to take multiple values simultaneously. This is achieved using a new type of literal, called a Ket and represented with $|\rangle$, which accepts a comma separated list of values with the same type. When a Ket is used in an expression, Aleph will calculate the outcomes for that expression for all the Ket's values, and return the outcomes in a new Ket.
+For example in:
+```ocaml
+let x = |0, 1, 2>
+let y = x + 1
+```
+variable $x$ is a Ket that takes three values: [0, 1, 2], and variable $y$ is also a Ket, calculated by adding 1 to each value of $x$, namely: [0+1, 1+1, 2+1].
 
-Aleph also provides a method to return the estimated value of a quantum boolean expression.
+When the values of a Ket are calculated from the values of another Ket, we say the two Kets are *entangled*. For example, in the previous example $x$ and $y$ are entangled. When the value of two Kets are calculated independently from each other, we say the Kets are *independent*. For example, two literal Kets are independent.
+
+If two independent Kets are used in an expression, the result is a new Ket that includes a value for each possible combination of the values of the input Kets. For example, in:
+```ocaml
+let x = |0, 1, 2>
+let y = |0, 1, 2>
+let z = x + y
+```
+variable $z$ is calculated from the combination of all $x$ and $y$ values, as such it takes the values [0+0, 0+1, 0+2, 1+0, 1+1, 1+2, 2+0, 2+1, 2+2].
+
+To calculate the results of a Ket expression Aleph prepares a *Universe* that represents all the possible ways the expression can be evaluated. A Universe is a two dimensional matrix in which each column represents the results of an expression, and that contains a row for each possible combination of the values of independent Kets. To build this Universe, Aleph first recursively identifies all independent Kets and generates the table with cartesian product of their values, then it adds a column for the outcome of each entangled expression.
+
+For example, the Universe corresponding to the variable $z$ in the previous program is:
+
+
+| $x$ | $y$ | $z$ |
+| --- | --- | --- |
+|  0  |  0  |  0  |
+|  0  |  1  |  1  |
+|  0  |  2  |  2  |
+|  1  |  0  |  1  |
+|  1  |  1  |  2  |
+|  1  |  2  |  3  |
+|  2  |  0  |  2  |
+|  2  |  1  |  3  |
+|  2  |  2  |  4  |
+
+All Ket expressions are applied to the Ket as a whole, i.e. it is not possible to apply an expression to a subset of its values. However, it is possible to extract a single value from a Ket by first preparing and then measuring its corresponding Universe using Prepare (\`\`) and Measure (`||`) accordingly. 
+
+When a Universe is measured one of its outcomes is randomly selected and the element corresponding to the prepared Ket is returned as the value. Once a Universe is measured its internal state is collapsed and measuring it again always selects the same outcome. To extract a different Ket value, a new Universe must be prepared and measured. For example, in:
+```ocaml
+let x = |0, 1>
+let y = |`x`|
+```
+variable $y$ takes a single value, 0 or 1, that is randomly selected from the Universe prepared from the variable $x$.
+
+
+Most of the times, selecting a random value from an entire Universe is not useful; Aleph providers a Filter (`|:`) expression that filters our the rows from a Universe that do not satisfy a given condition condition. To see how this can be useful take the following program that can solve a system of equations. 
+
+```ocaml
+let x = |0..8>
+let eq1 = x + 3
+let eq2 = (1 + 1) * x
+let filter = eq1 == eq2
+let solution = (x, eq1, eq2) | filter : 1
+let y = |`solution`|
+```
+
+In this program:
+
+  * In line 1, a Ket is created using a range. Ranges are specified with $a..b$, where $a$ is the first value and $b-1$ is the last. This is stored in variable $x$.
+  * In line 2, we create a new Ket by adding to each element of x the classical constant 3 and store the result in variable $eq1$
+  * Similarly in line 3, we create a new Ket by multiplying to each element of $x$ with the classical expression $1+1$ and store this in variable $eq2$
+  * In line 4, we apply the equal expression $eq1==eq2$ to the Universe containing $eq1$ and $eq2$. On each row of such Universe, Aleph checks if the values of column $eq1$ matches the value of column $eq2$ and reports that in a new column associated with the $filter$ variable.
+  * In line 5, the Universe containing $x, eq1, eq2$ is filtered to only those rows where the $filter$ expression is $true$, namely it will to include all rows where $eq1 == eq2$, filter expects a heauristic with the number of columns expected to satisfy the condition, in this case 1. This expression is stored in variable $solution$.
+  * In the last line, we return the value of preparing the `solution` Ket and sample it.
+
+
+The Universe required to calculate $filter$ is listed below. Notice all Kets needed to calculate the expression and their values are included in the Universe. Sampling this Universe would return any of these rows at random. 
+
+| x   |     | eq1 |     | eq2 | filter |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| $\mid0..8\rangle$ | 3 | $x+3$ | 1 + 1 | (1+1) * x | eq1 == eq2 |
+| 0 | 3 | 3 | 2 | 0 | false |
+| 1 | 3 | 4 | 2 | 2 | false |
+| 2 | 3 | 5 | 2 | 4 | false |
+| 3 | 3 | 6 | 2 | 6 | true |
+| 4 | 3 | 7 | 2 | 8 | false |
+| 5 | 3 | 8 | 2 | 10 | false |
+| 6 | 3 | 9 | 2 | 12 | false |
+| 7 | 3 | 10 | 2 | 14 | false |
+
+However, applying the filter expression returns the Universe in which all rows that do not satisfy the filter expression are removed, so only one row remains: $(3, 3, 6, 2, 6, true)$; which implies that when we sample from this Universe the same row is selected we always get a single $(3,3,6)$ value.
+
+| x   |     | eq1 |     | eq2 | filter |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| $\mid0..8\rangle$ | 3 | $x+3$ | 1 + 1 | (1+1) * x | eq1 == eq2 |
+| 3 | 3 | 6 | 2 | 6 | true |
+
+# Aleph syntax
 
 ## Quantum Literals
 
