@@ -5,9 +5,8 @@ let main argv =
         [ CoinFlip.program
           DiceRoll.program
           SolveEquation.program
-          TinyGraphColoring.program 
-          GraphColoring.program 
-        ]
+          TinyGraphColoring.program
+          GraphColoring.program ]
 
     // let programs = [ Sandbox.program ]
 

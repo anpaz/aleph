@@ -15,7 +15,7 @@ let program =
 
 
           // // Return the list of all available colors:
-          // let colors() Ket<Int> =
+          // let colors = function() : Ket<Int>
           //     | RED, BLUE, GREEN >
           Let(
               "colors",
@@ -28,10 +28,10 @@ let program =
 
           // // Edges are listed classically, so we can iterate through them
           // let edges = {
-          //   (0, 1);
-          //   (1, 2);
-          //   (3, 1);
-          //   (2, 0)
+          //   [0, 1];
+          //   [1, 2];
+          //   [3, 1];
+          //   [2, 0];
           // }
           Let(
               "edges",
@@ -45,7 +45,7 @@ let program =
 
           // // checks if the coloring for the nodes x and y is invalid.
           // // invalid is when the 2 nodes of an edge have the same color.
-          // let is_valid_edge_coloring (color1: Ket<Int>, color2: Ket<Int>) : Ket<Bool> =
+          // let is_valid_edge_coloring = function (color1: Ket<Int>, color2: Ket<Int>) : Ket<Bool>
           //     color1 != color2
           //
           Let(
@@ -59,12 +59,12 @@ let program =
 
           // // A valid color combination oracle.
           // // Returns true only if the nodes' color combination is valid for all edges.
-          // let classify_coloring (edges: Set<Tuple<Int, Int>>, coloring: Ket<Int, Int, Int>) : Ket<Bool> =
+          // let classify_coloring = function (edges: Set<Tuple<Int, Int>>, coloring: Ket<Int, Int, Int>) : Ket<Bool>
           //     if Count(edges) == 0 then
           //          | true >
           //     else
-          //         let e = Element(edges)
-          //         let rest = Remove(e, edges)
+          //         let e = edges!
+          //         let rest = e--edges
           //         let x = e[0]
           //         let y = e[1]
           //         let one = is_valid_edge_coloring (coloring[x], coloring[y])
@@ -136,9 +136,9 @@ let program =
           )
 
           // Filter out only those colorings that are valid:
-          // let answers = all_colorings ~ is_valid : 2
+          // let answers = all_colorings | is_valid : 2
           Let("answers", Filter(Var "all_colorings", Var "is_valid", Int 2)) ],
 
-        // | answers |
+        // |`answers`|
         Sample(Var "answers")
     )

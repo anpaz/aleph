@@ -6,8 +6,8 @@ open Microsoft.Quantum.IQSharp.ExecutionPathTracer
 
 let run qpu program =
     match start (program, qpu) with
-    | Ok (v, _) ->
-        printfn $"\n   result: {v}\n"
+    | Ok(v, _) ->
+        printfn $"\nresult: {v}\n"
         0
     | Error msg ->
         printfn $"\n!! Failed: {msg} !!"
@@ -29,22 +29,23 @@ let estimate program =
     printfn ("==> Starting resources estimation...")
     start (program, aleph.runtime.qpu.qsharp.Processor(sim, 1)) |> ignore
 
-    let estimate (key: string) = 
-        let row = 
-            res.Data.Rows 
+    let estimate (key: string) =
+        let row =
+            res.Data.Rows
             |> Seq.cast<System.Data.DataRow>
-            |> Seq.find( fun r -> r.[0] = key)
+            |> Seq.find (fun r -> r.[0] = key)
+
         int64 (row.[1].ToString())
 
     let width = estimate "Width"
     let depth = estimate "Depth"
-    printfn "  resources: width: %d; depth: %d" width depth
+    printfn "       resources: width: %d; depth: %d" width depth
 
     // if depth < 1000 then
     //     printf ("==> Saving circuit... ")
     //     System.IO.File.WriteAllText("circuit.json", tracer.GetExecutionPath().ToJson())
     //     printfn ("done.\n")
-    
+
     (width, depth)
 
 let qsharp program =
@@ -55,5 +56,5 @@ let qsharp program =
         let sim = new SparseSimulator()
         program |> run (aleph.runtime.qpu.qsharp.Processor(sim, 3)) |> ignore
         0
-    else 
+    else
         1

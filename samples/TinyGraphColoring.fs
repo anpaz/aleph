@@ -8,14 +8,7 @@ let program =
         [
           // // Return the list of all available colors (only 2):
           // let colors() Ket<Int> = | @, 1 >
-          Let(
-              "colors",
-              Method(
-                  arguments = List.empty,
-                  returns = Type.Ket [ Type.Int ],
-                  body = KetAll(Int 1)
-              )
-          )
+          Let("colors", Method(arguments = List.empty, returns = Type.Ket [ Type.Int ], body = KetAll(Int 1)))
 
           // // Edges are listed classically, so we can iterate through them
           // let edges = {
@@ -23,14 +16,7 @@ let program =
           //   (0, 2);
           //   (0, 3);
           // }
-          Let(
-              "edges",
-              Set
-                  [ Tuple [ Int 0; Int 1 ]
-                    Tuple [ Int 0; Int 2 ]
-                    Tuple [ Int 0; Int 3 ]
-                    ]
-          )
+          Let("edges", Set [ Tuple [ Int 0; Int 1 ]; Tuple [ Int 0; Int 2 ]; Tuple [ Int 0; Int 3 ] ])
           //Print("edges", [ Var "edges" ])
 
           // // checks if the coloring for the nodes x and y is invalid.
@@ -69,7 +55,7 @@ let program =
               (Method(
                   arguments =
                       [ ("edges", Type.Set(Type.Tuple [ Type.Int; Type.Int ]))
-                        ("coloring", Type.Ket [ Type.Int; Type.Int; Type.Int; Type.Int ]) ],
+                        ("coloring", Type.Ket [ Type.Int; Type.Int; Type.Int; Type.Int; Type.Int; Type.Int ]) ],
                   returns = Type.Ket [ Type.Bool ],
                   body =
                       If(
@@ -109,13 +95,18 @@ let program =
           Let(
               "all_colorings",
               (Join(
-                Join(
-                    Join(
-                        CallMethod(Var "colors", List.empty),
-                        CallMethod(Var "colors", List.empty)),
-                        CallMethod(Var "colors", List.empty)),
-                        CallMethod(Var "colors", List.empty))
-              )
+                  Join(
+                      Join(
+                          Join(
+                              Join(CallMethod(Var "colors", List.empty), CallMethod(Var "colors", List.empty)),
+                              CallMethod(Var "colors", List.empty)
+                          ),
+                          CallMethod(Var "colors", List.empty)
+                      ),
+                      CallMethod(Var "colors", List.empty)
+                  ),
+                  CallMethod(Var "colors", List.empty)
+              ))
           )
 
           // // To find a valid coloring, solve the valid_combination oracle and
@@ -127,9 +118,9 @@ let program =
           )
 
           // let answers = all_colorings ~ is_valid : 2
-          Let("answers", Filter(Var "all_colorings", Var "is_valid", Int 2))
+          Let("answers", Filter(Var "all_colorings", Var "is_valid", Int 0))
 
-        ],
+          ],
         // |answers|
         Sample(Var "answers")
     )

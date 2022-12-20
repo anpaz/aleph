@@ -8,14 +8,14 @@ let program =
           // let x = | @, 3 >
           Let("x", KetAll(Int 3))
 
-          // let eq1 = x + 5
+          // let eq1 = x + 3
           Let("eq1", Add(Var "x", Int 3))
-          // let eq2 = 2x
+          // let eq2 = 2 * x
           Let("eq2", Multiply(Int 2, Var "x"))
 
-          // let solution = Filter ((x, y), eq1 == eq2)
-          Let("solution", Filter(Var "x", Equals(Var "eq1", Var "eq2"), Int 1)) ],
+          // let solution = (x, eq1, eq2) | eq1 == eq2 : 1
+          Let("solution", Filter((Join(Var "x", Join(Var "eq1", Var "eq2")), Equals(Var "eq1", Var "eq2"), Int 1))) ],
 
-        // | Prepare (solution) |
+        // |`solution`|
         Sample(Prepare(Var "solution"))
     )
