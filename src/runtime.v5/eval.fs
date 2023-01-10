@@ -1,0 +1,414 @@
+namespace aleph.runtime
+
+open aleph.parser.ast
+open aleph.parser.ast.typed
+open aleph.parser.TypeChecker
+
+module EvalV5 =
+    open System
+    let random = System.Random()
+
+    let (==>) (input: Result<'a, 'b>) ok = Result.bind ok input
+
+
+    type IUniverse =
+        interface
+            inherit System.IComparable
+        end
+
+    and [<CustomComparison; CustomEquality>] Method =
+        { Args: Id list
+          Body: E
+          Context: EvalContext }
+
+        override this.Equals x =
+            match x with
+            | :? Method as { Args = args'; Body = body' } -> (this.Args = args' && this.Body = body')
+            | _ -> false
+
+        override this.GetHashCode() =
+            this.Args.GetHashCode() + this.Body.GetHashCode() + this.Context.GetHashCode()
+
+        interface System.IComparable with
+            member this.CompareTo(obj: obj) : int = failwith "Not Implemented"
+
+    and KetId = 
+        | Id of int
+        | Tuple of KetId * KetId
+
+    and Value =
+        | Bool of bool
+        | Int of int
+        | Tuple of Value list
+        | Set of Set<Value>
+        | Method of Method
+        | KetId of KetId
+        | Universe of IUniverse
+
+        static member (+)(l: Value, r: Value) =
+            match (l, r) with
+            | Value.Int l, Value.Int r -> Value.Int(l + r)
+            | _ -> failwith "+ only supported for ints, got {l} + {r}"
+
+        static member (*)(l: Value, r: Value) =
+            match (l, r) with
+            | Value.Int l, Value.Int r -> Value.Int(l * r)
+            | _ -> failwith "+ only supported for ints, got {l} * {r}"
+
+        static member (==)(l: Value, r: Value) =
+            match (l, r) with
+            | Value.Int l, Value.Int r -> Value.Bool(l = r)
+            | _ -> failwith "= only supported for ints, got {l} == {r}"
+
+        static member LessThan(l: Value, r: Value) =
+            match (l, r) with
+            | Value.Int l, Value.Int r -> Value.Bool(l < r)
+            | _ -> failwith "< only supported for ints, got {l} == {r}"
+
+        static member Not(l: Value) =
+            match l with
+            | Value.Bool b -> Value.Bool(not b)
+            | _ -> failwith "not only supported for bool values, got {l}"
+
+        static member And(l: Value, r: Value) =
+            match (l, r) with
+            | Value.Bool l, Value.Bool r -> Value.Bool(l && r)
+            | _ -> failwith "= only supported for bool values, got {l} && {r}"
+
+        static member Or(l: Value, r: Value) =
+            match (l, r) with
+            | Value.Bool l, Value.Bool r -> Value.Bool(l || r)
+            | _ -> failwith "= only supported for bool values, got {l} || {r}"
+
+    and QuantumGraph = Map<KetId, KetExpression>
+
+    and KetOperator =
+        | Add
+        | Multiply
+        | If
+        | Equals
+        | LessThan
+        | Not
+        | And
+        | Or
+
+    and KetExpression = 
+        | Literal of size: int
+        | Join of values: KetId * KetId
+        | Project of source: KetId * index: int
+        | Map of input: KetId * lambda: KetOperator
+        | Filter of input: KetId * filter: KetId
+
+    and EvalContext =
+        { heap: Map<Id, Value * QuantumGraph>
+          qpu: QPU
+          callerCtx: EvalContext option }
+
+    and QPU =
+        abstract Prepare: U * EvalContext -> Result<Value, string>
+        abstract Measure: IUniverse -> Result<Value, string>
+
+    let mutable max_ket = 0
+
+    let join (q1:QuantumGraph) (q2:QuantumGraph) = 
+        Map.foldBack Map.add q2 q1
+
+    let rec eval (e: E, ctx : EvalContext) : Result<Value * QuantumGraph, string> =
+        match e with
+        | E.Classic (c, _) -> eval_classic ctx c
+        | _ -> "Not implemented" |> Error
+        
+        // | E.Quantum (q, _) -> eval_quantum (q, ctx)
+        // | E.Universe (u, _) -> ctx.qpu.Prepare(u, ctx)
+
+    // and eval_quantum (q, ctx) =
+    //     match q with
+    //     | Q.Var id -> eval_var (id, ctx)
+    //     | _ ->
+    //         max_ket <- max_ket + 1
+
+    //         (Value.Ket
+    //             { Id = max_ket
+    //               StatePrep = q
+    //               Context = ctx },
+    //          ctx)
+    //         |> Ok
+
+    and eval_classic ctx c =
+        match c with
+        | C.Var id -> eval_var ctx id
+
+        | C.BoolLiteral b -> eval_bool b
+        | C.IntLiteral i -> eval_int i
+        | C.Tuple values -> eval_tuple ctx values
+        | C.Set values -> eval_set ctx values
+        | C.Range (start, stop) -> eval_range ctx (start, stop)
+    //     | C.Method (args, body) -> eval_method (args, body, ctx)
+
+    //     | C.Add (left, right) -> eval_add (left, right, ctx)
+    //     | C.Multiply (left, right) -> eval_multiply (left, right, ctx)
+    //     | C.Equals (left, right) -> eval_equals (left, right, ctx)
+    //     | C.LessThan (left, right) -> eval_lessthan (left, right, ctx)
+    //     | C.And (left, right) -> eval_and (left, right, ctx)
+    //     | C.Or (left, right) -> eval_or (left, right, ctx)
+    //     | C.Not e -> eval_not (e, ctx)
+
+    //     | C.Project (value, index) -> eval_project (value, index, ctx)
+    //     | C.Index (value, index) -> eval_index (value, index, ctx)
+    //     | C.Join (left, right) -> eval_join (left, right, ctx)
+
+    //     | C.If (cond, t, e) -> eval_if (cond, t, e, ctx)
+    //     | C.Block (stmts, value) -> eval_block (stmts, value, ctx)
+
+    //     | C.Sample q -> eval_sample (q, ctx)
+
+    //     | C.CallMethod (method, args) -> eval_callmethod (method, args, ctx)
+
+    //     | C.Element (set) -> eval_element (set, ctx)
+    //     | C.Append (item, set) -> eval_append (item, set, ctx)
+    //     | C.Remove (item, set) -> eval_remove (item, set, ctx)
+    //     | C.Count (set) -> eval_count (set, ctx)
+        | _ -> $"Not implemented: {c}" |> Error
+
+    and eval_var ctx id =
+        match ctx.heap.TryFind id with
+        | Some value -> value |> Ok
+        | _ ->
+            match ctx.callerCtx with
+            | Some ctx' -> eval_var ctx' id
+            | None -> $"Variable not found: {id}" |> Error
+
+    and eval_bool b = (Value.Bool b, Map.empty) |> Ok
+
+    and eval_int i = (Value.Int i, Map.empty) |> Ok
+
+    // and eval_method (args, body, ctx) =
+    //     (Value.Method
+    //         { Args = args
+    //           Body = body
+    //           Context = ctx },
+    //      ctx)
+    //     |> Ok
+
+    and eval_tuple ctx values =
+        eval_expression_list ctx values
+        ==> fun (values, graph) -> (Tuple values, graph) |> Ok
+
+    and eval_set ctx values =
+        eval_expression_list ctx values
+        ==> fun (values, graph) -> (Set(Set.ofList values), graph) |> Ok
+
+    and eval_range ctx (start, stop) =
+        eval_classic ctx start
+        ==> fun (start, q1) ->
+                eval_classic ctx stop
+                ==> fun (stop, q2) ->
+                        match (start, stop) with
+                        | Value.Int start, Value.Int stop ->
+                            let values = seq { start .. stop - 1 } |> Seq.map Value.Int
+                            (Set(Set.ofSeq values), join q1 q2) |> Ok
+                        | _ -> $"Range start..stop must be int, got: {start}..{stop}" |> Error
+
+    // and eval_add (left, right, ctx) =
+    //     eval_classic (left, ctx)
+    //     ==> fun (left, ctx) -> eval_classic (right, ctx) ==> fun (right, ctx) -> (left + right, ctx) |> Ok
+
+    // and eval_multiply (left, right, ctx) =
+    //     eval_classic (left, ctx)
+    //     ==> fun (left, ctx) -> eval_classic (right, ctx) ==> fun (right, ctx) -> (left * right, ctx) |> Ok
+
+    // and eval_equals (left, right, ctx) =
+    //     eval_classic (left, ctx)
+    //     ==> fun (left, ctx) -> eval_classic (right, ctx) ==> fun (right, ctx) -> (left == right, ctx) |> Ok
+
+    // and eval_lessthan (left, right, ctx) =
+    //     eval_classic (left, ctx)
+    //     ==> fun (left, ctx) ->
+    //             eval_classic (right, ctx)
+    //             ==> fun (right, ctx) -> (Value.LessThan(left, right), ctx) |> Ok
+
+    // and eval_and (left, right, ctx) =
+    //     eval_classic (left, ctx)
+    //     ==> fun (left, ctx) ->
+    //             eval_classic (right, ctx)
+    //             ==> fun (right, ctx) -> (Value.And(left, right), ctx) |> Ok
+
+    // and eval_or (left, right, ctx) =
+    //     eval_classic (left, ctx)
+    //     ==> fun (left, ctx) ->
+    //             eval_classic (right, ctx)
+    //             ==> fun (right, ctx) -> (Value.Or(left, right), ctx) |> Ok
+
+    // and eval_not (e, ctx) =
+    //     eval_classic (e, ctx) ==> fun (e, ctx) -> (Value.Not e, ctx) |> Ok
+
+    // and eval_project (value, i, ctx) =
+    //     eval_classic (value, ctx)
+    //     ==> fun (value, ctx) ->
+    //             match value with
+    //             | Value.Tuple t -> (t.[i], ctx) |> Ok
+    //             | _ -> $"project only avaiable for tuples, got: {value}" |> Error
+
+    // and eval_index (value, i, ctx) =
+    //     eval_classic (value, ctx)
+    //     ==> fun (value, ctx) ->
+    //             eval_classic (i, ctx)
+    //             ==> fun (i, ctx) ->
+    //                     match (value, i) with
+    //                     | Value.Tuple t, Value.Int i -> (t.[i], ctx) |> Ok
+    //                     | _ -> $"project only avaiable for tuples and int index, got: {value}[{i}]" |> Error
+
+    // and eval_join (left, right, ctx) =
+    //     eval_classic (left, ctx)
+    //     ==> fun (left, ctx) ->
+    //             eval_classic (right, ctx)
+    //             ==> fun (right, ctx) ->
+    //                     match (left, right) with
+    //                     | Value.Tuple l, Value.Tuple r -> (Value.Tuple(l @ r), ctx) |> Ok
+    //                     | _ -> $"Join only avaiable for tuples, got: {left}, {right}" |> Error
+
+    // and eval_if (cond, then_e, else_e, ctx) =
+    //     eval_classic (cond, ctx)
+    //     ==> fun (cond, ctx) ->
+    //             match cond with
+    //             | Value.Bool true -> eval_classic (then_e, ctx)
+    //             | Value.Bool false -> eval_classic (else_e, ctx)
+    //             | _ -> $"if condition must be a boolean expression, got: {cond}" |> Error
+
+    // and eval_block (stmts, value, ctx) =
+    //     eval_stmts (stmts, ctx)
+    //     ==> fun (ctx) ->
+    //             eval_classic (value, ctx)
+    //             ==> fun (value, _) -> (value, ctx.callerCtx.Value) |> Ok
+
+    // and eval_sample (u, ctx) =
+    //     let qpu = ctx.qpu
+
+    //     qpu.Prepare(u, ctx)
+    //     ==> fun (u, ctx) ->
+    //             match u with
+    //             | Value.Universe u -> qpu.Measure u ==> fun (v) -> (v, ctx) |> Ok
+    //             | _ -> $"Expecting Prepare to return Universe, got {u}" |> Error
+
+    // and eval_callmethod (method, args, ctx) =
+    //     setup_method_body (method, args, ctx)
+    //     ==> fun (body, ctx') ->
+    //             eval (body, ctx')
+    //             ==> fun (value, ctx') ->
+    //                     // return the heap back to the original state
+    //                     let ctx = { ctx' with heap = ctx.heap }
+    //                     (value, ctx) |> Ok
+
+    // and eval_element (set, ctx) =
+    //     let pick_random (s: Set<Value>) =
+    //         let i = random.Next(s.Count)
+    //         (Set.toList s).[i]
+
+    //     eval_classic (set, ctx)
+    //     ==> fun (set, ctx) ->
+    //             match set with
+    //             | Value.Set s -> (s |> pick_random, ctx) |> Ok
+    //             | _ -> $"Append only available for sets, got: {set}" |> Error
+
+    // and eval_append (item, set, ctx) =
+    //     eval_classic (item, ctx)
+    //     ==> fun (item, ctx) ->
+    //             eval_classic (set, ctx)
+    //             ==> fun (set, ctx) ->
+    //                     match set with
+    //                     | Value.Set s -> (Value.Set(s.Add item), ctx) |> Ok
+    //                     | _ -> $"Append only available for sets, got: {set}" |> Error
+
+    // and eval_remove (item, set, ctx) =
+    //     eval_classic (item, ctx)
+    //     ==> fun (item, ctx) ->
+    //             eval_classic (set, ctx)
+    //             ==> fun (set, ctx) ->
+    //                     match set with
+    //                     | Value.Set s -> (Value.Set(s.Remove item), ctx) |> Ok
+    //                     | _ -> $"Remove only available for sets, got: {set}" |> Error
+
+    // and eval_count (set, ctx) =
+    //     eval_classic (set, ctx)
+    //     ==> fun (set, ctx) ->
+    //             match set with
+    //             | Value.Set s -> (Value.Int s.Count, ctx) |> Ok
+    //             | _ -> $"Count only available for sets, got: {set}" |> Error
+
+    and eval_expression_list ctx values =
+        let rec next items =
+            match items with
+            | head :: tail ->
+                eval_classic ctx head
+                ==> fun (head, q1) -> next tail ==> fun (tail, q2) -> (head :: tail, join q1 q2) |> Ok
+            | [] -> ([], Map.empty) |> Ok
+
+        next values
+
+    // and eval_stmts (stmts, ctx) =
+    //     let eval_one ctx' stmt =
+    //         ctx'
+    //         ==> fun (ctx') ->
+    //                 match stmt with
+    //                 | Let (id, e) ->
+    //                     eval (e, ctx')
+    //                     ==> fun (value, ctx') -> { ctx' with heap = ctx'.heap.Add(id, value) } |> Ok
+    //                 | Print (msg, expressions) ->
+    //                     printf "%s" msg
+
+    //                     let print_one ctx' e =
+    //                         ctx'
+    //                         ==> fun (ctx') ->
+    //                                 eval (e, ctx')
+    //                                 ==> fun (value, ctx') ->
+    //                                         printfn "%A" value
+    //                                         ctx' |> Ok
+
+    //                     expressions |> List.fold print_one (ctx' |> Ok)
+
+    //     let ctx =
+    //         { ctx with
+    //             heap = Map.empty
+    //             callerCtx = ctx |> Some }
+
+    //     stmts |> List.fold eval_one (ctx |> Ok)
+
+    // and setup_args ids args ctx =
+    //     let add_argument (heap': Result<Map<Id, Value>, string>) (id, value) =
+    //         heap'
+    //         ==> fun heap' -> eval (value, ctx) ==> fun (value, _) -> heap'.Add(id, value) |> Ok
+
+    //     args |> List.zip ids |> List.fold add_argument (Map.empty |> Ok)
+
+    // and setup_method_body (method, args, ctx) =
+    //     eval_classic (method, ctx)
+    //     ==> fun (m, ctx) ->
+    //             match m with
+    //             | Value.Method ({ Args = ids
+    //                               Body = body
+    //                               Context = context }) ->
+    //                 setup_args ids args ctx
+    //                 ==> fun args_map ->
+    //                         let args_map =
+    //                             // If the method comes from a variable, add it to the context
+    //                             // so it can be invoked recursively:
+    //                             match method with
+    //                             | C.Var id -> args_map.Add(id, m)
+    //                             | _ -> args_map
+
+    //                         let ctx =
+    //                             { ctx with
+    //                                 heap = args_map
+    //                                 callerCtx = context |> Some }
+
+    //                         (body, ctx) |> Ok
+    //             | _ -> $"Expecting method, got {method}" |> Error
+
+    let apply (program: Expression, qpu: QPU) =
+        aleph.parser.TypeChecker.start (program)
+        ==> fun (e, _) ->
+                let ctx =
+                    { heap = Map.empty
+                      qpu = qpu
+                      callerCtx = None }
+                eval (e, ctx)

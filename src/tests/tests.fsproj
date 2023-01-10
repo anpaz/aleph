@@ -7,7 +7,7 @@
   <ItemGroup>
     <Compile Include="Utils.fs" />
     <Compile Include="TestTypecheck.fs" />
-    <Compile Include="TestEval.fs" />
+    <Compile Include="TestEvalV5.fs" />
     <Compile Include="TestQPUClassic.fs" />
     <Compile Include="TestQPUQsharp.fs" />
     <Compile Include="Program.fs" />
@@ -21,5 +21,6 @@
   <ItemGroup>
     <ProjectReference Include="../parser/aleph.parser.fsproj" />
     <ProjectReference Include="../runtime/aleph.runtime.fsproj" />
+    <ProjectReference Include="../runtime.v5/aleph.runtime.v5.fsproj" />
   </ItemGroup>
 </Project>
