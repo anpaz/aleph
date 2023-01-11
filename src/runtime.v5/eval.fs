@@ -2,10 +2,8 @@ namespace aleph.runtime
 
 open aleph.parser.ast
 open aleph.parser.ast.typed
-open aleph.parser.TypeChecker
 
 module EvalV5 =
-    open System
     let random = System.Random()
 
     let (==>) (input: Result<'a, 'b>) ok = Result.bind ok input
