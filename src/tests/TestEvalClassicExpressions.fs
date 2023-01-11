@@ -14,8 +14,7 @@ module ClassicValueContext =
         { new QPU with
             member this.Measure(arg1: IUniverse) : Result<Value, string> = failwith "Not Implemented"
 
-            member this.Prepare(arg1: U, arg2: EvalContext) : Result<Value, string> =
-                failwith "Not Implemented" }
+            member this.Prepare(arg1: U, arg2: EvalContext) : Result<Value, string> = failwith "Not Implemented" }
 
     let Prelude =
         [ s.Let("i1", e.Int 1)
@@ -142,8 +141,7 @@ type TestEval() =
           // (5 + 10) * 4 < 100
           e.LessThan(e.Multiply(e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 100), Value.Bool true
           // not ((5 + 10) * 4 < 50)
-          e.Not(e.LessThan(e.Multiply(e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 50)), Value.Bool true 
-        ]
+          e.Not(e.LessThan(e.Multiply(e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 50)), Value.Bool true ]
         |> List.iter (this.TestExpression prelude)
 
     [<TestMethod>]

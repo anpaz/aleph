@@ -10,6 +10,12 @@ module EvalV5 =
 
     let (==>) (input: Result<'a, 'b>) ok = Result.bind ok input
 
+    let mutable max_ket = 0
+
+    let fresh_ketid () =
+        max_ket <- max_ket + 1
+        max_ket
+
 
     type IUniverse =
         interface
@@ -32,7 +38,7 @@ module EvalV5 =
         interface System.IComparable with
             member this.CompareTo(obj: obj) : int = failwith "Not Implemented"
 
-    and KetId = 
+    and KetId =
         | Id of int
         | Tuple of KetId * KetId
 
@@ -92,7 +98,7 @@ module EvalV5 =
         | And
         | Or
 
-    and KetExpression = 
+    and KetExpression =
         | Literal of size: int
         | Join of values: KetId * KetId
         | Project of source: KetId * index: int
@@ -108,33 +114,10 @@ module EvalV5 =
         abstract Prepare: U * EvalContext -> Result<Value, string>
         abstract Measure: IUniverse -> Result<Value, string>
 
-    let mutable max_ket = 0
+    let join (q1: QuantumGraph) (q2: QuantumGraph) = Map.foldBack Map.add q2 q1
 
-    let join (q1:QuantumGraph) (q2:QuantumGraph) = 
-        Map.foldBack Map.add q2 q1
 
-    let rec eval ctx e  : Result<Value * QuantumGraph, string> =
-        match e with
-        | E.Classic (c, _) -> eval_classic ctx c
-        | _ -> "Not implemented" |> Error
-        
-        // | E.Quantum (q, _) -> eval_quantum (q, ctx)
-        // | E.Universe (u, _) -> ctx.qpu.Prepare(u, ctx)
-
-    // and eval_quantum (q, ctx) =
-    //     match q with
-    //     | Q.Var id -> eval_var (id, ctx)
-    //     | _ ->
-    //         max_ket <- max_ket + 1
-
-    //         (Value.Ket
-    //             { Id = max_ket
-    //               StatePrep = q
-    //               Context = ctx },
-    //          ctx)
-    //         |> Ok
-
-    and eval_classic ctx c =
+    let rec eval_classic ctx c =
         match c with
         | C.Var id -> eval_var ctx id
 
@@ -186,7 +169,7 @@ module EvalV5 =
             { Args = args
               Body = body
               Context = ctx },
-            Map.empty)
+         Map.empty)
         |> Ok
 
     and eval_tuple ctx values =
@@ -222,7 +205,9 @@ module EvalV5 =
 
     and eval_lessthan ctx (left, right) =
         eval_classic ctx left
-        ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (Value.LessThan(v1, v2), join q1 q2) |> Ok
+        ==> fun (v1, q1) ->
+                eval_classic ctx right
+                ==> fun (v2, q2) -> (Value.LessThan(v1, v2), join q1 q2) |> Ok
 
     and eval_and ctx (left, right) =
         eval_classic ctx left
@@ -232,7 +217,7 @@ module EvalV5 =
         eval_classic ctx left
         ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (Value.Or(v1, v2), join q1 q2) |> Ok
 
-    and eval_not ctx e=
+    and eval_not ctx e =
         eval_classic ctx e ==> fun (v1, q1) -> (Value.Not v1, q1) |> Ok
 
     and eval_project ctx (value, i) =
@@ -269,10 +254,8 @@ module EvalV5 =
                 | _ -> $"if condition must be a boolean expression, got: {cond}" |> Error
 
     and eval_block ctx (stmts, value) =
-        eval_stmts  ctx stmts
-        ==> fun (ctx) ->
-                eval_classic ctx value
-                ==> fun value -> value |> Ok
+        eval_stmts ctx stmts
+        ==> fun (ctx) -> eval_classic ctx value ==> fun value -> value |> Ok
 
     and eval_sample ctx u =
         let qpu = ctx.qpu
@@ -285,12 +268,7 @@ module EvalV5 =
 
     and eval_callmethod ctx (method, args) =
         setup_method_body ctx (method, args)
-        ==> fun (body, q1, ctx') ->
-                eval ctx' body
-                ==> fun (v2, q2) ->
-                        // return the heap back to the original state
-                        let ctx = { ctx' with heap = ctx.heap }
-                        (v2, join q1 q2) |> Ok
+        ==> fun (body, q1, ctx') -> eval ctx' body ==> fun (v2, q2) -> (v2, join q1 q2) |> Ok
 
     and eval_element ctx set =
         let pick_random (s: Set<Value>) =
@@ -338,14 +316,12 @@ module EvalV5 =
 
         next values
 
-    and eval_stmts ctx stmts : Result<EvalContext, string> =
-        let eval_one ctx' stmt =
+    and eval_stmts ctx stmts =
+        let eval_one (ctx': Result<EvalContext, string>) stmt =
             ctx'
             ==> fun (ctx') ->
                     match stmt with
-                    | Let (id, e) ->
-                        eval ctx' e
-                        ==> fun (value) -> { ctx' with heap = ctx'.heap.Add(id, value) } |> Ok
+                    | Let (id, e) -> eval ctx' e ==> fun value -> { ctx' with heap = ctx'.heap.Add(id, value) } |> Ok
                     | Print (msg, expressions) ->
                         printf "%s" msg
 
@@ -397,6 +373,20 @@ module EvalV5 =
                             (body, q1, ctx) |> Ok
                 | _ -> $"Expecting method, got {method}" |> Error
 
+    and eval_quantum ctx q =
+        match q with
+        | Q.Var id -> eval_var ctx id
+        | _ -> $"Not implemented q: {q}" |> Error
+
+    and eval ctx e : Result<Value * QuantumGraph, string> =
+        match e with
+        | E.Classic (c, _) -> eval_classic ctx c
+        | E.Quantum (q, _) -> eval_quantum ctx q
+        | _ -> "Not implemented" |> Error
+
+    // | E.Universe (u, _) -> ctx.qpu.Prepare(u, ctx)
+
+
     let apply (program: Expression, qpu: QPU) =
         aleph.parser.TypeChecker.start (program)
         ==> fun (e, _) ->
@@ -404,4 +394,5 @@ module EvalV5 =
                     { heap = Map.empty
                       qpu = qpu
                       callerCtx = None }
+
                 eval ctx e
