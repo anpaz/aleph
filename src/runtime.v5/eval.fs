@@ -113,7 +113,7 @@ module EvalV5 =
     let join (q1:QuantumGraph) (q2:QuantumGraph) = 
         Map.foldBack Map.add q2 q1
 
-    let rec eval (e: E, ctx : EvalContext) : Result<Value * QuantumGraph, string> =
+    let rec eval ctx e  : Result<Value * QuantumGraph, string> =
         match e with
         | E.Classic (c, _) -> eval_classic ctx c
         | _ -> "Not implemented" |> Error
@@ -143,32 +143,31 @@ module EvalV5 =
         | C.Tuple values -> eval_tuple ctx values
         | C.Set values -> eval_set ctx values
         | C.Range (start, stop) -> eval_range ctx (start, stop)
-    //     | C.Method (args, body) -> eval_method (args, body, ctx)
+        | C.Method (args, body) -> eval_method ctx (args, body)
 
-    //     | C.Add (left, right) -> eval_add (left, right, ctx)
-    //     | C.Multiply (left, right) -> eval_multiply (left, right, ctx)
-    //     | C.Equals (left, right) -> eval_equals (left, right, ctx)
-    //     | C.LessThan (left, right) -> eval_lessthan (left, right, ctx)
-    //     | C.And (left, right) -> eval_and (left, right, ctx)
-    //     | C.Or (left, right) -> eval_or (left, right, ctx)
-    //     | C.Not e -> eval_not (e, ctx)
+        | C.Add (left, right) -> eval_add ctx (left, right)
+        | C.Multiply (left, right) -> eval_multiply ctx (left, right)
+        | C.Equals (left, right) -> eval_equals ctx (left, right)
+        | C.LessThan (left, right) -> eval_lessthan ctx (left, right)
+        | C.And (left, right) -> eval_and ctx (left, right)
+        | C.Or (left, right) -> eval_or ctx (left, right)
+        | C.Not e -> eval_not ctx e
 
-    //     | C.Project (value, index) -> eval_project (value, index, ctx)
-    //     | C.Index (value, index) -> eval_index (value, index, ctx)
-    //     | C.Join (left, right) -> eval_join (left, right, ctx)
+        | C.Project (value, index) -> eval_project ctx (value, index)
+        | C.Index (value, index) -> eval_index ctx (value, index)
+        | C.Join (left, right) -> eval_join ctx (left, right)
 
-    //     | C.If (cond, t, e) -> eval_if (cond, t, e, ctx)
-    //     | C.Block (stmts, value) -> eval_block (stmts, value, ctx)
+        | C.If (cond, t, e) -> eval_if ctx (cond, t, e)
+        | C.Block (stmts, value) -> eval_block ctx (stmts, value)
 
-    //     | C.Sample q -> eval_sample (q, ctx)
+        | C.Sample q -> eval_sample ctx q
 
-    //     | C.CallMethod (method, args) -> eval_callmethod (method, args, ctx)
+        | C.CallMethod (method, args) -> eval_callmethod ctx (method, args)
 
-    //     | C.Element (set) -> eval_element (set, ctx)
-    //     | C.Append (item, set) -> eval_append (item, set, ctx)
-    //     | C.Remove (item, set) -> eval_remove (item, set, ctx)
-    //     | C.Count (set) -> eval_count (set, ctx)
-        | _ -> $"Not implemented: {c}" |> Error
+        | C.Element (set) -> eval_element ctx set
+        | C.Append (item, set) -> eval_append ctx (item, set)
+        | C.Remove (item, set) -> eval_remove ctx (item, set)
+        | C.Count (set) -> eval_count ctx set
 
     and eval_var ctx id =
         match ctx.heap.TryFind id with
@@ -182,13 +181,13 @@ module EvalV5 =
 
     and eval_int i = (Value.Int i, Map.empty) |> Ok
 
-    // and eval_method (args, body, ctx) =
-    //     (Value.Method
-    //         { Args = args
-    //           Body = body
-    //           Context = ctx },
-    //      ctx)
-    //     |> Ok
+    and eval_method ctx (args, body) =
+        (Value.Method
+            { Args = args
+              Body = body
+              Context = ctx },
+            Map.empty)
+        |> Ok
 
     and eval_tuple ctx values =
         eval_expression_list ctx values
@@ -200,140 +199,134 @@ module EvalV5 =
 
     and eval_range ctx (start, stop) =
         eval_classic ctx start
-        ==> fun (start, q1) ->
+        ==> fun (v1, q1) ->
                 eval_classic ctx stop
-                ==> fun (stop, q2) ->
-                        match (start, stop) with
-                        | Value.Int start, Value.Int stop ->
-                            let values = seq { start .. stop - 1 } |> Seq.map Value.Int
+                ==> fun (v2, q2) ->
+                        match (v1, v2) with
+                        | Value.Int v1, Value.Int v2 ->
+                            let values = seq { v1 .. v2 - 1 } |> Seq.map Value.Int
                             (Set(Set.ofSeq values), join q1 q2) |> Ok
                         | _ -> $"Range start..stop must be int, got: {start}..{stop}" |> Error
 
-    // and eval_add (left, right, ctx) =
-    //     eval_classic (left, ctx)
-    //     ==> fun (left, ctx) -> eval_classic (right, ctx) ==> fun (right, ctx) -> (left + right, ctx) |> Ok
+    and eval_add ctx (left, right) =
+        eval_classic ctx left
+        ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (v1 + v2, join q1 q2) |> Ok
 
-    // and eval_multiply (left, right, ctx) =
-    //     eval_classic (left, ctx)
-    //     ==> fun (left, ctx) -> eval_classic (right, ctx) ==> fun (right, ctx) -> (left * right, ctx) |> Ok
+    and eval_multiply ctx (left, right) =
+        eval_classic ctx left
+        ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (v1 * v2, join q1 q2) |> Ok
 
-    // and eval_equals (left, right, ctx) =
-    //     eval_classic (left, ctx)
-    //     ==> fun (left, ctx) -> eval_classic (right, ctx) ==> fun (right, ctx) -> (left == right, ctx) |> Ok
+    and eval_equals ctx (left, right) =
+        eval_classic ctx left
+        ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (v1 == v2, join q1 q2) |> Ok
 
-    // and eval_lessthan (left, right, ctx) =
-    //     eval_classic (left, ctx)
-    //     ==> fun (left, ctx) ->
-    //             eval_classic (right, ctx)
-    //             ==> fun (right, ctx) -> (Value.LessThan(left, right), ctx) |> Ok
+    and eval_lessthan ctx (left, right) =
+        eval_classic ctx left
+        ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (Value.LessThan(v1, v2), join q1 q2) |> Ok
 
-    // and eval_and (left, right, ctx) =
-    //     eval_classic (left, ctx)
-    //     ==> fun (left, ctx) ->
-    //             eval_classic (right, ctx)
-    //             ==> fun (right, ctx) -> (Value.And(left, right), ctx) |> Ok
+    and eval_and ctx (left, right) =
+        eval_classic ctx left
+        ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (Value.And(v1, v2), join q1 q2) |> Ok
 
-    // and eval_or (left, right, ctx) =
-    //     eval_classic (left, ctx)
-    //     ==> fun (left, ctx) ->
-    //             eval_classic (right, ctx)
-    //             ==> fun (right, ctx) -> (Value.Or(left, right), ctx) |> Ok
+    and eval_or ctx (left, right) =
+        eval_classic ctx left
+        ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (Value.Or(v1, v2), join q1 q2) |> Ok
 
-    // and eval_not (e, ctx) =
-    //     eval_classic (e, ctx) ==> fun (e, ctx) -> (Value.Not e, ctx) |> Ok
+    and eval_not ctx e=
+        eval_classic ctx e ==> fun (v1, q1) -> (Value.Not v1, q1) |> Ok
 
-    // and eval_project (value, i, ctx) =
-    //     eval_classic (value, ctx)
-    //     ==> fun (value, ctx) ->
-    //             match value with
-    //             | Value.Tuple t -> (t.[i], ctx) |> Ok
-    //             | _ -> $"project only avaiable for tuples, got: {value}" |> Error
+    and eval_project ctx (value, i) =
+        eval_classic ctx value
+        ==> fun (value, q) ->
+                match value with
+                | Value.Tuple t -> (t.[i], q) |> Ok
+                | _ -> $"project only avaiable for tuples, got: {value}" |> Error
 
-    // and eval_index (value, i, ctx) =
-    //     eval_classic (value, ctx)
-    //     ==> fun (value, ctx) ->
-    //             eval_classic (i, ctx)
-    //             ==> fun (i, ctx) ->
-    //                     match (value, i) with
-    //                     | Value.Tuple t, Value.Int i -> (t.[i], ctx) |> Ok
-    //                     | _ -> $"project only avaiable for tuples and int index, got: {value}[{i}]" |> Error
+    and eval_index ctx (value, i) =
+        eval_classic ctx value
+        ==> fun (value, q1) ->
+                eval_classic ctx i
+                ==> fun (i, q2) ->
+                        match (value, i) with
+                        | Value.Tuple t, Value.Int i -> (t.[i], join q1 q2) |> Ok
+                        | _ -> $"project only avaiable for tuples and int index, got: {value}[{i}]" |> Error
 
-    // and eval_join (left, right, ctx) =
-    //     eval_classic (left, ctx)
-    //     ==> fun (left, ctx) ->
-    //             eval_classic (right, ctx)
-    //             ==> fun (right, ctx) ->
-    //                     match (left, right) with
-    //                     | Value.Tuple l, Value.Tuple r -> (Value.Tuple(l @ r), ctx) |> Ok
-    //                     | _ -> $"Join only avaiable for tuples, got: {left}, {right}" |> Error
+    and eval_join ctx (left, right) =
+        eval_classic ctx left
+        ==> fun (v1, q1) ->
+                eval_classic ctx right
+                ==> fun (v2, q2) ->
+                        match (v1, v2) with
+                        | Value.Tuple l, Value.Tuple r -> (Value.Tuple(l @ r), join q1 q2) |> Ok
+                        | _ -> $"Join only avaiable for tuples, got: {left}, {right}" |> Error
 
-    // and eval_if (cond, then_e, else_e, ctx) =
-    //     eval_classic (cond, ctx)
-    //     ==> fun (cond, ctx) ->
-    //             match cond with
-    //             | Value.Bool true -> eval_classic (then_e, ctx)
-    //             | Value.Bool false -> eval_classic (else_e, ctx)
-    //             | _ -> $"if condition must be a boolean expression, got: {cond}" |> Error
+    and eval_if ctx (cond, then_e, else_e) =
+        eval_classic ctx cond
+        ==> fun (cond, q1) ->
+                match cond with
+                | Value.Bool true -> eval_classic ctx then_e ==> fun (v2, q2) -> (v2, join q1 q2) |> Ok
+                | Value.Bool false -> eval_classic ctx else_e ==> fun (v3, q3) -> (v3, join q1 q3) |> Ok
+                | _ -> $"if condition must be a boolean expression, got: {cond}" |> Error
 
-    // and eval_block (stmts, value, ctx) =
-    //     eval_stmts (stmts, ctx)
-    //     ==> fun (ctx) ->
-    //             eval_classic (value, ctx)
-    //             ==> fun (value, _) -> (value, ctx.callerCtx.Value) |> Ok
+    and eval_block ctx (stmts, value) =
+        eval_stmts  ctx stmts
+        ==> fun (ctx) ->
+                eval_classic ctx value
+                ==> fun value -> value |> Ok
 
-    // and eval_sample (u, ctx) =
-    //     let qpu = ctx.qpu
+    and eval_sample ctx u =
+        let qpu = ctx.qpu
 
-    //     qpu.Prepare(u, ctx)
-    //     ==> fun (u, ctx) ->
-    //             match u with
-    //             | Value.Universe u -> qpu.Measure u ==> fun (v) -> (v, ctx) |> Ok
-    //             | _ -> $"Expecting Prepare to return Universe, got {u}" |> Error
+        qpu.Prepare(u, ctx)
+        ==> fun u ->
+                match u with
+                | Value.Universe u -> qpu.Measure u ==> fun (v) -> (v, Map.empty) |> Ok
+                | _ -> $"Expecting Prepare to return Universe, got {u}" |> Error
 
-    // and eval_callmethod (method, args, ctx) =
-    //     setup_method_body (method, args, ctx)
-    //     ==> fun (body, ctx') ->
-    //             eval (body, ctx')
-    //             ==> fun (value, ctx') ->
-    //                     // return the heap back to the original state
-    //                     let ctx = { ctx' with heap = ctx.heap }
-    //                     (value, ctx) |> Ok
+    and eval_callmethod ctx (method, args) =
+        setup_method_body ctx (method, args)
+        ==> fun (body, q1, ctx') ->
+                eval ctx' body
+                ==> fun (v2, q2) ->
+                        // return the heap back to the original state
+                        let ctx = { ctx' with heap = ctx.heap }
+                        (v2, join q1 q2) |> Ok
 
-    // and eval_element (set, ctx) =
-    //     let pick_random (s: Set<Value>) =
-    //         let i = random.Next(s.Count)
-    //         (Set.toList s).[i]
+    and eval_element ctx set =
+        let pick_random (s: Set<Value>) =
+            let i = random.Next(s.Count)
+            (Set.toList s).[i]
 
-    //     eval_classic (set, ctx)
-    //     ==> fun (set, ctx) ->
-    //             match set with
-    //             | Value.Set s -> (s |> pick_random, ctx) |> Ok
-    //             | _ -> $"Append only available for sets, got: {set}" |> Error
+        eval_classic ctx set
+        ==> fun (set, q1) ->
+                match set with
+                | Value.Set s -> (s |> pick_random, q1) |> Ok
+                | _ -> $"Append only available for sets, got: {set}" |> Error
 
-    // and eval_append (item, set, ctx) =
-    //     eval_classic (item, ctx)
-    //     ==> fun (item, ctx) ->
-    //             eval_classic (set, ctx)
-    //             ==> fun (set, ctx) ->
-    //                     match set with
-    //                     | Value.Set s -> (Value.Set(s.Add item), ctx) |> Ok
-    //                     | _ -> $"Append only available for sets, got: {set}" |> Error
+    and eval_append ctx (item, set) =
+        eval_classic ctx item
+        ==> fun (item, q1) ->
+                eval_classic ctx set
+                ==> fun (set, q2) ->
+                        match set with
+                        | Value.Set s -> (Value.Set(s.Add item), join q1 q2) |> Ok
+                        | _ -> $"Append only available for sets, got: {set}" |> Error
 
-    // and eval_remove (item, set, ctx) =
-    //     eval_classic (item, ctx)
-    //     ==> fun (item, ctx) ->
-    //             eval_classic (set, ctx)
-    //             ==> fun (set, ctx) ->
-    //                     match set with
-    //                     | Value.Set s -> (Value.Set(s.Remove item), ctx) |> Ok
-    //                     | _ -> $"Remove only available for sets, got: {set}" |> Error
+    and eval_remove ctx (item, set) =
+        eval_classic ctx item
+        ==> fun (item, q1) ->
+                eval_classic ctx set
+                ==> fun (set, q2) ->
+                        match set with
+                        | Value.Set s -> (Value.Set(s.Remove item), join q1 q2) |> Ok
+                        | _ -> $"Remove only available for sets, got: {set}" |> Error
 
-    // and eval_count (set, ctx) =
-    //     eval_classic (set, ctx)
-    //     ==> fun (set, ctx) ->
-    //             match set with
-    //             | Value.Set s -> (Value.Int s.Count, ctx) |> Ok
-    //             | _ -> $"Count only available for sets, got: {set}" |> Error
+    and eval_count ctx set =
+        eval_classic ctx set
+        ==> fun (set, q1) ->
+                match set with
+                | Value.Set s -> (Value.Int s.Count, q1) |> Ok
+                | _ -> $"Count only available for sets, got: {set}" |> Error
 
     and eval_expression_list ctx values =
         let rec next items =
@@ -345,64 +338,64 @@ module EvalV5 =
 
         next values
 
-    // and eval_stmts (stmts, ctx) =
-    //     let eval_one ctx' stmt =
-    //         ctx'
-    //         ==> fun (ctx') ->
-    //                 match stmt with
-    //                 | Let (id, e) ->
-    //                     eval (e, ctx')
-    //                     ==> fun (value, ctx') -> { ctx' with heap = ctx'.heap.Add(id, value) } |> Ok
-    //                 | Print (msg, expressions) ->
-    //                     printf "%s" msg
+    and eval_stmts ctx stmts : Result<EvalContext, string> =
+        let eval_one ctx' stmt =
+            ctx'
+            ==> fun (ctx') ->
+                    match stmt with
+                    | Let (id, e) ->
+                        eval ctx' e
+                        ==> fun (value) -> { ctx' with heap = ctx'.heap.Add(id, value) } |> Ok
+                    | Print (msg, expressions) ->
+                        printf "%s" msg
 
-    //                     let print_one ctx' e =
-    //                         ctx'
-    //                         ==> fun (ctx') ->
-    //                                 eval (e, ctx')
-    //                                 ==> fun (value, ctx') ->
-    //                                         printfn "%A" value
-    //                                         ctx' |> Ok
+                        let print_one ctx' e =
+                            ctx'
+                            ==> fun (ctx') ->
+                                    eval ctx' e
+                                    ==> fun (value, _) ->
+                                            printfn "%A" value
+                                            ctx' |> Ok
 
-    //                     expressions |> List.fold print_one (ctx' |> Ok)
+                        expressions |> List.fold print_one (ctx' |> Ok)
 
-    //     let ctx =
-    //         { ctx with
-    //             heap = Map.empty
-    //             callerCtx = ctx |> Some }
+        let ctx =
+            { ctx with
+                heap = Map.empty
+                callerCtx = ctx |> Some }
 
-    //     stmts |> List.fold eval_one (ctx |> Ok)
+        stmts |> List.fold eval_one (ctx |> Ok)
 
-    // and setup_args ids args ctx =
-    //     let add_argument (heap': Result<Map<Id, Value>, string>) (id, value) =
-    //         heap'
-    //         ==> fun heap' -> eval (value, ctx) ==> fun (value, _) -> heap'.Add(id, value) |> Ok
+    and setup_args ctx ids args =
+        let add_argument (heap': Result<Map<Id, Value * QuantumGraph>, string>) (id, value) =
+            heap'
+            ==> fun heap' -> eval ctx value ==> fun (value) -> heap'.Add(id, value) |> Ok
 
-    //     args |> List.zip ids |> List.fold add_argument (Map.empty |> Ok)
+        args |> List.zip ids |> List.fold add_argument (Map.empty |> Ok)
 
-    // and setup_method_body (method, args, ctx) =
-    //     eval_classic (method, ctx)
-    //     ==> fun (m, ctx) ->
-    //             match m with
-    //             | Value.Method ({ Args = ids
-    //                               Body = body
-    //                               Context = context }) ->
-    //                 setup_args ids args ctx
-    //                 ==> fun args_map ->
-    //                         let args_map =
-    //                             // If the method comes from a variable, add it to the context
-    //                             // so it can be invoked recursively:
-    //                             match method with
-    //                             | C.Var id -> args_map.Add(id, m)
-    //                             | _ -> args_map
+    and setup_method_body ctx (method, args) =
+        eval_classic ctx method
+        ==> fun (v1, q1) ->
+                match v1 with
+                | Value.Method ({ Args = ids
+                                  Body = body
+                                  Context = context }) ->
+                    setup_args ctx ids args
+                    ==> fun args_map ->
+                            let args_map =
+                                // If the method comes from a variable, add it to the context
+                                // so it can be invoked recursively:
+                                match method with
+                                | C.Var id -> args_map.Add(id, (v1, Map.empty))
+                                | _ -> args_map
 
-    //                         let ctx =
-    //                             { ctx with
-    //                                 heap = args_map
-    //                                 callerCtx = context |> Some }
+                            let ctx =
+                                { ctx with
+                                    heap = args_map
+                                    callerCtx = context |> Some }
 
-    //                         (body, ctx) |> Ok
-    //             | _ -> $"Expecting method, got {method}" |> Error
+                            (body, q1, ctx) |> Ok
+                | _ -> $"Expecting method, got {method}" |> Error
 
     let apply (program: Expression, qpu: QPU) =
         aleph.parser.TypeChecker.start (program)
@@ -411,4 +404,4 @@ module EvalV5 =
                     { heap = Map.empty
                       qpu = qpu
                       callerCtx = None }
-                eval (e, ctx)
+                eval ctx e

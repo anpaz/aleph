@@ -5,7 +5,7 @@ open Microsoft.VisualStudio.TestTools.UnitTesting
 open aleph.parser.ast
 open aleph.parser.TypeChecker
 open aleph.parser.ast.typed
-open aleph.runtime.Eval
+open aleph.runtime.EvalV5
 
 
 module ClassicValueContext =
@@ -14,7 +14,7 @@ module ClassicValueContext =
         { new QPU with
             member this.Measure(arg1: IUniverse) : Result<Value, string> = failwith "Not Implemented"
 
-            member this.Prepare(arg1: U, arg2: EvalContext) : Result<(Value * EvalContext), string> =
+            member this.Prepare(arg1: U, arg2: EvalContext) : Result<Value, string> =
                 failwith "Not Implemented" }
 
     let Prelude =
@@ -34,12 +34,12 @@ module ClassicValueContext =
 [<TestClass>]
 type TestEval() =
 
-    member this.TestExpression stmts (expr, v) =
+    member this.TestExpression prelude (expr, v) =
         printfn "e: %A" expr
 
-        let block = e.Block(stmts, expr)
+        let block = e.Block(prelude, expr)
 
-        match aleph.runtime.Eval.start (block, ClassicValueContext.NoQPU) with
+        match aleph.runtime.EvalV5.apply (block, ClassicValueContext.NoQPU) with
         | Ok (v', _) -> Assert.AreEqual(v, v')
         | Error msg -> Assert.AreEqual($"Expecting Value {v}", $"Got Error msg: {msg}")
 
@@ -48,7 +48,7 @@ type TestEval() =
 
         let block = e.Block(stmts, expr)
 
-        match aleph.runtime.Eval.start (block, ClassicValueContext.NoQPU) with
+        match aleph.runtime.EvalV5.apply (block, ClassicValueContext.NoQPU) with
         | Ok (v, _) -> Assert.AreEqual($"Expected error: {error}", $"Got Value: {v}")
         | Error msg -> Assert.AreEqual(error, msg)
 
@@ -87,7 +87,7 @@ type TestEval() =
           )
           // { 1..5 }
           e.Range(e.Int 1, e.Int 5), Value.Set(Set.ofList [ Int 1; Int 2; Int 3; Int 4 ])
-          // (a: Int) -> a + 1
+          // function (a: Int) -> a + 1
           e.Method(arguments = [ "a", Type.Int ], returns = Type.Int, body = (e.Add(e.Var "a", e.Int 1))),
           Value.Method
               { Args = [ "a" ]
@@ -142,7 +142,8 @@ type TestEval() =
           // (5 + 10) * 4 < 100
           e.LessThan(e.Multiply(e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 100), Value.Bool true
           // not ((5 + 10) * 4 < 50)
-          e.Not(e.LessThan(e.Multiply(e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 50)), Value.Bool true ]
+          e.Not(e.LessThan(e.Multiply(e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 50)), Value.Bool true 
+        ]
         |> List.iter (this.TestExpression prelude)
 
     [<TestMethod>]
