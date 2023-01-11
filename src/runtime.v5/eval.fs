@@ -12,10 +12,6 @@ module EvalV5 =
 
     let mutable max_ket = 0
 
-    let fresh_ketid () =
-        max_ket <- max_ket + 1
-        max_ket
-
 
     type IUniverse =
         interface
@@ -39,8 +35,8 @@ module EvalV5 =
             member this.CompareTo(obj: obj) : int = failwith "Not Implemented"
 
     and KetId =
-        | Id of int
-        | Tuple of KetId * KetId
+        | One of int
+        | Many of int list
 
     and Value =
         | Bool of bool
@@ -86,9 +82,20 @@ module EvalV5 =
             | Value.Bool l, Value.Bool r -> Value.Bool(l || r)
             | _ -> failwith "= only supported for bool values, got {l} || {r}"
 
-    and QuantumGraph = Map<KetId, KetExpression>
+    and QuantumGraph(q:Map<Value, KetExpression>) =
+        member self.map = q
+
+        member self.append(k: Value, v: KetExpression) : QuantumGraph =
+            QuantumGraph (q.Add (k, v))
+
+        static member empty: QuantumGraph =
+            QuantumGraph Map.empty
+
+        static member (+)(l: QuantumGraph, r: QuantumGraph) =
+            QuantumGraph (Map.foldBack Map.add (l.map) (r.map))
 
     and KetOperator =
+        | Constant of c: Value
         | Add
         | Multiply
         | If
@@ -97,13 +104,14 @@ module EvalV5 =
         | Not
         | And
         | Or
+        | In of c: Value
 
     and KetExpression =
         | Literal of size: int
-        | Join of values: KetId * KetId
-        | Project of source: KetId * index: int
-        | Map of input: KetId * lambda: KetOperator
-        | Filter of input: KetId * filter: KetId
+        | Join of values: Value * Value
+        | Project of source: Value * index: int
+        | Map of input: Value * lambda: KetOperator
+        | Filter of input: Value * filter: Value
 
     and EvalContext =
         { heap: Map<Id, Value * QuantumGraph>
@@ -114,10 +122,81 @@ module EvalV5 =
         abstract Prepare: U * EvalContext -> Result<Value, string>
         abstract Measure: IUniverse -> Result<Value, string>
 
-    let join (q1: QuantumGraph) (q2: QuantumGraph) = Map.foldBack Map.add q2 q1
+    // let join (q1: QuantumGraph) (q2: QuantumGraph) = Map.foldBack Map.add q2 q1
+
+    // let append (key: KetId, value: KetExpression) (q:QuantumGraph): QuantumGraph =
+        
+
+    let fresh_ketid () =
+        max_ket <- max_ket + 1
+        KetId (One max_ket)
 
 
-    let rec eval_classic ctx c =
+    let rec eval_quantum ctx q : Result<Value * QuantumGraph, string> =
+        match q with
+        | Q.Var id -> eval_var ctx id
+
+        | Q.Constant value ->
+            eval_classic ctx value
+            ==> fun (v, q:QuantumGraph) ->
+                let k = fresh_ketid()
+                let exp =  KetExpression.Map (k, KetOperator.Constant v)
+                (k, q.append(k, exp)) |> Ok
+
+        // | Q.Ket c ->
+            // eval_classic ctx c
+            // ==> fun (set, q:QuantumGraph) ->
+            //     let lit = fresh_ketid()
+            //     let q = q.append(lit, KetExpression.Literal 3)
+            //     let mark = fresh_ketid()
+            //     let q = q.append(mark, KetExpression.Map (lit, KetOperator.In set))
+            //     let filter = fresh_ketid()
+            //     let q = q.append(filter, KetExpression.Filter(lit, mark))
+            //     (lit, q) |> Ok
+
+
+        | Q.KetAll size ->
+            eval_classic ctx size
+            ==> fun (value, graph:QuantumGraph) ->
+                match value with
+                | Value.Int n -> 
+                    let k = fresh_ketid()
+                    (k, graph.append(k, KetExpression.Literal n)) |> Ok
+                | _ -> $"Invalid KetAll size: {value}" |> Error
+
+        | Q.Equals (left, right) -> 
+            eval_quantum ctx left
+            ==> fun (v1, q1) ->
+                eval_quantum ctx right
+                ==> fun (v2, q2) ->
+                match (v1, v2) with
+                | Value.KetId (One k1), Value.KetId (One k2) -> 
+                    let k = fresh_ketid()
+                    let exp =  KetExpression.Map (KetId (KetId.Many [k1; k2]), KetOperator.Equals)
+                    (k, (q1 + q2).append(k, exp)) |> Ok
+                | _ -> $"Invalid KetIds" |> Error
+
+        // | Add (left, right) -> prepare_add (left, right, ctx)
+        // | Multiply (left, right) -> prepare_multiply (left, right, ctx)
+
+        // | Not q -> prepare_not (q, ctx)
+        // | And (left, right) -> prepare_and (left, right, ctx)
+        // | Or (left, right) -> prepare_or (left, right, ctx)
+
+        // | Project (q, index) -> prepare_project (q, index, ctx)
+        // | Index (q, index) -> prepare_index (q, index, ctx)
+        // | Join (left, right) -> prepare_join (left, right, ctx)
+
+        // | IfQuantum (condition, then_q, else_q) -> prepare_if_q (condition, then_q, else_q, ctx)
+        // | IfClassic (condition, then_q, else_q) -> prepare_if_c (condition, then_q, else_q, ctx)
+        // | Filter (ket, condition, hint) -> prepare_filter (ket, condition, hint, ctx)
+
+        // | Q.Block (stmts, value) -> prepare_block (stmts, value, ctx)
+        
+        // | Q.CallMethod (method, args) -> prepare_callmethod (method, args, ctx)
+        | _ -> $"Not implemented q: {q}" |> Error
+
+    and eval_classic ctx c =
         match c with
         | C.Var id -> eval_var ctx id
 
@@ -160,16 +239,16 @@ module EvalV5 =
             | Some ctx' -> eval_var ctx' id
             | None -> $"Variable not found: {id}" |> Error
 
-    and eval_bool b = (Value.Bool b, Map.empty) |> Ok
+    and eval_bool b = (Value.Bool b, QuantumGraph.empty) |> Ok
 
-    and eval_int i = (Value.Int i, Map.empty) |> Ok
+    and eval_int i = (Value.Int i, QuantumGraph.empty) |> Ok
 
     and eval_method ctx (args, body) =
         (Value.Method
             { Args = args
               Body = body
               Context = ctx },
-         Map.empty)
+         QuantumGraph.empty)
         |> Ok
 
     and eval_tuple ctx values =
@@ -188,34 +267,34 @@ module EvalV5 =
                         match (v1, v2) with
                         | Value.Int v1, Value.Int v2 ->
                             let values = seq { v1 .. v2 - 1 } |> Seq.map Value.Int
-                            (Set(Set.ofSeq values), join q1 q2) |> Ok
+                            (Set(Set.ofSeq values), q1 + q2) |> Ok
                         | _ -> $"Range start..stop must be int, got: {start}..{stop}" |> Error
 
     and eval_add ctx (left, right) =
         eval_classic ctx left
-        ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (v1 + v2, join q1 q2) |> Ok
+        ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (v1 + v2, q1 + q2) |> Ok
 
     and eval_multiply ctx (left, right) =
         eval_classic ctx left
-        ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (v1 * v2, join q1 q2) |> Ok
+        ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (v1 * v2, q1 + q2) |> Ok
 
     and eval_equals ctx (left, right) =
         eval_classic ctx left
-        ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (v1 == v2, join q1 q2) |> Ok
+        ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (v1 == v2, q1 + q2) |> Ok
 
     and eval_lessthan ctx (left, right) =
         eval_classic ctx left
         ==> fun (v1, q1) ->
                 eval_classic ctx right
-                ==> fun (v2, q2) -> (Value.LessThan(v1, v2), join q1 q2) |> Ok
+                ==> fun (v2, q2) -> (Value.LessThan(v1, v2), q1 + q2) |> Ok
 
     and eval_and ctx (left, right) =
         eval_classic ctx left
-        ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (Value.And(v1, v2), join q1 q2) |> Ok
+        ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (Value.And(v1, v2), q1 + q2) |> Ok
 
     and eval_or ctx (left, right) =
         eval_classic ctx left
-        ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (Value.Or(v1, v2), join q1 q2) |> Ok
+        ==> fun (v1, q1) -> eval_classic ctx right ==> fun (v2, q2) -> (Value.Or(v1, v2), q1 + q2) |> Ok
 
     and eval_not ctx e =
         eval_classic ctx e ==> fun (v1, q1) -> (Value.Not v1, q1) |> Ok
@@ -233,7 +312,7 @@ module EvalV5 =
                 eval_classic ctx i
                 ==> fun (i, q2) ->
                         match (value, i) with
-                        | Value.Tuple t, Value.Int i -> (t.[i], join q1 q2) |> Ok
+                        | Value.Tuple t, Value.Int i -> (t.[i], q1 + q2) |> Ok
                         | _ -> $"project only avaiable for tuples and int index, got: {value}[{i}]" |> Error
 
     and eval_join ctx (left, right) =
@@ -242,15 +321,15 @@ module EvalV5 =
                 eval_classic ctx right
                 ==> fun (v2, q2) ->
                         match (v1, v2) with
-                        | Value.Tuple l, Value.Tuple r -> (Value.Tuple(l @ r), join q1 q2) |> Ok
+                        | Value.Tuple l, Value.Tuple r -> (Value.Tuple(l @ r), q1 + q2) |> Ok
                         | _ -> $"Join only avaiable for tuples, got: {left}, {right}" |> Error
 
     and eval_if ctx (cond, then_e, else_e) =
         eval_classic ctx cond
         ==> fun (cond, q1) ->
                 match cond with
-                | Value.Bool true -> eval_classic ctx then_e ==> fun (v2, q2) -> (v2, join q1 q2) |> Ok
-                | Value.Bool false -> eval_classic ctx else_e ==> fun (v3, q3) -> (v3, join q1 q3) |> Ok
+                | Value.Bool true -> eval_classic ctx then_e ==> fun (v2, q2) -> (v2, q1 + q2) |> Ok
+                | Value.Bool false -> eval_classic ctx else_e ==> fun (v3, q3) -> (v3, q1 + q3) |> Ok
                 | _ -> $"if condition must be a boolean expression, got: {cond}" |> Error
 
     and eval_block ctx (stmts, value) =
@@ -263,12 +342,12 @@ module EvalV5 =
         qpu.Prepare(u, ctx)
         ==> fun u ->
                 match u with
-                | Value.Universe u -> qpu.Measure u ==> fun (v) -> (v, Map.empty) |> Ok
+                | Value.Universe u -> qpu.Measure u ==> fun (v) -> (v, QuantumGraph.empty) |> Ok
                 | _ -> $"Expecting Prepare to return Universe, got {u}" |> Error
 
     and eval_callmethod ctx (method, args) =
         setup_method_body ctx (method, args)
-        ==> fun (body, q1, ctx') -> eval ctx' body ==> fun (v2, q2) -> (v2, join q1 q2) |> Ok
+        ==> fun (body, q1, ctx') -> eval ctx' body ==> fun (v2, q2) -> (v2, q1 + q2) |> Ok
 
     and eval_element ctx set =
         let pick_random (s: Set<Value>) =
@@ -287,7 +366,7 @@ module EvalV5 =
                 eval_classic ctx set
                 ==> fun (set, q2) ->
                         match set with
-                        | Value.Set s -> (Value.Set(s.Add item), join q1 q2) |> Ok
+                        | Value.Set s -> (Value.Set(s.Add item), q1 + q2) |> Ok
                         | _ -> $"Append only available for sets, got: {set}" |> Error
 
     and eval_remove ctx (item, set) =
@@ -296,7 +375,7 @@ module EvalV5 =
                 eval_classic ctx set
                 ==> fun (set, q2) ->
                         match set with
-                        | Value.Set s -> (Value.Set(s.Remove item), join q1 q2) |> Ok
+                        | Value.Set s -> (Value.Set(s.Remove item), q1 + q2) |> Ok
                         | _ -> $"Remove only available for sets, got: {set}" |> Error
 
     and eval_count ctx set =
@@ -311,8 +390,8 @@ module EvalV5 =
             match items with
             | head :: tail ->
                 eval_classic ctx head
-                ==> fun (head, q1) -> next tail ==> fun (tail, q2) -> (head :: tail, join q1 q2) |> Ok
-            | [] -> ([], Map.empty) |> Ok
+                ==> fun (head, q1) -> next tail ==> fun (tail, q2) -> (head :: tail, q1 + q2) |> Ok
+            | [] -> ([], QuantumGraph.empty) |> Ok
 
         next values
 
@@ -362,7 +441,7 @@ module EvalV5 =
                                 // If the method comes from a variable, add it to the context
                                 // so it can be invoked recursively:
                                 match method with
-                                | C.Var id -> args_map.Add(id, (v1, Map.empty))
+                                | C.Var id -> args_map.Add(id, (v1, QuantumGraph.empty))
                                 | _ -> args_map
 
                             let ctx =
@@ -373,10 +452,6 @@ module EvalV5 =
                             (body, q1, ctx) |> Ok
                 | _ -> $"Expecting method, got {method}" |> Error
 
-    and eval_quantum ctx q =
-        match q with
-        | Q.Var id -> eval_var ctx id
-        | _ -> $"Not implemented q: {q}" |> Error
 
     and eval ctx e : Result<Value * QuantumGraph, string> =
         match e with
