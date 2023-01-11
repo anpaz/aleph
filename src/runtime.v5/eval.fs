@@ -82,36 +82,34 @@ module EvalV5 =
             | Value.Bool l, Value.Bool r -> Value.Bool(l || r)
             | _ -> failwith "= only supported for bool values, got {l} || {r}"
 
-    and QuantumGraph(q:Map<Value, KetExpression>) =
+    and QuantumGraph(q: Map<KetId, KetExpression>) =
         member self.map = q
 
-        member self.append(k: Value, v: KetExpression) : QuantumGraph =
-            QuantumGraph (q.Add (k, v))
+        member self.append(k: KetId, v: KetExpression) : QuantumGraph = QuantumGraph(q.Add(k, v))
 
-        static member empty: QuantumGraph =
-            QuantumGraph Map.empty
+        static member empty: QuantumGraph = QuantumGraph Map.empty
 
         static member (+)(l: QuantumGraph, r: QuantumGraph) =
-            QuantumGraph (Map.foldBack Map.add (l.map) (r.map))
+            QuantumGraph(Map.foldBack Map.add (l.map) (r.map))
 
     and KetOperator =
         | Constant of c: Value
         | Add
         | Multiply
-        | If
         | Equals
         | LessThan
         | Not
         | And
         | Or
+        | If
         | In of c: Value
 
     and KetExpression =
         | Literal of size: int
-        | Join of values: Value * Value
-        | Project of source: Value * index: int
-        | Map of input: Value * lambda: KetOperator
-        | Filter of input: Value * filter: Value
+        | Join of values: KetId list
+        | Project of source: KetId * index: int
+        | Map of input: KetId * lambda: KetOperator
+        | Filter of input: KetId * filter: KetId
 
     and EvalContext =
         { heap: Map<Id, Value * QuantumGraph>
@@ -122,81 +120,170 @@ module EvalV5 =
         abstract Prepare: U * EvalContext -> Result<Value, string>
         abstract Measure: IUniverse -> Result<Value, string>
 
-    // let join (q1: QuantumGraph) (q2: QuantumGraph) = Map.foldBack Map.add q2 q1
-
-    // let append (key: KetId, value: KetExpression) (q:QuantumGraph): QuantumGraph =
-        
-
     let fresh_ketid () =
         max_ket <- max_ket + 1
-        KetId (One max_ket)
+        One max_ket
 
+    let width (s: Set<Value>) =
+        if s.IsEmpty then
+            0
+        else
+            let first = s |> Set.toSeq |> Seq.take 1 |> Seq.toList |> List.head
+
+            match first with
+            | Int _
+            | Bool _ -> 1
+            | Tuple t -> t.Length
+            | _ -> 0
 
     let rec eval_quantum ctx q : Result<Value * QuantumGraph, string> =
         match q with
         | Q.Var id -> eval_var ctx id
+        | Q.Constant value -> eval_qmap_constant ctx value
+        | Q.Ket c -> eval_ket ctx c
+        | Q.KetAll size -> eval_qliteral ctx size
 
-        | Q.Constant value ->
-            eval_classic ctx value
-            ==> fun (v, q:QuantumGraph) ->
-                let k = fresh_ketid()
-                let exp =  KetExpression.Map (k, KetOperator.Constant v)
-                (k, q.append(k, exp)) |> Ok
+        | Q.Not q -> eval_qmap_unary ctx (q, KetOperator.Not)
+        | Q.Equals (left, right) -> eval_qmap_binary ctx (left, right, KetOperator.Equals)
+        | Q.Add (left, right) -> eval_qmap_binary ctx (left, right, KetOperator.Add)
+        | Q.Multiply (left, right) -> eval_qmap_binary ctx (left, right, KetOperator.Multiply)
+        | Q.And (left, right) -> eval_qmap_binary ctx (left, right, KetOperator.And)
+        | Q.Or (left, right) -> eval_qmap_binary ctx (left, right, KetOperator.Or)
 
-        // | Q.Ket c ->
-            // eval_classic ctx c
-            // ==> fun (set, q:QuantumGraph) ->
-            //     let lit = fresh_ketid()
-            //     let q = q.append(lit, KetExpression.Literal 3)
-            //     let mark = fresh_ketid()
-            //     let q = q.append(mark, KetExpression.Map (lit, KetOperator.In set))
-            //     let filter = fresh_ketid()
-            //     let q = q.append(filter, KetExpression.Filter(lit, mark))
-            //     (lit, q) |> Ok
+        | Q.Join (left, right) -> eval_qjoin ctx (left, right)
+        | Q.Project (ket, index) -> eval_qproject ctx (ket, index)
+        | Q.Index (ket, index) -> eval_qindex ctx (ket, index)
 
+        | Q.IfQuantum (condition, then_q, else_q) -> eval_qif ctx (condition, then_q, else_q)
+        | Q.IfClassic (condition, then_q, else_q) -> eval_qif_classic ctx (condition, then_q, else_q)
 
-        | Q.KetAll size ->
-            eval_classic ctx size
-            ==> fun (value, graph:QuantumGraph) ->
+        | Q.Filter (ket, condition, hint) -> eval_qfilter ctx (ket, condition)
+
+        | Q.Block (stmts, value) -> eval_qblock ctx (stmts, value)
+        | Q.CallMethod (method, args) -> eval_callmethod ctx (method, args)
+
+    and with_value (exp:KetExpression) (graph:QuantumGraph) =
+        let k = fresh_ketid ()
+        (KetId k, graph.append (k, exp)) |> Ok
+
+    and eval_qliteral ctx size =
+        eval_classic ctx size
+        ==> fun (value, graph) ->
                 match value with
-                | Value.Int n -> 
-                    let k = fresh_ketid()
-                    (k, graph.append(k, KetExpression.Literal n)) |> Ok
+                | Value.Int n -> graph |> with_value (KetExpression.Literal n)
                 | _ -> $"Invalid KetAll size: {value}" |> Error
 
-        | Q.Equals (left, right) -> 
-            eval_quantum ctx left
-            ==> fun (v1, q1) ->
+    and eval_qjoin ctx (left, right) =
+        eval_quantum ctx left
+        ==> fun (value1, graph1) ->
                 eval_quantum ctx right
-                ==> fun (v2, q2) ->
-                match (v1, v2) with
-                | Value.KetId (One k1), Value.KetId (One k2) -> 
-                    let k = fresh_ketid()
-                    let exp =  KetExpression.Map (KetId (KetId.Many [k1; k2]), KetOperator.Equals)
-                    (k, (q1 + q2).append(k, exp)) |> Ok
+                ==> fun (value2, graph2) ->
+                        match (value1, value2) with
+                        | Value.KetId k1, Value.KetId k2 ->
+                            (graph1 + graph2) |> with_value (KetExpression.Join [ k1; k2 ])
+                        | _ -> $"Invalid KetIds" |> Error
+
+    and eval_qproject ctx (ket, index) =
+        eval_quantum ctx ket
+        ==> fun (value, graph) ->
+                match value with
+                | Value.KetId k1 ->
+                    graph |> with_value (KetExpression.Project(k1, index))
                 | _ -> $"Invalid KetIds" |> Error
 
-        // | Add (left, right) -> prepare_add (left, right, ctx)
-        // | Multiply (left, right) -> prepare_multiply (left, right, ctx)
+    and eval_qindex ctx (ket, index) =
+        eval_classic ctx index
+        ==> fun (index, graph1) ->
+                match index with
+                | Value.Int i -> eval_qproject ctx (ket, i) ==> fun (ket, graph2) -> (ket, graph1 + graph2) |> Ok
+                | _ -> $"Invalid KetIds" |> Error
 
-        // | Not q -> prepare_not (q, ctx)
-        // | And (left, right) -> prepare_and (left, right, ctx)
-        // | Or (left, right) -> prepare_or (left, right, ctx)
+    and eval_qmap_constant ctx value =
+        eval_classic ctx value
+        ==> fun (v, graph) ->
+                graph |> with_value (KetExpression.Map(One -1, KetOperator.Constant v))
 
-        // | Project (q, index) -> prepare_project (q, index, ctx)
-        // | Index (q, index) -> prepare_index (q, index, ctx)
-        // | Join (left, right) -> prepare_join (left, right, ctx)
+    and eval_qmap_unary ctx (left, lambda) =
+        eval_quantum ctx left
+        ==> fun (value, graph) ->
+                match value with
+                | Value.KetId (One k1) ->
+                    graph |> with_value (KetExpression.Map(KetId.One k1, lambda))
+                | _ -> $"Invalid KetIds" |> Error
 
-        // | IfQuantum (condition, then_q, else_q) -> prepare_if_q (condition, then_q, else_q, ctx)
-        // | IfClassic (condition, then_q, else_q) -> prepare_if_c (condition, then_q, else_q, ctx)
-        // | Filter (ket, condition, hint) -> prepare_filter (ket, condition, hint, ctx)
+    and eval_qmap_binary ctx (left, right, lambda) =
+        eval_quantum ctx left
+        ==> fun (value1, graph1) ->
+                eval_quantum ctx right
+                ==> fun (value2, graph2) ->
+                        match (value1, value2) with
+                        | Value.KetId (One k1), Value.KetId (One k2) ->
+                            (graph1 + graph2) |> with_value (KetExpression.Map(KetId.Many [ k1; k2 ], lambda))
+                        | _ -> $"Invalid KetIds" |> Error
 
-        // | Q.Block (stmts, value) -> prepare_block (stmts, value, ctx)
-        
-        // | Q.CallMethod (method, args) -> prepare_callmethod (method, args, ctx)
-        | _ -> $"Not implemented q: {q}" |> Error
 
-    and eval_classic ctx c =
+    and eval_qif ctx (condition, then_q, else_q) =
+        eval_quantum ctx condition
+        ==> fun (value1, graph1) ->
+                eval_quantum ctx then_q
+                ==> fun (value2, graph2) ->
+                        eval_quantum ctx else_q
+                        ==> fun (value3, graph3) ->
+                                match (value1, value2, value3) with
+                                | Value.KetId (One k1), Value.KetId (One k2), Value.KetId (One k3) ->
+                                    (graph1 + graph2 + graph3) |> with_value (KetExpression.Map(KetId.Many [ k1; k2; k3 ], KetOperator.If))
+                                | _ -> $"Invalid KetIds for if expression" |> Error
+
+    and eval_qif_classic ctx (condition, then_q, else_q) =
+        eval_classic ctx condition
+        ==> fun (v1, graph1) ->
+                match v1 with
+                | Bool true -> eval_quantum ctx then_q ==> fun (v2, graph2) -> (v2, graph1 + graph2) |> Ok
+                | Bool false -> eval_quantum ctx else_q ==> fun (v3, graph3) -> (v3, graph1 + graph3) |> Ok
+                | _ -> $"Invalid if condition. Expecting boolean value, got {v1}" |> Error
+
+    and eval_qfilter ctx (ket, condition) =
+        eval_quantum ctx ket
+        ==> fun (value1, graph1) ->
+                eval_quantum ctx condition
+                ==> fun (value2, graph2) ->
+                        match (value1, value2) with
+                        | Value.KetId k1, Value.KetId (One k2) ->
+                            (graph1 + graph2) |> with_value (KetExpression.Filter(k1, One k2))
+                        | _ -> $"Invalid KetIds" |> Error
+
+    and eval_qblock ctx (stmts, value) =
+        eval_stmts ctx stmts
+        ==> fun (ctx) -> eval_quantum ctx value ==> fun value -> value |> Ok
+
+    // syntactic sugar for |set>
+    // this is equivalent to create a literal and apply a filter for the elements in the set
+    and eval_ket ctx c =
+        eval_classic ctx c
+        ==> fun (v, graph) ->
+                match v with
+                | Value.Set set ->
+                    let size = set |> width
+
+                    let add_literal (ids, g: QuantumGraph) _ =
+                        let k = fresh_ketid ()
+                        ids @ [ k ], g.append (k, KetExpression.Literal 3)
+
+                    let (ids, graph) = seq { 0..size } |> Seq.fold add_literal ([], graph)
+
+                    let literal = fresh_ketid ()
+                    let graph = graph.append (literal, KetExpression.Join ids)
+
+                    let mark = fresh_ketid ()
+                    let graph = graph.append (mark, KetExpression.Map(literal, KetOperator.In v))
+
+                    let filter = fresh_ketid ()
+                    let graph = graph.append (filter, KetExpression.Filter(literal, mark))
+                    (KetId literal, graph) |> Ok
+                | _ -> $"Invaid literal constructor. Only sets supported, got {v}" |> Error
+
+
+    and eval_classic ctx c : Result<Value * QuantumGraph, string> =
         match c with
         | C.Var id -> eval_var ctx id
 
@@ -239,7 +326,8 @@ module EvalV5 =
             | Some ctx' -> eval_var ctx' id
             | None -> $"Variable not found: {id}" |> Error
 
-    and eval_bool b = (Value.Bool b, QuantumGraph.empty) |> Ok
+    and eval_bool b =
+        (Value.Bool b, QuantumGraph.empty) |> Ok
 
     and eval_int i = (Value.Int i, QuantumGraph.empty) |> Ok
 
@@ -457,9 +545,9 @@ module EvalV5 =
         match e with
         | E.Classic (c, _) -> eval_classic ctx c
         | E.Quantum (q, _) -> eval_quantum ctx q
+        //| E.Universe (u, _) -> ctx.qpu.Prepare(u, ctx)
         | _ -> "Not implemented" |> Error
 
-    // | E.Universe (u, _) -> ctx.qpu.Prepare(u, ctx)
 
 
     let apply (program: Expression, qpu: QPU) =
