@@ -57,8 +57,8 @@ type TestEval() =
 
         let emptyCtx: EvalContext =
             { heap = Map.empty
-              qpu = ClassicValueContext.NoQPU
-              callerCtx = None }
+              graph = QuantumGraph.empty
+              qpu = ClassicValueContext.NoQPU }
 
         [
           // false
@@ -531,7 +531,7 @@ type TestEval() =
           //          let elem = Element(set)
           //          let rest = Remove(elem, set)
           //          elem + sum(rest)
-          // sum( 1 .. 10)
+          // sum( 1 .. 10 )
           e.Block(
               [ s.Let(
                     "sum",
