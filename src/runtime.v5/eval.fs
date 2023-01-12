@@ -36,6 +36,16 @@ module EvalV5 =
         | One of int
         | Many of int list
 
+        static member Join(ketIds: KetId list) =
+            let rec unwrap ids =
+                match ids with 
+                | head :: tail ->
+                    match head with
+                    | One l -> l :: (unwrap tail)
+                    | Many l -> l @ (unwrap tail)
+                | [] -> []
+            Many (unwrap ketIds)
+
     and Value =
         | Bool of bool
         | Int of int
@@ -98,8 +108,6 @@ module EvalV5 =
 
     and KetExpression =
         | Literal of size: int
-        | Join of values: KetId list
-        | Project of source: KetId * index: int
         | Map of input: KetId * lambda: KetMapOperator
         | Filter of input: KetId * filter: KetId
 
@@ -171,14 +179,14 @@ module EvalV5 =
                 eval_quantum { ctx with graph = q1 } right
                 ==> fun (value2, q2) ->
                         match (value1, value2) with
-                        | Value.KetId k1, Value.KetId k2 -> q2 |> with_value (KetExpression.Join [ k1; k2 ])
+                        | Value.KetId k1, Value.KetId k2 -> (KetId (KetId.Join [k1; k2]), q2) |> Ok
                         | _ -> $"Invalid KetIds" |> Error
 
     and eval_qproject ctx (ket, index) =
         eval_quantum ctx ket
         ==> fun (value, graph) ->
                 match value with
-                | Value.KetId k1 -> graph |> with_value (KetExpression.Project(k1, index))
+                | Value.KetId (Many k1) -> (KetId (One k1.[index]), graph) |> Ok
                 | _ -> $"Invalid KetIds" |> Error
 
     and eval_qindex ctx (ket, index) =
@@ -187,7 +195,6 @@ module EvalV5 =
                 match index with
                 | Value.Int i ->
                     eval_qproject { ctx with graph = q1 } (ket, i)
-                    ==> fun (ket, q2) -> (ket, q2) |> Ok
                 | _ -> $"Invalid KetIds" |> Error
 
     and eval_qmap_constant ctx value =
@@ -260,9 +267,7 @@ module EvalV5 =
                         ids @ [ k ], g.Add(k, KetExpression.Literal 3)
 
                     let (ids, graph) = seq { 0..size } |> Seq.fold add_literal ([], graph)
-
-                    let literal = fresh_ketid ()
-                    let graph = graph.Add(literal, KetExpression.Join ids)
+                    let literal = KetId.Join ids
 
                     let map = fresh_ketid ()
                     let graph = graph.Add(map, KetExpression.Map(literal, KetMapOperator.In v))
