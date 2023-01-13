@@ -274,7 +274,7 @@ module EvalV5 =
                                 let k = fresh_ketid ()
                                 ids @ [ k ], g.Add(k, KetExpression.Literal ELEMENT_SIZE)
 
-                            let (ids, graph) = seq { 0..size } |> Seq.fold add_literal ([], graph)
+                            let (ids, graph) = seq { 1..size } |> Seq.fold add_literal ([], graph)
                             graph.Add(literal, KetExpression.Join ids)
                         else    
                             graph.Add(literal, KetExpression.Literal ELEMENT_SIZE)
@@ -284,7 +284,7 @@ module EvalV5 =
 
                     let filter = fresh_ketid ()
                     let graph = graph.Add(filter, KetExpression.Filter(literal, map))
-                    (KetId literal, graph) |> Ok
+                    (KetId filter, graph) |> Ok
                 | _ -> $"Invaid literal constructor. Only sets supported, got {v}" |> Error
 
 

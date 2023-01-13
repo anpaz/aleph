@@ -26,39 +26,39 @@ type TestQPUClassic() =
         let prelude = this.Prelude
 
         [
-          // // | false >
-          // e.Ket(e.Bool false), [ [ Bool false ] ], [ 0 ]
-          // // | 0, 1, 2 >
-          // e.Ket(e.Set [ e.Int 0; e.Int 1; e.Int 2 ]), [ [ Int 0 ]; [ Int 1 ]; [ Int 2 ] ], [ 0 ]
-          // // | (0,0), (0,1), (1,1) >
-          // e.Ket(
-          //     e.Set
-          //         [ e.Tuple [ e.Int 0; e.Int 0 ]
-          //           e.Tuple [ e.Int 0; e.Int 1 ]
-          //           e.Tuple [ e.Int 1; e.Int 1 ] ]
-          // ),
-          // [ [ Int 0; Int 0 ]; [ Int 0; Int 1 ]; [ Int 1; Int 1 ] ],
-          // [ 0; 1 ]
-          // // | (0,0,0), (0,1,1), (1,1,0), (1,1,2) >.2
-          // e.Project(
-          //     e.Ket(
-          //         e.Set
-          //             [ e.Tuple [ e.Int 0; e.Int 0; e.Int 0 ]
-          //               e.Tuple [ e.Int 0; e.Int 1; e.Int 1 ]
-          //               e.Tuple [ e.Int 1; e.Int 1; e.Int 0 ]
-          //               e.Tuple [ e.Int 1; e.Int 1; e.Int 2 ] ]
-          //     ),
-          //     e.Int 2
-          // ),
-          // [ [ Int 0; Int 0; Int 0 ]
-          //   [ Int 0; Int 1; Int 1 ]
-          //   [ Int 1; Int 1; Int 0 ]
-          //   [ Int 1; Int 1; Int 2 ] ],
-          // [ 2 ]
-          // // ( | 0, 1 >, | 1, 2 > )
-          // e.Join(e.Ket(e.Set [ e.Int 0; e.Int 1 ]), e.Ket(e.Set [ e.Int 1; e.Int 2 ])),
-          // [ [ Int 0; Int 1 ]; [ Int 0; Int 2 ]; [ Int 1; Int 1 ]; [ Int 1; Int 2 ] ],
-          // [ 0; 1 ]
+          // // // | false >
+          // // e.Ket(e.Bool false), [ [ Bool false ] ], [ 0 ]
+          // | 0, 1, 2 >
+          e.Ket(e.Set [ e.Int 0; e.Int 1; e.Int 2 ]), [ [ Int 0; Bool true ]; [ Int 1; Bool true ]; [ Int 2; Bool true ] ], [ 0 ]
+          // | (0,0), (0,1), (1,1) >
+          e.Ket(
+              e.Set
+                  [ e.Tuple [ e.Int 0; e.Int 0 ]
+                    e.Tuple [ e.Int 0; e.Int 1 ]
+                    e.Tuple [ e.Int 1; e.Int 1 ] ]
+          ),
+          [ [ Int 0; Int 0; Bool true ]; [ Int 0; Int 1; Bool true ]; [ Int 1; Int 1; Bool true ] ],
+          [ 0; 1 ]
+          // | (0,0,0), (0,1,1), (1,1,0), (1,1,2) >.2
+          e.Project(
+              e.Ket(
+                  e.Set
+                      [ e.Tuple [ e.Int 0; e.Int 0; e.Int 0 ]
+                        e.Tuple [ e.Int 0; e.Int 1; e.Int 1 ]
+                        e.Tuple [ e.Int 1; e.Int 1; e.Int 0 ]
+                        e.Tuple [ e.Int 1; e.Int 1; e.Int 2 ] ]
+              ),
+              e.Int 2
+          ),
+          [ [ Int 0; Int 0; Int 0; Bool true ]
+            [ Int 0; Int 1; Int 1; Bool true ]
+            [ Int 1; Int 1; Int 0; Bool true ]
+            [ Int 1; Int 1; Int 2; Bool true ] ],
+          [ 2 ]
+          // ( | 0, 1 >, | 1, 2 > )
+          e.Join(e.Ket(e.Set [ e.Int 0; e.Int 1 ]), e.Ket(e.Set [ e.Int 1; e.Int 2 ])),
+          [ [ Int 0; Bool true; Int 1; Bool true ]; [ Int 0; Bool true; Int 2; Bool true ]; [ Int 1; Bool true; Int 1; Bool true ]; [ Int 1; Bool true; Int 2; Bool true ] ],
+          [ 0; 2 ]
           // |@,3>
           e.KetAll(e.Int 3),
           [ [ Int 0 ]
@@ -83,29 +83,39 @@ type TestQPUClassic() =
           [ 0; 1 ]
           // (|@,2>, |@,1>)[1]
           e.Project(e.Join(e.KetAll(e.Int 2), e.KetAll(e.Int 1)), e.Int 1),
-          [ [ Int 0 ]
-            [ Int 1 ] ],
-          [ 0 ]
+          [ [ Int 0; Int 0 ]
+            [ Int 0; Int 1 ]
+            [ Int 1; Int 0 ]
+            [ Int 1; Int 1 ]
+            [ Int 2; Int 0 ]
+            [ Int 2; Int 1 ]
+            [ Int 3; Int 0 ]
+            [ Int 3; Int 1 ] ],
+          [ 1 ]
           // (|@,2>, |@,1>)[1]
           e.Project(e.Join(e.KetAll(e.Int 2), e.KetAll(e.Int 1)), e.Int 0),
-          [ [ Int 0 ]
-            [ Int 1 ]
-            [ Int 2 ]
-            [ Int 3 ] ],
+          [ [ Int 0; Int 0 ]
+            [ Int 0; Int 1 ]
+            [ Int 1; Int 0 ]
+            [ Int 1; Int 1 ]
+            [ Int 2; Int 0 ]
+            [ Int 2; Int 1 ]
+            [ Int 3; Int 0 ]
+            [ Int 3; Int 1 ] ],
           [ 0 ]
           // let x = |@,2>; (x, x)
           e.Block ([s.Let ("x", e.KetAll(e.Int 2)); s.Let ("y", e.KetAll(e.Int 1))], e.Join(e.Var "y", e.Var "y")),
           [ [ Int 0 ]
             [ Int 1 ] ],
           [ 0; 0 ]
-          // // (|(0, -6)>, |@, 2>)
-          // e.Join(e.Ket(e.Set [ e.Tuple [ e.Int 0; e.Int -6 ] ]), e.KetAll(e.Int 2)),
-          // [ [ Int 0; Int -6; Int 0 ]
-          //   [ Int 0; Int -6; Int 1 ]
-          //   [ Int 0; Int -6; Int 2 ]
-          //   [ Int 0; Int -6; Int 3 ] ],
-          // [ 0; 1; 2 ] 
-          ]
+          // (|(0, -6)>, |@, 2>)
+          e.Join(e.Ket(e.Set [ e.Tuple [ e.Int 0; e.Int 6 ] ]), e.KetAll(e.Int 2)),
+          [ [ Int 0; Int 6; Bool true; Int 0 ]
+            [ Int 0; Int 6; Bool true; Int 1 ]
+            [ Int 0; Int 6; Bool true; Int 2 ]
+            [ Int 0; Int 6; Bool true; Int 3 ] ],
+          [ 0; 1; 3 ] 
+        ]
         |> List.iter (this.TestExpression prelude)
 
 

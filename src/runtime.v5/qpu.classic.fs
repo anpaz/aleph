@@ -50,12 +50,6 @@ type Universe(state: Value list list, columns: ColumnIndex) =
     let random = System.Random()
     let mutable value = None
 
-    let project_columns (row: Value list) =
-        match columns with
-        | One c ->
-            row.[c]
-        | Many columns ->
-            columns |> List.fold (fun result i -> result @ [ row.[i] ]) [] |> Tuple
 
     interface IUniverse with
         member this.CompareTo(obj: obj) : int = failwith "Not Implemented"
@@ -91,12 +85,19 @@ type Universe(state: Value list list, columns: ColumnIndex) =
                     let i = int (random.NextDouble() * (double (n)))
                     state.Item i
 
-            let sample = pick_world () |> project_columns
+            let sample = pick_world () |> (Universe.project columns)
             value <- Some sample
             sample
 
     override this.ToString() =
-        sprintf "%A" (seq { for i in state -> i |> project_columns } |> Seq.toList)
+        sprintf "%A" (seq { for i in state -> i |> (Universe.project columns) } |> Seq.toList)
+
+    static member project columns (row: Value list) =
+        match columns with
+        | One c ->
+            row.[c]
+        | Many columns ->
+            columns |> List.fold (fun result i -> result @ [ row.[i] ]) [] |> Tuple
 
 type Processor() =
 
@@ -113,43 +114,22 @@ type Processor() =
             match ctx.graph.[k] with
             | KetExpression.Literal size -> prepare_ketall ctx size
             | KetExpression.Join ketIds -> prepare_join ctx ketIds
-            | KetExpression.Project (ket, idx) -> prepare_project ctx (ket, idx)
-            | _ -> $"Prepare not implemented" |> Error
+            | KetExpression.Project (ketId, idx) -> prepare_project ctx (ketId, idx)
+            | KetExpression.Map (ketId, lambda) ->  prepare_map ctx (ketId, lambda)
+            | KetExpression.Filter (ketId, filterId) ->  prepare_filter ctx (ketId, filterId)
 
-            |> process_result ctx k
+            |> process_result k
 
-    // (*
-    //     Prepares the Universe for the given expression, and returns the index of the
-    //     columns corresponding to the return value of the expression.
-    //  *)
-    // and prepare (q, ctx) =
-    //     match q with
-    //     | Q.Var id -> prepare_var (id, ctx)
+    and prepare_map ctx (ketId, lambda) =
+        prepare ctx ketId
+        ==> fun ctx'->
+            match lambda with
+            | KetMapOperator.Add -> map_binary ctx (ketId, Value.(+))
+            | KetMapOperator.In s -> map_in ctx (ketId, s)
+            | _ -> $"Lambda not implemented: {lambda}" |> Error
 
-    //     | Q.Constant value -> prepare_constant (value, ctx)
-    //     | Q.Ket c -> prepare_literal (c, ctx)
-    //     | KetAll size -> prepare_ketall (size, ctx)
+            
 
-    //     | Equals (left, right) -> prepare_equals (left, right, ctx)
-
-    //     | Add (left, right) -> prepare_add (left, right, ctx)
-    //     | Multiply (left, right) -> prepare_multiply (left, right, ctx)
-
-    //     | Not q -> prepare_not (q, ctx)
-    //     | And (left, right) -> prepare_and (left, right, ctx)
-    //     | Or (left, right) -> prepare_or (left, right, ctx)
-
-    //     | Project (q, index) -> prepare_project (q, index, ctx)
-    //     | Index (q, index) -> prepare_index (q, index, ctx)
-    //     | Join (left, right) -> prepare_join (left, right, ctx)
-
-    //     | IfQuantum (condition, then_q, else_q) -> prepare_if_q (condition, then_q, else_q, ctx)
-    //     | IfClassic (condition, then_q, else_q) -> prepare_if_c (condition, then_q, else_q, ctx)
-    //     | Filter (ket, condition, hint) -> prepare_filter (ket, condition, hint, ctx)
-
-    //     | Q.Block (stmts, value) -> prepare_block (stmts, value, ctx)
-        
-    //     | Q.CallMethod (method, args) -> prepare_callmethod (method, args, ctx)
 
     // (*
     //     Finds the var as a Ket in the heap, and then calls prepare on the corresponding ket.
@@ -189,17 +169,50 @@ type Processor() =
     //                 (new_columns, ctx) |> Ok
     //             | _ -> $"Invalid classic value for a ket literal: {values}" |> Error
 
-    and process_result ctx k value =
-        value
-        ==> fun(state, column) ->
-            { ctx with state = state; allocations = ctx.allocations.Add (k, column) } |> Ok
+    and process_result k result =
+        result
+        ==> fun(ctx, column) ->
+            { ctx with allocations = ctx.allocations.Add (k, column) } |> Ok
 
-    and prepare_ketall ctx size : Result<Value list list * ColumnIndex, string> =
+    and prepare_ketall ctx size =
         let values = seq { 0 .. (int (2.0 ** size)) - 1 } |> Seq.map (Value.Int) |> Seq.toList
         let new_state = tensor_product ctx.state values
         let new_column = if new_state.IsEmpty then 0 else new_state.Head.Length - 1
 
-        (new_state, ColumnIndex.One new_column) |> Ok
+        ({ ctx with state = new_state }, ColumnIndex.One new_column) |> Ok
+        
+    and prepare_filter ctx (ketId, filterId) =
+        prepare ctx ketId
+        ==> fun ctx'->
+            prepare ctx' filterId
+            ==> fun ctx'' ->
+                let column = ctx''.allocations.[filterId]
+                match column with
+                | ColumnIndex.One c ->
+                    let new_state =
+                        List.filter (fun (r: Value list) -> r.[c] = (Bool true)) ctx''.state
+                    ({ctx'' with state = new_state}, ctx''.allocations.[ketId]) |> Ok
+                | _ ->
+                    $"Invalid filter index: {filterId}" |> Error
+
+    and map_in ctx (ketId, v) =
+        match v with
+        | Value.Set s ->
+            let mem_size = ctx.state.Head.Length
+            let new_column = mem_size // last column
+
+            let columns = ctx.allocations.[ketId]
+            let new_state =
+                seq {
+                    for row in ctx.state do
+                        row @ [ Value.Bool (s.Contains (Universe.project columns row)) ]
+                }
+                |> Seq.toList
+
+            ({ ctx with state = new_state }, ColumnIndex.One new_column) |> Ok
+        | _ -> 
+            $"In map for preparation expects a set." |> Error
+
 
     // (*
     //     Adds a new column to the state, whose value is 
@@ -228,31 +241,26 @@ type Processor() =
 
             
 
-    // (*
-    //     Adds a new column to the state, whose value is 
-    //     the addition of the values in the columns from the corresponding input expressions.
-    //     It returns the new column.
-    //  *)
-    // and prepare_add (left, right, ctx) =
-    //     prepare (left, ctx)
-    //     ==> fun (left, ctx) ->
-    //             prepare (right, ctx)
-    //             ==> fun (right, ctx) ->
-    //                     match (left, right) with
-    //                     | ([ l ], [ r ]) ->
-    //                         let mem_size = ctx.state.Head.Length
-    //                         let new_columns = [ mem_size ] // last column
+    (*
+        Adds a new column to the state, whose value is 
+        the lambda operation applied to the first and second elements of the input ket.
+        It returns the new column.
+     *)
+    and map_binary ctx (ketId, lambda: Value * Value -> Value) =
+        match ctx.allocations.[ketId] with
+        | ColumnIndex.Many [ l; r ] ->
+            let mem_size = ctx.state.Head.Length
+            let new_column = mem_size // last column
 
-    //                         let new_state =
-    //                             seq {
-    //                                 for row in ctx.state do
-    //                                     row @ [ row.[l] + row.[r] ]
-    //                             }
-    //                             |> Seq.toList
+            let new_state =
+                seq {
+                    for row in ctx.state do
+                        row @ [ lambda(row.[l], row.[r]) ]
+                }
+                |> Seq.toList
 
-    //                         let ctx = { ctx with state = new_state }
-    //                         (new_columns, ctx) |> Ok
-    //                     | _ -> $"Invalid inputs for ket addition: {left} + {right}" |> Error
+            ({ ctx with state = new_state }, ColumnIndex.One new_column) |> Ok
+        | _ -> $"Invalid input for ket addition: {ketId}" |> Error
 
     // (*
     //     Adds a new column to the state, whose value is 
@@ -296,21 +304,19 @@ type Processor() =
                 |> List.map (fun ketId -> (ctx''.allocations.[ketId]))
                 |> List.fold (fun idx -> function ColumnIndex.One c -> idx @ [c] | ColumnIndex.Many many -> idx @ many ) []
 
-            (ctx''.state, ColumnIndex.Many columns) |> Ok
+            (ctx'', ColumnIndex.Many columns) |> Ok
 
 
     // (*
     //     Returns the the column from the input expression corresponding to the given index.
     //  *)
-    and prepare_project (ctx: QuantumContext) (ket, index) =
-        match ctx.graph.[ket] with
-        | KetExpression.Join ketids ->
-            let k' = ketids.[index]
-            prepare ctx k'
-            ==> fun ctx' ->
-                (ctx'.state,  ctx'.allocations.[k']) |> Ok
-        | _ ->
-            $"Invalid project expression. Project can only be applied to the result of Join expressions." |> Error
+    and prepare_project (ctx: QuantumContext) (ketId, index) =
+        prepare ctx ketId 
+        ==> fun ctx' ->
+            let columns = ctx'.allocations.[ketId]
+            match columns with
+            | ColumnIndex.Many columns -> (ctx', ColumnIndex.One columns.[index]) |> Ok
+            | _ -> $"Invalid ket to project: {ketId}" |> Error
 
 
         
