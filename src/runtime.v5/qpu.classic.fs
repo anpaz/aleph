@@ -1,7 +1,7 @@
-namespace aleph.runtime.qpu.classic
+namespace aleph.runtime.qpu.classicv5
 
 open aleph.parser.ast.typed
-open aleph.runtime.Eval
+open aleph.runtime.EvalV5
 
 (*
 
@@ -35,20 +35,26 @@ of each prepare method below...
 
 *)
 
+type ColumnIndex =
+    | One of int
+    | Many of int list
+
+type ColumnsMap = Map<KetId, ColumnIndex>
 
 type QuantumContext =
-    { allocations: Map<int, int list>
+    { graph: QuantumGraph
       state: Value list list
-      evalCtx: EvalContext }
+      allocations: ColumnsMap }
 
-type Universe(state: Value list list, columns: int list) =
+type Universe(state: Value list list, columns: ColumnIndex) =
     let random = System.Random()
     let mutable value = None
 
     let project_columns (row: Value list) =
-        if columns.Length = 1 then
-            row.[columns.[0]]
-        else
+        match columns with
+        | One c ->
+            row.[c]
+        | Many columns ->
             columns |> List.fold (fun result i -> result @ [ row.[i] ]) [] |> Tuple
 
     interface IUniverse with
@@ -74,12 +80,10 @@ type Universe(state: Value list list, columns: int list) =
                 | 1 -> state.[0]
                 // Empty universe, collapse to random value
                 | 0 ->
+                    let c = match columns with | One c -> [c] | Many c -> c
                     let row =
-                        if columns.IsEmpty then
-                            []
-                        else
-                            seq { for i in 0 .. (columns |> List.max) -> (Value.Int(random.Next())) }
-                            |> Seq.toList
+                        seq { for i in 0 .. (c |> List.max) -> (Value.Int(random.Next())) }
+                        |> Seq.toList
 
                     row
                 // Select a random row, and collapse to this value:
@@ -102,409 +106,401 @@ type Processor() =
         otherwise, it prepares the state of the Ket's state prep expression
         and allocates in memory the columns returned by the state prep to this ket.
      *)
-    let rec prepare_ket (ket: Ket, ctx: QuantumContext) =
-        match ctx.allocations.TryFind ket.Id with
-        | Some columns -> (columns, ctx) |> Ok // Already prepared...
+    let rec prepare (ctx: QuantumContext) (k: KetId) =
+        match ctx.allocations.TryFind k with
+        | Some columns -> ctx |> Ok // Already prepared...
         | None ->
-            // need to prepare using the heap when the ket was created:
-            let ctx' = { ctx with evalCtx = ket.Context }
+            match ctx.graph.[k] with
+            | KetExpression.Literal size -> prepare_ketall ctx size
+            | KetExpression.Join ketIds -> prepare_join ctx ketIds
+            | KetExpression.Project (ket, idx) -> prepare_project ctx (ket, idx)
+            | _ -> $"Prepare not implemented" |> Error
 
-            prepare (ket.StatePrep, ctx')
-            ==> fun (columns, ctx') ->
-                    // Assign to the ket the columns returned by the preparation:
-                    // return the original heap
-                    let ctx =
-                        { ctx' with
-                            allocations = ctx'.allocations.Add(ket.Id, columns)
-                            evalCtx = ctx.evalCtx }
+            |> process_result ctx k
 
-                    (columns, ctx) |> Ok
+    // (*
+    //     Prepares the Universe for the given expression, and returns the index of the
+    //     columns corresponding to the return value of the expression.
+    //  *)
+    // and prepare (q, ctx) =
+    //     match q with
+    //     | Q.Var id -> prepare_var (id, ctx)
 
-    (*
-        Prepares the Universe for the given expression, and returns the index of the
-        columns corresponding to the return value of the expression.
-     *)
-    and prepare (q, ctx) =
-        match q with
-        | Q.Var id -> prepare_var (id, ctx)
+    //     | Q.Constant value -> prepare_constant (value, ctx)
+    //     | Q.Ket c -> prepare_literal (c, ctx)
+    //     | KetAll size -> prepare_ketall (size, ctx)
 
-        | Q.Constant value -> prepare_constant (value, ctx)
-        | Q.Ket c -> prepare_literal (c, ctx)
-        | KetAll size -> prepare_ketall (size, ctx)
+    //     | Equals (left, right) -> prepare_equals (left, right, ctx)
 
-        | Equals (left, right) -> prepare_equals (left, right, ctx)
+    //     | Add (left, right) -> prepare_add (left, right, ctx)
+    //     | Multiply (left, right) -> prepare_multiply (left, right, ctx)
 
-        | Add (left, right) -> prepare_add (left, right, ctx)
-        | Multiply (left, right) -> prepare_multiply (left, right, ctx)
+    //     | Not q -> prepare_not (q, ctx)
+    //     | And (left, right) -> prepare_and (left, right, ctx)
+    //     | Or (left, right) -> prepare_or (left, right, ctx)
 
-        | Not q -> prepare_not (q, ctx)
-        | And (left, right) -> prepare_and (left, right, ctx)
-        | Or (left, right) -> prepare_or (left, right, ctx)
+    //     | Project (q, index) -> prepare_project (q, index, ctx)
+    //     | Index (q, index) -> prepare_index (q, index, ctx)
+    //     | Join (left, right) -> prepare_join (left, right, ctx)
 
-        | Project (q, index) -> prepare_project (q, index, ctx)
-        | Index (q, index) -> prepare_index (q, index, ctx)
-        | Join (left, right) -> prepare_join (left, right, ctx)
+    //     | IfQuantum (condition, then_q, else_q) -> prepare_if_q (condition, then_q, else_q, ctx)
+    //     | IfClassic (condition, then_q, else_q) -> prepare_if_c (condition, then_q, else_q, ctx)
+    //     | Filter (ket, condition, hint) -> prepare_filter (ket, condition, hint, ctx)
 
-        | IfQuantum (condition, then_q, else_q) -> prepare_if_q (condition, then_q, else_q, ctx)
-        | IfClassic (condition, then_q, else_q) -> prepare_if_c (condition, then_q, else_q, ctx)
-        | Filter (ket, condition, hint) -> prepare_filter (ket, condition, hint, ctx)
-
-        | Q.Block (stmts, value) -> prepare_block (stmts, value, ctx)
+    //     | Q.Block (stmts, value) -> prepare_block (stmts, value, ctx)
         
-        | Q.CallMethod (method, args) -> prepare_callmethod (method, args, ctx)
+    //     | Q.CallMethod (method, args) -> prepare_callmethod (method, args, ctx)
 
-    (*
-        Finds the var as a Ket in the heap, and then calls prepare on the corresponding ket.
-        After calling prepare on the ket it will be allocated in memory, as such
-        this method returns the columns associated with the ket accordingly.
-     *)
-    and prepare_var (id, ctx) =
-        eval_var (id, ctx.evalCtx)
-        ==> fun (value, evalCtx) ->
-                match value with
-                | Value.Ket ket ->
-                    prepare_ket (ket, { ctx with evalCtx = evalCtx })
-                    ==> fun (columns, ctx) -> (columns, ctx) |> Ok
-                | _ -> $"Unknown variable: {id}. Expecting ket." |> Error
+    // (*
+    //     Finds the var as a Ket in the heap, and then calls prepare on the corresponding ket.
+    //     After calling prepare on the ket it will be allocated in memory, as such
+    //     this method returns the columns associated with the ket accordingly.
+    //  *)
+    // and prepare_var (id, ctx) =
+    //     eval_var (id, ctx.evalCtx)
+    //     ==> fun (value, evalCtx) ->
+    //             match value with
+    //             | Value.Ket ket ->
+    //                 prepare_ket (ket, { ctx with evalCtx = evalCtx })
+    //                 ==> fun (columns, ctx) -> (columns, ctx) |> Ok
+    //             | _ -> $"Unknown variable: {id}. Expecting ket." |> Error
 
-    (*
-        Adding a new literal involves updating the quantum state 
-        by doing the tensor product of the current state with the new values
-        from the literal.
-        It returns the columns allocated for the new values.
-     *)
-    and prepare_literal (values, ctx) =
-        eval_classic (values, ctx.evalCtx)
-        ==> fun (values, evalCtx) ->
-                match values with
-                | Value.Set values ->
-                    let old_size = if ctx.state.IsEmpty then 0 else ctx.state.Head.Length
-                    let new_state = tensor_product ctx.state (values |> Set.toList)
-                    let new_size = if new_state.IsEmpty then 0 else new_state.Head.Length
-                    let new_columns = [ old_size .. new_size - 1 ]
+    // (*
+    //     Adding a new literal involves updating the quantum state 
+    //     by doing the tensor product of the current state with the new values
+    //     from the literal.
+    //     It returns the columns allocated for the new values.
+    //  *)
+    // and prepare_literal (values, ctx) =
+    //     eval_classic (values, ctx.evalCtx)
+    //     ==> fun (values, evalCtx) ->
+    //             match values with
+    //             | Value.Set values ->
+    //                 let old_size = if ctx.state.IsEmpty then 0 else ctx.state.Head.Length
+    //                 let new_state = tensor_product ctx.state (values |> Set.toList)
+    //                 let new_size = if new_state.IsEmpty then 0 else new_state.Head.Length
+    //                 let new_columns = [ old_size .. new_size - 1 ]
 
-                    let ctx =
-                        { ctx with
-                            state = new_state
-                            evalCtx = evalCtx }
+    //                 let ctx =
+    //                     { ctx with
+    //                         state = new_state
+    //                         evalCtx = evalCtx }
 
-                    (new_columns, ctx) |> Ok
-                | _ -> $"Invalid classic value for a ket literal: {values}" |> Error
+    //                 (new_columns, ctx) |> Ok
+    //             | _ -> $"Invalid classic value for a ket literal: {values}" |> Error
 
-    and prepare_ketall (size, ctx) =
-        eval_classic (size, ctx.evalCtx)
-        ==> fun (size, evalCtx) ->
-                match size with
-                | Value.Int i ->
-                    let values = seq { 0 .. (int (2.0 ** i)) - 1 } |> Seq.map (Value.Int) |> Seq.toList
-                    let old_size = if ctx.state.IsEmpty then 0 else ctx.state.Head.Length
-                    let new_state = tensor_product ctx.state values
-                    let new_size = if new_state.IsEmpty then 0 else new_state.Head.Length
-                    let new_columns = [ old_size .. new_size - 1 ]
+    and process_result ctx k value =
+        value
+        ==> fun(state, column) ->
+            { ctx with state = state; allocations = ctx.allocations.Add (k, column) } |> Ok
 
-                    let ctx =
-                        { ctx with
-                            state = new_state
-                            evalCtx = evalCtx }
+    and prepare_ketall ctx size : Result<Value list list * ColumnIndex, string> =
+        let values = seq { 0 .. (int (2.0 ** size)) - 1 } |> Seq.map (Value.Int) |> Seq.toList
+        let new_state = tensor_product ctx.state values
+        let new_column = if new_state.IsEmpty then 0 else new_state.Head.Length - 1
 
-                    (new_columns, ctx) |> Ok
-                | _ -> $"Invalid ket_all size, expected int got: {size}" |> Error
+        (new_state, ColumnIndex.One new_column) |> Ok
 
-    (*
-        Adds a new column to the state, whose value is 
-        the same for all rows.
-     *)
-    and prepare_constant (value, ctx) =
-        eval_classic (value, ctx.evalCtx)
-        ==> fun (value, evalCtx) ->
-            if ctx.state.IsEmpty then
-                let new_columns = [ 0 ] // last column
-                let new_state = [ [ value ] ]
-                let ctx = { ctx with state = new_state; evalCtx = evalCtx }
-                (new_columns, ctx) |> Ok
-            else
-                let mem_size = ctx.state.Head.Length
-                let new_columns = [ mem_size ] // last column
+    // (*
+    //     Adds a new column to the state, whose value is 
+    //     the same for all rows.
+    //  *)
+    // and prepare_constant (value, ctx) =
+    //     eval_classic (value, ctx.evalCtx)
+    //     ==> fun (value, evalCtx) ->
+    //         if ctx.state.IsEmpty then
+    //             let new_columns = [ 0 ] // last column
+    //             let new_state = [ [ value ] ]
+    //             let ctx = { ctx with state = new_state; evalCtx = evalCtx }
+    //             (new_columns, ctx) |> Ok
+    //         else
+    //             let mem_size = ctx.state.Head.Length
+    //             let new_columns = [ mem_size ] // last column
 
-                let new_state =
-                    seq {
-                        for row in ctx.state do
-                            row @ [ value ]
-                    }
-                    |> Seq.toList
-                let ctx = { ctx with state = new_state; evalCtx = evalCtx }
-                (new_columns, ctx) |> Ok
+    //             let new_state =
+    //                 seq {
+    //                     for row in ctx.state do
+    //                         row @ [ value ]
+    //                 }
+    //                 |> Seq.toList
+    //             let ctx = { ctx with state = new_state; evalCtx = evalCtx }
+    //             (new_columns, ctx) |> Ok
 
             
 
-    (*
-        Adds a new column to the state, whose value is 
-        the addition of the values in the columns from the corresponding input expressions.
-        It returns the new column.
-     *)
-    and prepare_add (left, right, ctx) =
-        prepare (left, ctx)
-        ==> fun (left, ctx) ->
-                prepare (right, ctx)
-                ==> fun (right, ctx) ->
-                        match (left, right) with
-                        | ([ l ], [ r ]) ->
-                            let mem_size = ctx.state.Head.Length
-                            let new_columns = [ mem_size ] // last column
+    // (*
+    //     Adds a new column to the state, whose value is 
+    //     the addition of the values in the columns from the corresponding input expressions.
+    //     It returns the new column.
+    //  *)
+    // and prepare_add (left, right, ctx) =
+    //     prepare (left, ctx)
+    //     ==> fun (left, ctx) ->
+    //             prepare (right, ctx)
+    //             ==> fun (right, ctx) ->
+    //                     match (left, right) with
+    //                     | ([ l ], [ r ]) ->
+    //                         let mem_size = ctx.state.Head.Length
+    //                         let new_columns = [ mem_size ] // last column
 
-                            let new_state =
-                                seq {
-                                    for row in ctx.state do
-                                        row @ [ row.[l] + row.[r] ]
-                                }
-                                |> Seq.toList
+    //                         let new_state =
+    //                             seq {
+    //                                 for row in ctx.state do
+    //                                     row @ [ row.[l] + row.[r] ]
+    //                             }
+    //                             |> Seq.toList
 
-                            let ctx = { ctx with state = new_state }
-                            (new_columns, ctx) |> Ok
-                        | _ -> $"Invalid inputs for ket addition: {left} + {right}" |> Error
+    //                         let ctx = { ctx with state = new_state }
+    //                         (new_columns, ctx) |> Ok
+    //                     | _ -> $"Invalid inputs for ket addition: {left} + {right}" |> Error
 
-    (*
-        Adds a new column to the state, whose value is 
-        the multiplication of the values in the columns from the corresponding input expressions.
-        It returns the new column.
-     *)
-    and prepare_multiply (left, right, ctx) =
-        prepare (left, ctx)
-        ==> fun (left, ctx) ->
-                prepare (right, ctx)
-                ==> fun (right, ctx) ->
-                        match (left, right) with
-                        | ([ l ], [ r ]) ->
-                            let mem_size = ctx.state.Head.Length
-                            let new_columns = [ mem_size ] // last column
+    // (*
+    //     Adds a new column to the state, whose value is 
+    //     the multiplication of the values in the columns from the corresponding input expressions.
+    //     It returns the new column.
+    //  *)
+    // and prepare_multiply (left, right, ctx) =
+    //     prepare (left, ctx)
+    //     ==> fun (left, ctx) ->
+    //             prepare (right, ctx)
+    //             ==> fun (right, ctx) ->
+    //                     match (left, right) with
+    //                     | ([ l ], [ r ]) ->
+    //                         let mem_size = ctx.state.Head.Length
+    //                         let new_columns = [ mem_size ] // last column
 
-                            let new_state =
-                                seq {
-                                    for row in ctx.state do
-                                        row @ [ row.[l] * row.[r] ]
-                                }
-                                |> Seq.toList
+    //                         let new_state =
+    //                             seq {
+    //                                 for row in ctx.state do
+    //                                     row @ [ row.[l] * row.[r] ]
+    //                             }
+    //                             |> Seq.toList
 
-                            let ctx = { ctx with state = new_state }
-                            (new_columns, ctx) |> Ok
-                        | _ -> $"Invalid inputs for ket addition: {left} + {right}" |> Error
-
-    (*
-        Returns the the column from the input expression corresponding to the given index.
-     *)
-    and prepare_project (q, index, ctx) =
-        prepare (q, ctx)
-        ==> fun (columns, ctx) ->
-                let projection = [ columns.[index] ]
-                (projection, ctx) |> Ok
-
-    (*
-        Evaluates the index expression and returns the corresponding column.
-     *)
-    and prepare_index (q, index, ctx) =
-        prepare (q, ctx)
-        ==> fun (columns, ctx) ->
-                eval_classic (index, ctx.evalCtx)
-                ==> fun (index, evalCtx) ->
-                        match index with
-                        | Value.Int i ->
-                            let ctx = { ctx with evalCtx = evalCtx }
-                            let idx = i % columns.Length
-                            ([ columns.[idx] ], ctx) |> Ok
-                        | _ -> $"Invalid index, expecting int value, got {index}" |> Error
+    //                         let ctx = { ctx with state = new_state }
+    //                         (new_columns, ctx) |> Ok
+    //                     | _ -> $"Invalid inputs for ket addition: {left} + {right}" |> Error
 
     (*
         Returns the concatenation of the results from the input expressions.
      *)
-    and prepare_join (left, right, ctx) =
-        prepare (left, ctx)
-        ==> fun (left, ctx) -> prepare (right, ctx) ==> fun (right, ctx) -> (left @ right, ctx) |> Ok
+    and prepare_join ctx (ketIds: KetId list) =
+        // prepare all elements in the ket:
+        let ctx =
+            ketIds
+            |> List.fold (fun ctx' ketId -> ctx' ==> fun (ctx) -> prepare ctx ketId) (ctx |> Ok)
 
-    (*
-        Adds a new column to the state, whose value is 
-        the negation of the original column.
-        It returns the new column.
-     *)
-    and prepare_not (q, ctx) =
-        prepare (q, ctx)
-        ==> fun (columns, ctx) ->
-                match columns with
-                | [ v ] ->
-                    let mem_size = ctx.state.Head.Length
-                    let new_columns = [ mem_size ] // last column
+        // now, map the ketids to their corresponding column:
+        ctx
+        ==> fun(ctx) ->
+            let columns =
+                ketIds 
+                |> List.map (fun ketId -> (ctx.allocations.[ketId]))
+                |> List.fold (fun idx -> function ColumnIndex.One c -> idx @ [c] | ColumnIndex.Many many -> idx @ many ) []
 
-                    let new_state =
-                        seq {
-                            for row in ctx.state do
-                                row @ [ (Value.Not row.[v]) ]
-                        }
-                        |> Seq.toList
+            (ctx.state, ColumnIndex.Many columns) |> Ok
 
-                    let ctx = { ctx with state = new_state }
-                    (new_columns, ctx) |> Ok
-                | _ -> $"Invalid inputs for ket not: {q}" |> Error
 
-    (*
-        Adds a new column to the state, whose value is 
-        true iff the values in the columns from the corresponding input expressions are both true.
-        It returns the new column.
-     *)
-    and prepare_and (left, right, ctx) =
-        prepare (left, ctx)
-        ==> fun (left, ctx) ->
-                prepare (right, ctx)
-                ==> fun (right, ctx) ->
-                        match (left, right) with
-                        | ([ l ], [ r ]) ->
-                            let mem_size = ctx.state.Head.Length
-                            let new_columns = [ mem_size ] // last column
+    // (*
+    //     Returns the the column from the input expression corresponding to the given index.
+    //  *)
+    and prepare_project (ctx: QuantumContext) (ket, index) =
+        match ctx.graph.[ket] with
+        | KetExpression.Join ketids ->
+            let k' = ketids.[index]
+            prepare ctx k'
+            ==> fun ctx' ->
+                (ctx'.state,  ctx'.allocations.[k']) |> Ok
+        | _ ->
+            $"Invalid project expression. Project can only be applied to the result of Join expressions." |> Error
 
-                            let new_state =
-                                seq {
-                                    for row in ctx.state do
-                                        row @ [ Value.And(row.[l], row.[r]) ]
-                                }
-                                |> Seq.toList
 
-                            let ctx = { ctx with state = new_state }
-                            (new_columns, ctx) |> Ok
-                        | _ -> $"Invalid inputs for ket equals: {left} && {right}" |> Error
+        
 
-    (*
-        Adds a new column to the state, whose value is 
-        true iff the values in the columns from the corresponding input expressions are both true.
-        It returns the new column.
-     *)
-    and prepare_or (left, right, ctx) =
-        prepare (left, ctx)
-        ==> fun (left, ctx) ->
-                prepare (right, ctx)
-                ==> fun (right, ctx) ->
-                        match (left, right) with
-                        | ([ l ], [ r ]) ->
-                            let mem_size = ctx.state.Head.Length
-                            let new_columns = [ mem_size ] // last column
+    // (*
+    //     Adds a new column to the state, whose value is 
+    //     the negation of the original column.
+    //     It returns the new column.
+    //  *)
+    // and prepare_not (q, ctx) =
+    //     prepare (q, ctx)
+    //     ==> fun (columns, ctx) ->
+    //             match columns with
+    //             | [ v ] ->
+    //                 let mem_size = ctx.state.Head.Length
+    //                 let new_columns = [ mem_size ] // last column
 
-                            let new_state =
-                                seq {
-                                    for row in ctx.state do
-                                        row @ [ Value.Or(row.[l], row.[r]) ]
-                                }
-                                |> Seq.toList
+    //                 let new_state =
+    //                     seq {
+    //                         for row in ctx.state do
+    //                             row @ [ (Value.Not row.[v]) ]
+    //                     }
+    //                     |> Seq.toList
 
-                            let ctx = { ctx with state = new_state }
-                            (new_columns, ctx) |> Ok
-                        | _ -> $"Invalid inputs for ket equals: {left} && {right}" |> Error
+    //                 let ctx = { ctx with state = new_state }
+    //                 (new_columns, ctx) |> Ok
+    //             | _ -> $"Invalid inputs for ket not: {q}" |> Error
 
-    (*
-        Adds a new column to the state, whose value is 
-        true iff the values in the columns from the corresponding input expressions are equal.
-        It returns the new column.
-     *)
-    and prepare_equals (left, right, ctx) =
-        prepare (left, ctx)
-        ==> fun (left, ctx) ->
-                prepare (right, ctx)
-                ==> fun (right, ctx) ->
-                        match (left, right) with
-                        | ([ l ], [ r ]) ->
-                            let mem_size = ctx.state.Head.Length
-                            let new_columns = [ mem_size ] // last column
+    // (*
+    //     Adds a new column to the state, whose value is 
+    //     true iff the values in the columns from the corresponding input expressions are both true.
+    //     It returns the new column.
+    //  *)
+    // and prepare_and (left, right, ctx) =
+    //     prepare (left, ctx)
+    //     ==> fun (left, ctx) ->
+    //             prepare (right, ctx)
+    //             ==> fun (right, ctx) ->
+    //                     match (left, right) with
+    //                     | ([ l ], [ r ]) ->
+    //                         let mem_size = ctx.state.Head.Length
+    //                         let new_columns = [ mem_size ] // last column
 
-                            let new_state =
-                                seq {
-                                    for row in ctx.state do
-                                        row @ [ row.[l] == row.[r] ]
-                                }
-                                |> Seq.toList
+    //                         let new_state =
+    //                             seq {
+    //                                 for row in ctx.state do
+    //                                     row @ [ Value.And(row.[l], row.[r]) ]
+    //                             }
+    //                             |> Seq.toList
 
-                            let ctx = { ctx with state = new_state }
-                            (new_columns, ctx) |> Ok
-                        | _ -> $"Invalid inputs for ket equals: {left} == {right}" |> Error
+    //                         let ctx = { ctx with state = new_state }
+    //                         (new_columns, ctx) |> Ok
+    //                     | _ -> $"Invalid inputs for ket equals: {left} && {right}" |> Error
 
-    (*
-        Filters the state to only those records that match the given condition.
-        It returns the columns of the specified ket.
-     *)
-    and prepare_filter (ket, condition, hint, ctx) =
-        prepare (condition, ctx)
-        ==> fun (cond, ctx) ->
-                prepare (ket, ctx)
-                ==> fun (ket, ctx) ->
-                    eval_classic (hint, ctx.evalCtx)
-                    ==> fun (_, _) ->
-                        let new_state =
-                            List.filter (fun (r: Value list) -> r.[cond.Head] = (Bool true)) ctx.state
+    // (*
+    //     Adds a new column to the state, whose value is 
+    //     true iff the values in the columns from the corresponding input expressions are both true.
+    //     It returns the new column.
+    //  *)
+    // and prepare_or (left, right, ctx) =
+    //     prepare (left, ctx)
+    //     ==> fun (left, ctx) ->
+    //             prepare (right, ctx)
+    //             ==> fun (right, ctx) ->
+    //                     match (left, right) with
+    //                     | ([ l ], [ r ]) ->
+    //                         let mem_size = ctx.state.Head.Length
+    //                         let new_columns = [ mem_size ] // last column
 
-                        let ctx = { ctx with state = new_state }
-                        (ket, ctx) |> Ok
+    //                         let new_state =
+    //                             seq {
+    //                                 for row in ctx.state do
+    //                                     row @ [ Value.Or(row.[l], row.[r]) ]
+    //                             }
+    //                             |> Seq.toList
 
-    (*
-        Prepares all: the condition, the then_q and the else_q expressions, and returns a new column
-        populated with the then_q value if the condition is true, and the else_q value if the condition is false.
-    *)
-    and prepare_if_q (condition, then_q, else_q, ctx) =
-        prepare (condition, ctx)
-        ==> fun (cond, ctx) ->
-                prepare (then_q, ctx)
-                ==> fun (then_q, ctx) ->
-                        prepare (else_q, ctx)
-                        ==> fun (else_q, ctx) ->
-                                match cond, then_q, else_q with
-                                | [ c ], [ t ], [ e ] ->
-                                    let mem_size = ctx.state.Head.Length
-                                    let new_columns = [ mem_size ] // last column
+    //                         let ctx = { ctx with state = new_state }
+    //                         (new_columns, ctx) |> Ok
+    //                     | _ -> $"Invalid inputs for ket equals: {left} && {right}" |> Error
 
-                                    let new_state =
-                                        seq {
-                                            for row in ctx.state do
-                                                row @ [ if row.[c] = (Bool true) then row.[t] else row.[e] ]
-                                        }
-                                        |> Seq.toList
+    // (*
+    //     Adds a new column to the state, whose value is 
+    //     true iff the values in the columns from the corresponding input expressions are equal.
+    //     It returns the new column.
+    //  *)
+    // and prepare_equals (left, right, ctx) =
+    //     prepare (left, ctx)
+    //     ==> fun (left, ctx) ->
+    //             prepare (right, ctx)
+    //             ==> fun (right, ctx) ->
+    //                     match (left, right) with
+    //                     | ([ l ], [ r ]) ->
+    //                         let mem_size = ctx.state.Head.Length
+    //                         let new_columns = [ mem_size ] // last column
 
-                                    let ctx = { ctx with state = new_state }
-                                    (new_columns, ctx) |> Ok
-                                | _ -> $"Invalid inputs for ket if: {cond} then {then_q} else {else_q}" |> Error
+    //                         let new_state =
+    //                             seq {
+    //                                 for row in ctx.state do
+    //                                     row @ [ row.[l] == row.[r] ]
+    //                             }
+    //                             |> Seq.toList
 
-    (*
-        First evaluates the condition, if the result is true then it prepares the then_q expression,
-        otherwise it prepares the else_q expression. It returns the new column.
-    *)
-    and prepare_if_c (condition, then_q, else_q, ctx) =
-        eval_classic (condition, ctx.evalCtx)
-        ==> fun (cond, evalCtx) ->
-                let ctx = { ctx with evalCtx = evalCtx }
+    //                         let ctx = { ctx with state = new_state }
+    //                         (new_columns, ctx) |> Ok
+    //                     | _ -> $"Invalid inputs for ket equals: {left} == {right}" |> Error
 
-                match cond with
-                | (Bool true) -> prepare (then_q, ctx) ==> fun (then_q, ctx) -> (then_q, ctx) |> Ok
-                | (Bool false) -> prepare (else_q, ctx) ==> fun (else_q, ctx) -> (else_q, ctx) |> Ok
-                | _ -> $"Invalid classical input for if condition. Expecting bool, got {cond}" |> Error
+    // (*
+    //     Filters the state to only those records that match the given condition.
+    //     It returns the columns of the specified ket.
+    //  *)
+    // and prepare_filter (ket, condition, hint, ctx) =
+    //     prepare (condition, ctx)
+    //     ==> fun (cond, ctx) ->
+    //             prepare (ket, ctx)
+    //             ==> fun (ket, ctx) ->
+    //                 eval_classic (hint, ctx.evalCtx)
+    //                 ==> fun (_, _) ->
+    //                     let new_state =
+    //                         List.filter (fun (r: Value list) -> r.[cond.Head] = (Bool true)) ctx.state
 
-    (*
-        Returns the columns of the specified ket.
-     *)
-    and prepare_block (stmts, body, ctx) =
-        eval_stmts (stmts, ctx.evalCtx)
-        ==> fun evalCtx ->
-                let ctx = { ctx with evalCtx = evalCtx }
-                prepare (body, ctx)
+    //                     let ctx = { ctx with state = new_state }
+    //                     (ket, ctx) |> Ok
 
-    (*
-        Calls the corresponding method, and automatically prepares the resulting Ket
-    *)
-    and prepare_callmethod (method, args, ctx) =
-        setup_method_body (method, args, ctx.evalCtx)
-        ==> fun (body, argsCtx) ->
-                match body with
-                | Quantum (q, _) ->
-                    let ctx' = { ctx with evalCtx = argsCtx }
+    // (*
+    //     Prepares all: the condition, the then_q and the else_q expressions, and returns a new column
+    //     populated with the then_q value if the condition is true, and the else_q value if the condition is false.
+    // *)
+    // and prepare_if_q (condition, then_q, else_q, ctx) =
+    //     prepare (condition, ctx)
+    //     ==> fun (cond, ctx) ->
+    //             prepare (then_q, ctx)
+    //             ==> fun (then_q, ctx) ->
+    //                     prepare (else_q, ctx)
+    //                     ==> fun (else_q, ctx) ->
+    //                             match cond, then_q, else_q with
+    //                             | [ c ], [ t ], [ e ] ->
+    //                                 let mem_size = ctx.state.Head.Length
+    //                                 let new_columns = [ mem_size ] // last column
 
-                    prepare (q, ctx')
-                    ==> fun (value, ctx') ->
-                            // return the heap back to the original state
-                            let ctx = { ctx' with evalCtx = ctx.evalCtx }
-                            (value, ctx) |> Ok
-                | _ -> $"Expecting a method with a Quantum body, got {method}" |> Error
+    //                                 let new_state =
+    //                                     seq {
+    //                                         for row in ctx.state do
+    //                                             row @ [ if row.[c] = (Bool true) then row.[t] else row.[e] ]
+    //                                     }
+    //                                     |> Seq.toList
+
+    //                                 let ctx = { ctx with state = new_state }
+    //                                 (new_columns, ctx) |> Ok
+    //                             | _ -> $"Invalid inputs for ket if: {cond} then {then_q} else {else_q}" |> Error
+
+    // (*
+    //     First evaluates the condition, if the result is true then it prepares the then_q expression,
+    //     otherwise it prepares the else_q expression. It returns the new column.
+    // *)
+    // and prepare_if_c (condition, then_q, else_q, ctx) =
+    //     eval_classic (condition, ctx.evalCtx)
+    //     ==> fun (cond, evalCtx) ->
+    //             let ctx = { ctx with evalCtx = evalCtx }
+
+    //             match cond with
+    //             | (Bool true) -> prepare (then_q, ctx) ==> fun (then_q, ctx) -> (then_q, ctx) |> Ok
+    //             | (Bool false) -> prepare (else_q, ctx) ==> fun (else_q, ctx) -> (else_q, ctx) |> Ok
+    //             | _ -> $"Invalid classical input for if condition. Expecting bool, got {cond}" |> Error
+
+    // (*
+    //     Returns the columns of the specified ket.
+    //  *)
+    // and prepare_block (stmts, body, ctx) =
+    //     eval_stmts (stmts, ctx.evalCtx)
+    //     ==> fun evalCtx ->
+    //             let ctx = { ctx with evalCtx = evalCtx }
+    //             prepare (body, ctx)
+
+    // (*
+    //     Calls the corresponding method, and automatically prepares the resulting Ket
+    // *)
+    // and prepare_callmethod (method, args, ctx) =
+    //     setup_method_body (method, args, ctx.evalCtx)
+    //     ==> fun (body, argsCtx) ->
+    //             match body with
+    //             | Quantum (q, _) ->
+    //                 let ctx' = { ctx with evalCtx = argsCtx }
+
+    //                 prepare (q, ctx')
+    //                 ==> fun (value, ctx') ->
+    //                         // return the heap back to the original state
+    //                         let ctx = { ctx' with evalCtx = ctx.evalCtx }
+    //                         (value, ctx) |> Ok
+    //             | _ -> $"Expecting a method with a Quantum body, got {method}" |> Error
 
 
     and tensor_product left right : Value list list =
@@ -532,9 +528,9 @@ type Processor() =
         (*
             Measure works by sampling the universe:
         *)
-        member this.Measure(universe: IUniverse) =
+        member this.Measure(universe: IUniverse, evalCtx: EvalContext) =
             let u = universe :?> Universe
-            u.Sample() |> Ok
+            (u.Sample(), evalCtx.graph) |> Ok
 
         (*
             Prepares a Quantum Universe from the given universe expression
@@ -544,23 +540,23 @@ type Processor() =
 
             match u with
             | U.Prepare q ->
-                eval_quantum (q, evalCtx)
-                ==> fun (ket, evalCtx) ->
-                        match ket with
-                        | Value.Ket ket ->
+                eval_quantum evalCtx q
+                ==> fun (value, graph) ->
+                        match value with
+                        | Value.KetId ket ->
                             let ctx =
                                 { allocations = Map.empty
                                   state = []
-                                  evalCtx = evalCtx }
+                                  graph = graph }
 
-                            prepare_ket (ket, ctx)
-                            ==> fun (columns, ctx) -> (Value.Universe(Universe(ctx.state, columns)), ctx.evalCtx) |> Ok
+                            prepare ctx ket
+                            ==> fun ctx -> (Value.Universe(Universe(ctx.state, ctx.allocations.[ket])), graph) |> Ok
                         | _ -> "" |> Error
             | U.Var id ->
                 match evalCtx.heap.TryFind id with
-                | Some (Value.Universe u) -> (Value.Universe u, evalCtx) |> Ok
+                | Some (Value.Universe u) -> (Value.Universe u, evalCtx.graph) |> Ok
                 | _ -> $"Invalid variable: {id}. Expecting universe." |> Error
             | U.Block (stmts, body) ->
-                eval_stmts (stmts, evalCtx)
+                eval_stmts evalCtx stmts
                 ==> fun evalCtx -> (this :> QPU).Prepare(body, evalCtx)
-            | U.CallMethod (method, args) -> eval_callmethod (method, args, evalCtx)
+            | U.CallMethod (method, args) -> eval_callmethod evalCtx (method, args)

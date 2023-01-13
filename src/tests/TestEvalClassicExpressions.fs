@@ -12,9 +12,9 @@ module ClassicValueContext =
 
     let NoQPU =
         { new QPU with
-            member this.Measure(arg1: IUniverse) : Result<Value, string> = failwith "Not Implemented"
+            member this.Measure(arg1: IUniverse, ctx: EvalContext) : Result<Value * QuantumGraph, string> = failwith "Not Implemented"
 
-            member this.Prepare(arg1: U, arg2: EvalContext) : Result<Value, string> = failwith "Not Implemented" }
+            member this.Prepare(arg1: U, arg2: EvalContext) : Result<Value * QuantumGraph, string> = failwith "Not Implemented" }
 
     let Prelude =
         [ s.Let("i1", e.Int 1)

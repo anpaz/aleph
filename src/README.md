@@ -15,3 +15,10 @@ dotnet test
 cd samples
 dotnet run
 ```
+
+## Debug tests
+
+1. Set env variable: VSTEST_HOST_DEBUG="1"
+2. Start dotnet test: dotnet test --filter TestQPUClassic
+   > It starts and breaks. Print the process id to the console.
+3. Attach to process.
