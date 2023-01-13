@@ -11,7 +11,6 @@ module EvalV5 =
         max_ket <- max_ket + 1
         max_ket
 
-
     let (==>) (input: Result<'a, 'b>) ok = Result.bind ok input
 
     type IUniverse =
@@ -170,31 +169,31 @@ module EvalV5 =
 
     and eval_qliteral ctx size =
         eval_classic ctx size
-        ==> fun (value, graph) ->
-                match value with
+        ==> fun (v1, graph) ->
+                match v1 with
                 | Value.Int n -> graph |> with_value (KetExpression.Literal n)
-                | _ -> $"Invalid KetAll size: {value}" |> Error
+                | _ -> $"Invalid KetAll size: {v1}" |> Error
 
     and eval_qjoin ctx (left, right) =
         eval_quantum ctx left
-        ==> fun (value1, q1) ->
+        ==> fun (k1, q1) ->
                 eval_quantum { ctx with graph = q1 } right
-                ==> fun (value2, q2) ->
-                        match (value1, value2) with
+                ==> fun (k2, q2) ->
+                        match (k1, k2) with
                         | Value.KetId k1, Value.KetId k2 -> q2 |> with_value (KetExpression.Join [k1; k2])
                         | _ -> $"Invalid KetIds" |> Error
 
     and eval_qproject ctx (ket, index) =
         eval_quantum ctx ket
-        ==> fun (value, graph) ->
-                match value with
+        ==> fun (k, graph) ->
+                match k with
                 | Value.KetId k -> graph |> with_value (KetExpression.Project (k, index))
                 | _ -> $"Invalid KetIds" |> Error
 
     and eval_qindex ctx (ket, index) =
         eval_classic ctx index
-        ==> fun (index, q1) ->
-                match index with
+        ==> fun (v1, q1) ->
+                match v1 with
                 | Value.Int i ->
                     eval_qproject { ctx with graph = q1 } (ket, i)
                 | _ -> $"Invalid KetIds" |> Error
@@ -205,17 +204,17 @@ module EvalV5 =
 
     and eval_qmap_unary ctx (left, lambda) =
         eval_quantum ctx left
-        ==> fun (value, graph) ->
-                match value with
+        ==> fun (k1, graph) ->
+                match k1 with
                 | Value.KetId k1 -> graph |> with_value (KetExpression.Map(k1, lambda))
                 | _ -> $"Invalid KetIds" |> Error
 
     and eval_qmap_binary ctx (left, right, lambda) =
         eval_quantum ctx left
-        ==> fun (value1, q1) ->
+        ==> fun (k1, q1) ->
                 eval_quantum { ctx with graph = q1 } right
-                ==> fun (value2, q2) ->
-                        match (value1, value2) with
+                ==> fun (k2, q2) ->
+                        match (k1, k2) with
                         | Value.KetId(k1), Value.KetId(k2) ->
                             let k = fresh_ketid()
                             q2.Add(k, KetExpression.Join [k1; k2])
@@ -225,12 +224,12 @@ module EvalV5 =
 
     and eval_qif ctx (condition, then_q, else_q) =
         eval_quantum ctx condition
-        ==> fun (value1, q1) ->
+        ==> fun (k1, q1) ->
                 eval_quantum { ctx with graph = q1 } then_q
-                ==> fun (value2, q2) ->
+                ==> fun (k2, q2) ->
                         eval_quantum { ctx with graph = q2 } else_q
-                        ==> fun (value3, q3) ->
-                                match (value1, value2, value3) with
+                        ==> fun (k3, q3) ->
+                                match (k1, k2, k3) with
                                 | Value.KetId k1, Value.KetId k2, Value.KetId k3 ->
                                     let k = fresh_ketid()
                                     q3.Add(k, KetExpression.Join [k1; k2; k3])
@@ -241,22 +240,22 @@ module EvalV5 =
         eval_classic ctx condition
         ==> fun (v1, q1) ->
                 match v1 with
-                | Bool true -> eval_quantum { ctx with graph = q1 } then_q ==> fun (v2, q2) -> (v2, q2) |> Ok
-                | Bool false -> eval_quantum { ctx with graph = q1 } else_q ==> fun (v3, q3) -> (v3, q3) |> Ok
+                | Bool true -> eval_quantum { ctx with graph = q1 } then_q
+                | Bool false -> eval_quantum { ctx with graph = q1 } else_q
                 | _ -> $"Invalid if condition. Expecting boolean value, got {v1}" |> Error
 
     and eval_qfilter ctx (ket, condition) =
         eval_quantum ctx ket
-        ==> fun (value1, q1) ->
+        ==> fun (k1, q1) ->
                 eval_quantum { ctx with graph = q1 } condition
-                ==> fun (value2, q2) ->
-                        match (value1, value2) with
+                ==> fun (k2, q2) ->
+                        match (k1, k2) with
                         | Value.KetId k1, Value.KetId k2 -> q2 |> with_value (KetExpression.Filter(k1, k2))
                         | _ -> $"Invalid KetIds" |> Error
 
     and eval_qblock ctx (stmts, value) =
         eval_stmts ctx stmts
-        ==> fun (ctx) -> eval_quantum ctx value ==> fun value -> value |> Ok
+        ==> fun ctx' -> eval_quantum ctx' value ==> fun value -> value |> Ok
 
     // syntactic sugar for |set>
     // this is equivalent to create a literal and apply a filter for the elements in the set
@@ -265,15 +264,20 @@ module EvalV5 =
         ==> fun (v, graph) ->
                 match v with
                 | Value.Set set ->
+                    let ELEMENT_SIZE = 3
                     let size = set |> width
 
-                    let add_literal (ids, g: QuantumGraph) _ =
-                        let k = fresh_ketid ()
-                        ids @ [ k ], g.Add(k, KetExpression.Literal 3)
-
-                    let (ids, graph) = seq { 0..size } |> Seq.fold add_literal ([], graph)
                     let literal = fresh_ketid()
-                    let graph = graph.Add(literal, KetExpression.Join ids)
+                    let graph = 
+                        if size > 1 then
+                            let add_literal (ids, g: QuantumGraph) _ =
+                                let k = fresh_ketid ()
+                                ids @ [ k ], g.Add(k, KetExpression.Literal ELEMENT_SIZE)
+
+                            let (ids, graph) = seq { 0..size } |> Seq.fold add_literal ([], graph)
+                            graph.Add(literal, KetExpression.Join ids)
+                        else    
+                            graph.Add(literal, KetExpression.Literal ELEMENT_SIZE)
 
                     let map = fresh_ketid ()
                     let graph = graph.Add(map, KetExpression.Map(literal, KetMapOperator.In v))

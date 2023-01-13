@@ -284,20 +284,19 @@ type Processor() =
         Returns the concatenation of the results from the input expressions.
      *)
     and prepare_join ctx (ketIds: KetId list) =
-        // prepare all elements in the ket:
-        let ctx =
+        // prepare all elements in the join so they are allocated in the state:
+        let ctx'' =
             ketIds
             |> List.fold (fun ctx' ketId -> ctx' ==> fun (ctx) -> prepare ctx ketId) (ctx |> Ok)
 
         // now, map the ketids to their corresponding column:
-        ctx
-        ==> fun(ctx) ->
+        ctx'' ==> fun ctx'' ->
             let columns =
                 ketIds 
-                |> List.map (fun ketId -> (ctx.allocations.[ketId]))
+                |> List.map (fun ketId -> (ctx''.allocations.[ketId]))
                 |> List.fold (fun idx -> function ColumnIndex.One c -> idx @ [c] | ColumnIndex.Many many -> idx @ many ) []
 
-            (ctx.state, ColumnIndex.Many columns) |> Ok
+            (ctx''.state, ColumnIndex.Many columns) |> Ok
 
 
     // (*
