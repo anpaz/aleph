@@ -90,11 +90,15 @@ module EvalV5 =
             | Value.Bool l, Value.Bool r -> Value.Bool(l || r)
             | _ -> failwith "= only supported for bool values, got {l} || {r}"
 
+
     and QuantumGraph(q: Map<KetId, KetExpression>) =
         static member empty: QuantumGraph = QuantumGraph Map.empty
-        member self.Add (k: KetId, v: KetExpression) : QuantumGraph = QuantumGraph(q.Add(k, v))
         member self.TryFind (k: KetId) = q.TryFind k
         member self.Item (k: KetId) : KetExpression = q.Item k
+        member self.Add (k: KetId, v: KetExpression) : QuantumGraph = QuantumGraph(q.Add(k, v))
+        member self.AddExpression (v: KetExpression) : (KetId * QuantumGraph) =
+            let k = fresh_ketid()
+            k, QuantumGraph(q.Add(k, v))
 
 
     and KetMapOperator =
@@ -264,27 +268,36 @@ module EvalV5 =
         ==> fun (v, graph) ->
                 match v with
                 | Value.Set set ->
-                    let ELEMENT_SIZE = 3
-                    let size = set |> width
+                    if set.IsEmpty then
+                        let literal = fresh_ketid()
+                        let graph = graph.Add(literal, KetExpression.Literal 0)
+                        (KetId literal, graph) |> Ok
+                    else
+                        let rec create_literals state value : Result<KetId list * QuantumGraph, string> = state ==> fun (literals : KetId list, graph' : QuantumGraph) ->
+                            match value with
+                            | Value.Bool _ -> 
+                                let (literal, graph') = graph'.AddExpression(KetExpression.Literal 1)
+                                (literals @ [literal], graph') |> Ok
+                            | Value.Int i ->
+                                let size = System.Math.Max(3, (int)(System.Math.Ceiling(System.Math.Log2(i))))
+                                let (literal, graph') = graph'.AddExpression(KetExpression.Literal size)
+                                (literals @ [literal], graph') |> Ok
+                            | Value.Tuple t ->
+                                let state = (literals, graph') |> Ok
+                                t |> List.fold create_literals state
+                            | error -> $"Invalid set value: {error}" |> Error
 
-                    let literal = fresh_ketid()
-                    let graph = 
-                        if size > 1 then
-                            let add_literal (ids, g: QuantumGraph) _ =
-                                let k = fresh_ketid ()
-                                ids @ [ k ], g.Add(k, KetExpression.Literal ELEMENT_SIZE)
+                        let join_literals (graph: QuantumGraph) v =
+                            match v with
+                            | [ one ] -> (one, graph)
+                            | _ -> graph.AddExpression (KetExpression.Join v)
 
-                            let (ids, graph) = seq { 1..size } |> Seq.fold add_literal ([], graph)
-                            graph.Add(literal, KetExpression.Join ids)
-                        else    
-                            graph.Add(literal, KetExpression.Literal ELEMENT_SIZE)
-
-                    let map = fresh_ketid ()
-                    let graph = graph.Add(map, KetExpression.Map(literal, KetMapOperator.In v))
-
-                    let filter = fresh_ketid ()
-                    let graph = graph.Add(filter, KetExpression.Filter(literal, map))
-                    (KetId filter, graph) |> Ok
+                        create_literals (([], graph) |> Ok) set.MaximumElement 
+                        ==> fun (literals, graph) ->
+                            let (literal, graph) = literals |> join_literals graph 
+                            let (map, graph) = graph.AddExpression(KetExpression.Map(literal, KetMapOperator.In v))
+                            let (filter, graph) = graph.AddExpression(KetExpression.Filter(literal, map))
+                            (KetId filter, graph) |> Ok
                 | _ -> $"Invaid literal constructor. Only sets supported, got {v}" |> Error
 
 
@@ -342,7 +355,10 @@ module EvalV5 =
 
     and eval_tuple ctx values =
         eval_expression_list ctx values
-        ==> fun (values, graph) -> (Tuple values, graph) |> Ok
+        ==> fun (values, graph) -> 
+            match values with
+            | [ one ] -> (one, graph) |> Ok
+            | _ -> (Tuple values, graph) |> Ok
 
     and eval_set ctx values =
         eval_expression_list ctx values
