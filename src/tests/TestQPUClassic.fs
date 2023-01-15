@@ -587,78 +587,78 @@ type TestQPUClassic() =
           [ 0; 1 ] ]
         |> List.iter (this.TestExpression prelude)
 
-    // [<TestMethod>]
-    // member this.TestMeasure() =
-    //     let prelude =
-    //         this.Prelude
-    //         @ [ s.Let(
-    //                 "k",
-    //                 e.Ket(
-    //                     e.Set
-    //                         [ e.Tuple [ e.Int 0; e.Bool true ]
-    //                           e.Tuple [ e.Int 0; e.Bool false ]
-    //                           e.Tuple [ e.Int 1; e.Bool true ] ]
-    //                 )
-    //             ) ]
+    [<TestMethod>]
+    member this.TestMeasure() =
+        let prelude =
+            this.Prelude
+            @ [ s.Let(
+                    "k",
+                    e.Ket(
+                        e.Set
+                            [ e.Tuple [ e.Int 0; e.Bool true ]
+                              e.Tuple [ e.Int 0; e.Bool false ]
+                              e.Tuple [ e.Int 1; e.Bool true ] ]
+                    )
+                ) ]
 
-    //     [ e.Ket(e.Set []), []
-    //       // Filter (k, k.0 == 2)
-    //       e.Filter(e.Var "k", e.Equals(e.Project(e.Var "k", e.Int 0), e.Int 2), e.Int 3), []
-    //       // k
-    //       e.Var "k",
-    //       [
-    //         // Looks like because they are set, they are ordered differently from inputs:
-    //         // this might be problematic for tests...
-    //         Tuple [ Int 0; Bool false ]
-    //         Tuple [ Int 0; Bool true ]
-    //         Tuple [ Int 1; Bool true ] ]
-    //       // k.1
-    //       e.Project(e.Var "k", e.Int 1), [ Bool false; Bool true ]
+        [ e.Ket(e.Set []), []
+          // Filter (k, k.0 == 2)
+          e.Filter(e.Var "k", e.Equals(e.Project(e.Var "k", e.Int 0), e.Int 2), e.Int 3), []
+          // k
+          e.Var "k",
+          [
+            // Looks like because they are set, they are ordered differently from inputs:
+            // this might be problematic for tests...
+            Tuple [ Int 0; Bool false ]
+            Tuple [ Int 0; Bool true ]
+            Tuple [ Int 1; Bool true ] ]
+          // k.1
+          e.Project(e.Var "k", e.Int 1), [ Bool false; Bool true ]
 
-    //       // (false, k.1)
-    //       e.Join(e.Ket(e.Bool false), e.Project(e.Var "k", e.Int 1)),
-    //       [ Tuple [ Bool false; Bool false ]; Tuple [ Bool false; Bool true ] ]
+          // (false, k.1)
+          e.Join(e.Ket(e.Bool false), e.Project(e.Var "k", e.Int 1)),
+          [ Tuple [ Bool false; Bool false ]; Tuple [ Bool false; Bool true ] ]
 
-    //       // not (k.0 == 0 and k.1)
-    //       e.Not(e.And(e.Equals(e.Project(e.Var "k", e.Int 0), e.Int 0), e.Project(e.Var "k", e.Int 1))),
-    //       [ Bool false; Bool true ] ]
-    //     |> List.iter (verify_expression (prelude, this.QPU))
+          // not (k.0 == 0 and k.1)
+          e.Not(e.And(e.Equals(e.Project(e.Var "k", e.Int 0), e.Int 0), e.Project(e.Var "k", e.Int 1))),
+          [ Bool false; Bool true ] ]
+        |> List.iter (verify_expression (prelude, this.QPU))
 
-    // [<TestMethod>]
-    // member this.TestRecursiveMethod() =
-    //     let prelude = this.Prelude
+    [<TestMethod>]
+    member this.TestRecursiveMethod() =
+        let prelude = this.Prelude
 
-    //     [
-    //       // let sum (acc: Ket<Int>, set:Set<Int>) =
-    //       //      if Count(set) == 0 then
-    //       //          acc
-    //       //      else
-    //       //          let elem = Element(set)
-    //       //          let rest = Remove(elem, set)
-    //       //          sum(acc + elem, rest)
-    //       // sum( |10, 20, 30>,  1 .. 4)
-    //       e.Block(
-    //           [ s.Let(
-    //                 "sum",
-    //                 e.Method(
-    //                     arguments = [ ("acc", Type.Ket [ Type.Int ]); ("set", Type.Set Type.Int) ],
-    //                     returns = Type.Ket [ Type.Int ],
-    //                     body =
-    //                         e.If(
-    //                             (e.Equals(e.Count(e.Var "set"), e.Int 0),
-    //                              e.Var "acc",
-    //                              e.Block(
-    //                                  [ s.Let("elem", e.Element(e.Var "set"))
-    //                                    s.Let("rest", e.Remove(e.Var "elem", e.Var "set")) ],
-    //                                  e.CallMethod(e.Var "sum", [ e.Add(e.Var "acc", e.Var "elem"); e.Var "rest" ])
-    //                              ))
-    //                         )
-    //                 )
-    //             ) ],
-    //           e.CallMethod(e.Var "sum", [ e.Ket(e.Set [ e.Int 10; e.Int 20; e.Int 30 ]); e.Range(e.Int 1, e.Int 4) ])
-    //       ),
-    //       [ Int 16; Int 26; Int 36 ] ]
-    //     |> List.iter (verify_expression (prelude, this.QPU))
+        [
+          // let sum (acc: Ket<Int>, set:Set<Int>) =
+          //      if Count(set) == 0 then
+          //          acc
+          //      else
+          //          let elem = Element(set)
+          //          let rest = Remove(elem, set)
+          //          sum(acc + elem, rest)
+          // sum( |10, 20, 30>,  1 .. 4)
+          e.Block(
+              [ s.Let(
+                    "sum",
+                    e.Method(
+                        arguments = [ ("acc", Type.Ket [ Type.Int ]); ("set", Type.Set Type.Int) ],
+                        returns = Type.Ket [ Type.Int ],
+                        body =
+                            e.If(
+                                (e.Equals(e.Count(e.Var "set"), e.Int 0),
+                                 e.Var "acc",
+                                 e.Block(
+                                     [ s.Let("elem", e.Element(e.Var "set"))
+                                       s.Let("rest", e.Remove(e.Var "elem", e.Var "set")) ],
+                                     e.CallMethod(e.Var "sum", [ e.Add(e.Var "acc", e.Var "elem"); e.Var "rest" ])
+                                 ))
+                            )
+                    )
+                ) ],
+              e.CallMethod(e.Var "sum", [ e.Ket(e.Set [ e.Int 10; e.Int 20; e.Int 30 ]); e.Range(e.Int 1, e.Int 4) ])
+          ),
+          [ Int 16; Int 26; Int 36 ] ]
+        |> List.iter (verify_expression (prelude, this.QPU))
 
 
     member this.TestExpression (prelude: Statement list) (expr, state, columns) =

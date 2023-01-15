@@ -5,7 +5,7 @@ open Microsoft.VisualStudio.TestTools.UnitTesting
 
 open aleph.parser.ast
 open aleph.parser.TypeChecker
-open aleph.runtime.Eval
+open aleph.runtime.EvalV5
 
 // alias for untyped expressions
 type e = Expression
@@ -23,7 +23,7 @@ module Utils =
     //     | Error msg -> failwith msg
 
     let prepare (expr, ctx) =
-        match start (e.Prepare expr, ctx.qpu) with
+        match apply (e.Prepare expr, ctx.qpu) with
         | Ok (Universe universe, _) -> universe
         | Ok (v, _) ->
             printfn "e: %A" expr
@@ -41,10 +41,10 @@ module Utils =
 
     let measure (u, ctx) =
         let qpu = ctx.qpu
-        let m = qpu.Measure u
+        let m = qpu.Measure (u, ctx)
 
         match m with
-        | Ok t -> t
+        | Ok (t, _) -> t
         | Error msg ->
             printfn "u: %A" u
             Assert.AreEqual($"Expecting valid measurement.", $"Got Error msg: {msg}")
@@ -68,7 +68,7 @@ module Utils =
         let ctx =
             { heap = Map.empty
               qpu = qpu
-              callerCtx = None }
+              graph = QuantumGraph.empty }
 
         let expr = Block(prelude, body)
 

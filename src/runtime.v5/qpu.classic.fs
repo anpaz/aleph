@@ -124,7 +124,6 @@ type Processor() =
 
                 ==> fun (ctx', column) -> { ctx' with allocations = ctx'.allocations.Add(k, column) } |> Ok
 
-
     and prepare_literal ctx size =
         let values =
             match size with

@@ -5,6 +5,9 @@ open aleph.parser.ast.typed
 
 module EvalV5 =
     let random = System.Random()
+
+    let BOOL_REGISTER_SIZE = 1
+    let INT_REGISTER_DEFAULT_SIZE = 3
     
     let mutable max_ket = 0
     let fresh_ketid () =
@@ -168,8 +171,8 @@ module EvalV5 =
         | Q.CallMethod(method, args) -> eval_callmethod ctx (method, args)
 
     and with_value (exp: KetExpression) (graph: QuantumGraph) =
-        let k = fresh_ketid ()
-        (KetId k, graph.Add(k, exp)) |> Ok
+        let (k, graph) = graph.AddExpression exp
+        (KetId k, graph) |> Ok
 
     and eval_qliteral ctx size =
         eval_classic ctx size
@@ -276,10 +279,10 @@ module EvalV5 =
                         let rec create_literals state value : Result<KetId list * QuantumGraph, string> = state ==> fun (literals : KetId list, graph' : QuantumGraph) ->
                             match value with
                             | Value.Bool _ -> 
-                                let (literal, graph') = graph'.AddExpression(KetExpression.Literal 1)
+                                let (literal, graph') = graph'.AddExpression(KetExpression.Literal BOOL_REGISTER_SIZE)
                                 (literals @ [literal], graph') |> Ok
                             | Value.Int i ->
-                                let size = System.Math.Max(3, (int)(System.Math.Ceiling(System.Math.Log2(i))))
+                                let size = System.Math.Max(INT_REGISTER_DEFAULT_SIZE, (int)(System.Math.Ceiling(System.Math.Log2(i))))
                                 let (literal, graph') = graph'.AddExpression(KetExpression.Literal size)
                                 (literals @ [literal], graph') |> Ok
                             | Value.Tuple t ->
