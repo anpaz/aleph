@@ -60,7 +60,7 @@ and Q =
     | IfQuantum of cond: Q * t: Q * f: Q
 
     | CallMethod of method: C * arguments: E list
-    | Filter of ket: Q * condition: Q * hint : C
+    | Filter of ket: Q * condition: Q
 
 and U =
     | Var of Id

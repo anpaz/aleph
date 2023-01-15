@@ -395,14 +395,13 @@ type TestQPUClassic() =
             [ Int 1; Int 1; Bool true; Int 1; Bool true ] ],
           [ 4 ]
           // (Filter k1, k1.1 == 1, 2)
-          e.Filter(e.Var "k1", e.Equals(e.Project(e.Var "k1", e.Int 1), e.Int 1), e.Int 2),
+          e.Filter(e.Var "k1", e.Equals(e.Project(e.Var "k1", e.Int 1), e.Int 1)),
           [ [ Int 0; Int 1; Bool true; Int 1; Bool true ]; [ Int 1; Int 1; Bool true; Int 1; Bool true ] ],
           [ 0; 1 ]
           // (Filter k1, k1.0 + k1.1 == 1)
           e.Filter(
               e.Var "k1",
-              e.Equals(e.Add(e.Project(e.Var "k1", e.Int 0), e.Project(e.Var "k1", e.Int 1)), e.Int 1),
-              e.Int 2
+              e.Equals(e.Add(e.Project(e.Var "k1", e.Int 0), e.Project(e.Var "k1", e.Int 1)), e.Int 1)
           ),
           [ [ Int 0; Int 1; Bool true; Int 1; Int 1; Bool true ] ],
           [ 0; 1 ]
@@ -412,8 +411,7 @@ type TestQPUClassic() =
               e.Equals(
                   e.Add(e.Project(e.Var "k1", e.Int 1), e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ])),
                   e.Ket(e.Set [ e.Int 2; e.Int 4 ])
-              ),
-              e.Int 2
+              )
           ),
           [ [ Int 0; Int 0; Bool true; Int 2; Bool true; Int 2; Int 2; Bool true; Bool true ]
             [ Int 0; Int 1; Bool true; Int 1; Bool true; Int 2; Int 2; Bool true; Bool true ]
@@ -606,7 +604,7 @@ type TestQPUClassic() =
 
         [
           // Filter (k, k.0 == 2)
-          e.Filter(e.Var "k", e.Equals(e.Project(e.Var "k", e.Int 0), e.Int 2), e.Int 3), []
+          e.Filter(e.Var "k", e.Equals(e.Project(e.Var "k", e.Int 0), e.Int 2)), []
           // k
           e.Var "k",
           [

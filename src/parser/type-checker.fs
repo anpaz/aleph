@@ -80,7 +80,7 @@ module TypeChecker =
         | Expression.Block (stmts, r) -> typecheck_block (stmts, r, ctx)
         | Expression.If (c, t, f) -> typecheck_if (c, t, f, ctx)
 
-        | Expression.Filter (ket, cond, hint) -> typecheck_filter (ket, cond, hint, ctx)
+        | Expression.Filter (ket, cond) -> typecheck_filter (ket, cond, ctx)
         | Expression.Prepare ket -> typecheck_prepare (ket, ctx)
         | Expression.Sample universe -> typecheck_sample (universe, ctx)
 
@@ -483,27 +483,20 @@ module TypeChecker =
                             $"Both branches of if statement must be of the same type, got {tt} and {ft}"
                             |> Error
 
-    and typecheck_filter (ket, cond, hint, ctx) =
+    and typecheck_filter (ket, cond, ctx) =
         typecheck (ket, ctx)
         ==> fun (ket, ctx) ->
                 match ket with
                 | Quantum (ket, t) ->
                     typecheck (cond, ctx)
                     ==> fun (cond, ctx) ->
-                        typecheck(hint, ctx)
-                        ==> fun (hint, ctx) ->
-                            match hint with
-                            | Classic (hint, Type.Int) ->
-                                match cond with
-                                | Quantum (cond, Type.Ket [ Type.Bool ]) ->
-                                    (Quantum(Q.Filter(ket, cond, hint), t), ctx) |> Ok
-                                | Quantum (_, t)
-                                | Classic (_, t)
-                                | Universe (_, t) ->
-                                    $"Filter condition must be a quantum boolean expression, got: {t}" |> Error
-                            | Quantum (_, t)
-                            | Classic (_, t)
-                            | Universe (_, t) -> $"Filter hint must be an integer, got: {t}" |> Error
+                        match cond with
+                        | Quantum (cond, Type.Ket [ Type.Bool ]) ->
+                            (Quantum(Q.Filter(ket, cond), t), ctx) |> Ok
+                        | Quantum (_, t)
+                        | Classic (_, t)
+                        | Universe (_, t) ->
+                            $"Filter condition must be a quantum boolean expression, got: {t}" |> Error
                 | Classic (_, t)
                 | Universe (_, t) -> $"Filter argument must be a quantum ket, got: {t}" |> Error
 

@@ -9,11 +9,10 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.register as r;
     open aleph.qsharp.log as log;
 
-    function Filter(c: r.Register, hint: Int, old: u.Universe) : u.Universe
+    function Filter(c: r.Register, old: u.Universe) : u.Universe
     {
-        let depthHint = _depth_heuristic(hint, old);
         let oracle = _Filter_oracle(c, _, _);
-        let universe = u.AddOracle(oracle, old) w/ depth <- depthHint;
+        let universe = u.AddOracle(oracle, old);
 
         log.Info($"Ket.Filter::Init --> cond: {r.GetRange(c)}");
         return universe;
@@ -28,19 +27,5 @@ namespace aleph.qsharp.ket {
         
         let cond_q = all[r.GetRange(c)];
         Controlled X (cond_q, target);
-    }
-
-    function _depth_heuristic(hint: Int, universe: u.Universe) : Int {
-        if (hint > 0) {
-            return hint;
-        }
-
-        let result = u.GetDepth(universe) >>> 1;
-
-        if result <= 0 {
-            return 1;
-        }
-
-        return result;
     }
 }

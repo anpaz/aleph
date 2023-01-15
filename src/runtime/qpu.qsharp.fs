@@ -92,7 +92,7 @@ type Processor(sim: IOperationFactory) =
                 | KetExpression.Join ketIds -> prepare_join ctx ketIds
                 | KetExpression.Project(ketId, idx) -> prepare_project ctx (ketId, idx)
                 | KetExpression.Map(ketId, lambda) -> prepare_map ctx (ketId, lambda)
-                | KetExpression.Filter(ketId, filterId, hint) -> prepare_filter ctx (ketId, filterId, hint)
+                | KetExpression.Filter(ketId, filterId) -> prepare_filter ctx (ketId, filterId)
 
                 ==> fun (ctx', register) -> { ctx' with allocations = ctx'.allocations.Add(k, register) } |> Ok
 
@@ -185,14 +185,14 @@ type Processor(sim: IOperationFactory) =
             $"Invalid ket for if expression: {ketId} points to columns {err}."
             |> Error
 
-    and prepare_filter ctx (ketId, filterId, hint) =
+    and prepare_filter ctx (ketId, filterId) =
         prepare ctx ketId
         ==> fun ctx ->
                 prepare ctx filterId
                 ==> fun ctx ->
                     match  ctx.allocations.[filterId] with
                     | QRegister.One f ->
-                        let u = ket.Filter.Run(sim, f, hint, ctx.universe).Result
+                        let u = ket.Filter.Run(sim, f, ctx.universe).Result
                         ({ ctx with universe = u }, ctx.allocations.[ketId]) |> Ok
                     | err -> $"Invalid filter ketId. Pointing to {err}" |> Error
 

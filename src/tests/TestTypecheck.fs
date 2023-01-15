@@ -905,15 +905,14 @@ type TestTypecheck() =
 
         [
           // k2 | k2.[0] == 1
-          e.Filter(e.Var "k2", e.Equals(e.Project(e.Var "k2", e.Int 0), e.Int 1), e.Int 2),
+          e.Filter(e.Var "k2", e.Equals(e.Project(e.Var "k2", e.Int 0), e.Int 1)),
           Type.Ket [ Type.Int; Type.Bool ],
-          Q.Filter(Q.Var "k2", Q.Equals(Q.Project(Q.Var "k2", 0), Q.Constant (C.IntLiteral 1)), C.IntLiteral 2) ]
+          Q.Filter(Q.Var "k2", Q.Equals(Q.Project(Q.Var "k2", 0), Q.Constant (C.IntLiteral 1))) ]
         |> List.iter (this.TestQuantumExpression ctx)
 
-        [ e.Filter(e.Tuple [ e.Int 1; e.Int 2 ], e.Equals(e.Project(e.Var "k2", e.Int 1), e.Bool true), e.Int 1),
+        [ e.Filter(e.Tuple [ e.Int 1; e.Int 2 ], e.Equals(e.Project(e.Var "k2", e.Int 1), e.Bool true)),
           "Filter argument must be a quantum ket, got: Tuple [Int; Int]"
-          e.Filter(e.Var "k2", e.Bool true, e.Int 1), "Filter condition must be a quantum boolean expression, got: Bool"
-          e.Filter(e.Var "k2", e.Ket (e.Bool true), e.Bool true), "Filter hint must be an integer, got: Bool" ]
+          e.Filter(e.Var "k2", e.Bool true), "Filter condition must be a quantum boolean expression, got: Bool" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
 

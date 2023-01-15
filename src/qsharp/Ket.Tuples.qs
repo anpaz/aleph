@@ -24,8 +24,7 @@ namespace aleph.qsharp.ket {
         let start = u.GetWidth(old);
         let end = u.GetWidth(u) - 1;
         let oracle = _Tuples_oracle(values, outputs, start, end, _, _);
-        let universe = u.AddOracle(oracle, u)
-            w/ depth <- u.GetDepth(old) * Length(values);
+        let universe = u.AddOracle(oracle, u);
 
         log.Info($"Ket.Tuples::Init --> values: {values}, output: {outputs}");
         return (universe, outputs);

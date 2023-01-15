@@ -28,7 +28,6 @@ type TestQPUQsharp() =
             let v = Set(new Set<Value>(values)) |> toQSet
             let struct (u, o) = ket.Tuples.Run(sim, v, bigbang).Result
             printfn "Universe = %A" u
-            Assert.AreEqual(int64 (values.Length), u.depth)
             Assert.AreEqual(int64 qubits, u.width)
 
         [ [ Bool true ], BOOL_REGISTER_SIZE
@@ -299,11 +298,11 @@ type TestQPUQsharp() =
 
         [
           // (Filter k1, k1.0)
-          e.Filter(e.Var "k1", e.Project(e.Var "k1", e.Int 0), e.Int 2),
+          e.Filter(e.Var "k1", e.Project(e.Var "k1", e.Int 0)),
           [ Tuple [ Bool true; Int 3; Int 0 ]; Tuple [ Bool true; Int 3; Int 3 ] ]
 
           // (Filter (k2, k3), k2 == k3)
-          e.Filter(e.Join(e.Var "k2", e.Var "k3"), e.Equals(e.Var "k2", e.Var "k3"), e.Int 8),
+          e.Filter(e.Join(e.Var "k2", e.Var "k3"), e.Equals(e.Var "k2", e.Var "k3")),
           [ Tuple [ Int 0; Int 0 ]
             Tuple [ Int 1; Int 1 ]
             Tuple [ Int 2; Int 2 ]

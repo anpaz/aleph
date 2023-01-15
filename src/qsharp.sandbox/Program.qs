@@ -58,7 +58,7 @@
             [Value(2,2), Value(0,2)], 
             [Value(2,2), Value(2,2)], 
             [Value(2,2), Value(3,2)]], [r2[0], r3[0]], u3);
-        let u5 = ket.Filter(r4[0], -1, u4);
+        let u5 = ket.Filter(r4[0], u4);
 
         Print(u5);
         let final = Sample(u4, r2 + r3 + r4);

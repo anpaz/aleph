@@ -120,7 +120,7 @@ type Processor() =
                 | KetExpression.Join ketIds -> prepare_join ctx ketIds
                 | KetExpression.Project(ketId, idx) -> prepare_project ctx (ketId, idx)
                 | KetExpression.Map(ketId, lambda) -> prepare_map ctx (ketId, lambda)
-                | KetExpression.Filter(ketId, filterId, _) -> prepare_filter ctx (ketId, filterId)
+                | KetExpression.Filter(ketId, filterId) -> prepare_filter ctx (ketId, filterId)
 
                 ==> fun (ctx', column) -> { ctx' with allocations = ctx'.allocations.Add(k, column) } |> Ok
 
