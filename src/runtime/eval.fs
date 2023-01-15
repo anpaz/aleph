@@ -21,6 +21,8 @@ module Eval =
             inherit System.IComparable
         end
 
+    and KetId = int
+
     and [<CustomComparison; CustomEquality>] Method =
         { Args: Id list
           Body: E
@@ -36,18 +38,6 @@ module Eval =
 
         interface System.IComparable with
             member this.CompareTo(obj: obj) : int = failwith "Not Implemented"
-
-    and KetId = int
-
-        // static member Join(ketIds: KetId list) =
-        //     let rec unwrap ids =
-        //         match ids with 
-        //         | head :: tail ->
-        //             match head with
-        //             | One l -> l :: (unwrap tail)
-        //             | Many l -> l @ (unwrap tail)
-        //         | [] -> []
-        //     Many (unwrap ketIds)
 
     and Value =
         | Bool of bool
@@ -96,8 +86,8 @@ module Eval =
 
     and QuantumGraph(q: Map<KetId, KetExpression>) =
         static member empty: QuantumGraph = QuantumGraph Map.empty
-        member self.TryFind (k: KetId) = q.TryFind k
         member self.Item (k: KetId) : KetExpression = q.Item k
+        member self.TryFind (k: KetId) = q.TryFind k
         member self.Add (k: KetId, v: KetExpression) : QuantumGraph = QuantumGraph(q.Add(k, v))
         member self.AddExpression (v: KetExpression) : (KetId * QuantumGraph) =
             let k = fresh_ketid()
@@ -211,11 +201,9 @@ module Eval =
                 ==> fun (k2, q2) ->
                         match (k1, k2) with
                         | Value.KetId(k1), Value.KetId(k2) ->
-                            let k = fresh_ketid()
-                            q2.Add(k, KetExpression.Join [k1; k2])
-                            |> with_value (KetExpression.Map(k, lambda))
+                            let (k, graph) = q2.AddExpression(KetExpression.Join [k1; k2])
+                            graph |> with_value (KetExpression.Map(k, lambda))
                         | _ -> $"Invalid KetIds" |> Error
-
 
     and eval_qif ctx (condition, then_q, else_q) =
         eval_quantum ctx condition
@@ -226,9 +214,8 @@ module Eval =
                         ==> fun (k3, q3) ->
                                 match (k1, k2, k3) with
                                 | Value.KetId k1, Value.KetId k2, Value.KetId k3 ->
-                                    let k = fresh_ketid()
-                                    q3.Add(k, KetExpression.Join [k1; k2; k3])
-                                    |> with_value (KetExpression.Map(k, KetMapOperator.If))
+                                    let (k, graph) = q3.AddExpression(KetExpression.Join [k1; k2; k3])
+                                    graph |> with_value (KetExpression.Map(k, KetMapOperator.If))
                                 | _ -> $"Invalid KetIds for if expression" |> Error
 
     and eval_qif_classic ctx (condition, then_q, else_q) =
@@ -250,7 +237,7 @@ module Eval =
 
     and eval_qblock ctx (stmts, value) =
         eval_stmts ctx stmts
-        ==> fun ctx' -> eval_quantum ctx' value ==> fun value -> value |> Ok
+        ==> fun ctx' -> eval_quantum ctx' value
 
     // syntactic sugar for |set>
     // this is equivalent to create a literal and apply a filter for the elements in the set
