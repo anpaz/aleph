@@ -26,9 +26,6 @@ type TestQPUClassic() =
         let prelude = this.Prelude
 
         [
-          // // ( |@,0>, |@,0> )
-          // e.Join (e.KetAll(e.Int 0), e.KetAll(e.Int 0)), [], []
-
           // | false >
           e.Ket(e.Bool false), [ [ Bool false ] ], [ 0 ]
 
@@ -134,6 +131,12 @@ type TestQPUClassic() =
           [ 0; 1; 3 ] ]
         |> List.iter (this.TestExpression prelude)
 
+        [
+          // |@,0>
+          e.KetAll(e.Int 0), "All ket literals must have a size > 0, got 0"
+          // |>
+          e.Ket(e.Set []), "All ket literals require a non-empty set." ]
+        |> List.iter (verify_invalid_expression (prelude, this.QPU))
 
     [<TestMethod>]
     member this.TestAddMultiply() =
@@ -699,10 +702,3 @@ type TestQPUClassic() =
             printfn "e: %A" expr
             Assert.AreEqual($"Expecting valid expression.", $"Got Error msg: {msg}")
 
-
-    member this.TestInvalidExpression (prelude: Statement list) (expr, error) =
-        let block = e.Block(prelude, expr)
-
-        match apply (block, this.QPU) with
-        | Ok(v, _) -> Assert.AreEqual($"Expected error: {error}", $"Got Value: {v}")
-        | Error msg -> Assert.AreEqual(error, msg)

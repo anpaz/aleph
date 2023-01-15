@@ -156,6 +156,7 @@ module Eval =
         eval_classic ctx size
         ==> fun (v1, graph) ->
                 match v1 with
+                | Value.Int n when n <= 0 -> $"All ket literals must have a size > 0, got {n}" |> Error
                 | Value.Int n -> graph |> with_value (KetExpression.Literal n)
                 | _ -> $"Invalid KetAll size: {v1}" |> Error
 
@@ -247,9 +248,7 @@ module Eval =
                 match v with
                 | Value.Set set ->
                     if set.IsEmpty then
-                        let literal = fresh_ketid()
-                        let graph = graph.Add(literal, KetExpression.Literal 0)
-                        (KetId literal, graph) |> Ok
+                        "All ket literals require a non-empty set." |> Error
                     else
                         let rec create_literals state value : Result<KetId list * QuantumGraph, string> = state ==> fun (literals : KetId list, graph' : QuantumGraph) ->
                             match value with

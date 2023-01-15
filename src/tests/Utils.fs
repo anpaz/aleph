@@ -103,3 +103,10 @@ module Utils =
             v2 <- sample ()
             Assert.IsTrue(i < 100)
             i <- i + 1
+
+    let verify_invalid_expression (prelude: Statement list, qpu:QPU) (expr, error) =
+        let block = e.Block(prelude, expr)
+
+        match apply (block, qpu) with
+        | Ok(v, _) -> Assert.AreEqual($"Expected error: {error}", $"Got Value: {v}")
+        | Error msg -> Assert.AreEqual(error, msg)

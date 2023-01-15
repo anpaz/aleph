@@ -57,8 +57,6 @@ type TestQPUQsharp() =
                 ) ]
 
         [
-    //       // |>
-    //       e.Ket(e.Set []), []
           //| false >
           e.Ket(e.Bool false), [ Bool false ]
           // | 1; 2; 3 >
@@ -94,6 +92,13 @@ type TestQPUQsharp() =
           // k.1
           e.Project(e.Var "k", e.Int 1), [ Bool true; Bool false ] ]
         |> List.iter (verify_expression (prelude, this.QPU))
+
+        [
+          // |@,0>
+          e.KetAll(e.Int 0), "All ket literals must have a size > 0, got 0"
+          // |>
+          e.Ket(e.Set []), "All ket literals require a non-empty set." ]
+        |> List.iter (verify_invalid_expression (prelude, this.QPU))
 
 
     [<TestMethod>]
@@ -410,3 +415,4 @@ type TestQPUQsharp() =
             Tuple [ Int 3; Int 2 ]
             Tuple [ Int 3; Int 3 ] ] ]
         |> List.iter (verify_expression (prelude, this.QPU))
+
