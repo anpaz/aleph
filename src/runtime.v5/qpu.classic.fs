@@ -120,21 +120,20 @@ type Processor() =
                 | KetExpression.Join ketIds -> prepare_join ctx ketIds
                 | KetExpression.Project(ketId, idx) -> prepare_project ctx (ketId, idx)
                 | KetExpression.Map(ketId, lambda) -> prepare_map ctx (ketId, lambda)
-                | KetExpression.Filter(ketId, filterId) -> prepare_filter ctx (ketId, filterId)
+                | KetExpression.Filter(ketId, filterId, _) -> prepare_filter ctx (ketId, filterId)
 
                 ==> fun (ctx', column) -> { ctx' with allocations = ctx'.allocations.Add(k, column) } |> Ok
 
     and prepare_literal ctx size =
-        let values =
-            match size with
-            | 0 -> []
-            | 1 -> [ Value.Bool false; Value.Bool true ] // Literal Kets of size 1, are always boolean values.
-            | n -> seq { 0 .. (int (2.0 ** n)) - 1 } |> Seq.map (Value.Int) |> Seq.toList
+        match size with
+        | 0 -> "All literals must have a size." |> Error
+        | 1 -> [ Value.Bool false; Value.Bool true ] |> Ok // Literal Kets of size 1, are always boolean values.
+        | n -> seq { 0 .. (int (2.0 ** n)) - 1 } |> Seq.map (Value.Int) |> Seq.toList |> Ok
+        ==> fun values ->
+            let new_state = tensor_product ctx.state values
+            let new_column = if new_state.IsEmpty then 0 else new_state.Head.Length - 1
 
-        let new_state = tensor_product ctx.state values
-        let new_column = if new_state.IsEmpty then 0 else new_state.Head.Length - 1
-
-        ({ ctx with state = new_state }, ColumnIndex.One new_column) |> Ok
+            ({ ctx with state = new_state }, ColumnIndex.One new_column) |> Ok
 
     and prepare_join ctx (ketIds: KetId list) =
         // prepare all elements in the join so they are allocated in the state:

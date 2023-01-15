@@ -1,17 +1,17 @@
 namespace aleph.runtime.qpu.qsharpV5
 
 open Microsoft.Quantum.Simulation.Core
-
 open aleph.qsharp
 
 type QUniverse = universe.Universe
 type QValue = value.Value
-type QRegister = register.Register
-type QRegisters = IQArray<QRegister>
+
+type QRegister =
+    | One of register.Register
+    | Many of register.Register list
 
 open aleph.parser.ast.typed
 open aleph.runtime.EvalV5
-
 
 module Convert =
     let toQValue =
@@ -50,12 +50,17 @@ module Convert =
         else
             Tuple(result |> Seq.map one |> Seq.toList)
 
+    let toQArray register =
+        match register  with
+        | One n -> QArray<register.Register>(n)
+        | Many m -> QArray<register.Register>(m)
+
 type QsharpContext =
-    { allocations: Map<int, QRegisters>
+    { allocations: Map<int, QRegister>
       universe: QUniverse
       graph: QuantumGraph }
 
-type Universe(sim: IOperationFactory, state: QUniverse, registers: QRegisters) =
+type Universe(sim: IOperationFactory, state: QUniverse, registers: QRegister) =
     let mutable value = None
 
     interface IUniverse with
@@ -65,7 +70,7 @@ type Universe(sim: IOperationFactory, state: QUniverse, registers: QRegisters) =
         match value with
         | Some v -> v
         | None ->
-            let sample = universe.Sample.Run(sim, state, registers, maxTries).Result |> Convert.toValue
+            let sample = universe.Sample.Run(sim, state, registers |> Convert.toQArray, maxTries).Result |> Convert.toValue
             value <- Some sample
             sample
 
@@ -75,23 +80,6 @@ type Universe(sim: IOperationFactory, state: QUniverse, registers: QRegisters) =
 
 type Processor(sim: IOperationFactory, maxTries: int64) =
 
-    // let rec prepare_ket (ket: Ket, ctx: QsharpContext) =
-    //     match ctx.allocations.TryFind ket.Id with
-    //     | Some registers -> (registers, ctx) |> Ok
-    //     | None ->
-    //         // need to prepare using the heap when the ket was created:
-    //         let ctx' = { ctx with evalCtx = ket.Context }
-
-    //         prepare (ket.StatePrep, ctx')
-    //         ==> fun (registers, ctx') ->
-    //                 // Assign to the ket the columns returned by the preparation:
-    //                 // return the original heap
-    //                 let ctx =
-    //                     { ctx' with
-    //                         allocations = ctx'.allocations.Add(ket.Id, registers)
-    //                         evalCtx = ctx.evalCtx }
-
-    //                 (registers, ctx) |> Ok
     let rec prepare (ctx: QsharpContext) (k: KetId) =
         if k < 0 then
             ctx |> Ok
@@ -100,234 +88,118 @@ type Processor(sim: IOperationFactory, maxTries: int64) =
             | Some columns -> ctx |> Ok // Already prepared...
             | None ->
                 match ctx.graph.[k] with
-                // | KetExpression.Literal size -> prepare_literal ctx size
-                // | KetExpression.Join ketIds -> prepare_join ctx ketIds
-                // | KetExpression.Project(ketId, idx) -> prepare_project ctx (ketId, idx)
-                // | KetExpression.Map(ketId, lambda) -> prepare_map ctx (ketId, lambda)
-                // | KetExpression.Filter(ketId, filterId) -> prepare_filter ctx (ketId, filterId)
-                | err -> $"Error. Not implemented: {err}" |> Error
+                | KetExpression.Literal size -> prepare_literal ctx size
+                | KetExpression.Join ketIds -> prepare_join ctx ketIds
+                | KetExpression.Project(ketId, idx) -> prepare_project ctx (ketId, idx)
+                | KetExpression.Map(ketId, lambda) -> prepare_map ctx (ketId, lambda)
+                | KetExpression.Filter(ketId, filterId, hint) -> prepare_filter ctx (ketId, filterId, hint)
 
                 ==> fun (ctx', register) -> { ctx' with allocations = ctx'.allocations.Add(k, register) } |> Ok
 
-    // and prepare (q, ctx) =
-    //     match q with
-    //     | Q.Var id -> prepare_var (id, ctx)
+    and prepare_literal ctx size =
+        if size = 0 then 
+            "All literals must have a size." |> Error
+        else
+            ket.All.Run(sim, size |> int64, ctx.universe).Result
+            |> qsharp_result ctx
 
-    //     | Q.Constant value -> prepare_constant (value, ctx)
-    //     | Q.Ket values -> prepare_literal (values, ctx)
-    //     | Q.KetAll size -> prepare_ketall (size, ctx)
+    and prepare_join ctx (ketIds: KetId list) =
+        // prepare all elements in the join so they are allocated in the state:
+        let ctx'' =
+            ketIds
+            |> List.fold (fun ctx' ketId -> ctx' ==> fun (ctx) -> prepare ctx ketId) (ctx |> Ok)
 
-    //     | Q.Add (left, right) -> prepare_add (left, right, ctx)
-    //     | Q.Multiply (left, right) -> prepare_multiply (left, right, ctx)
-    //     | Q.Equals (left, right) -> prepare_equals (left, right, ctx)
+        // now, map the ketids to their corresponding column:
+        ctx''
+        ==> fun ctx'' ->
+                let columns =
+                    ketIds
+                    |> List.map (fun ketId -> (ctx''.allocations.[ketId]))
+                    |> List.fold
+                        (fun idx ->
+                            function
+                            | QRegister.One c -> idx @ [ c ]
+                            | QRegister.Many many -> idx @ many)
+                        []
 
-    //     | Q.Not q -> prepare_not (q, ctx)
-    //     | Q.And (left, right) -> prepare_and (left, right, ctx)
-    //     | Q.Or (left, right) -> prepare_or (left, right, ctx)
+                (ctx'', QRegister.Many columns) |> Ok
 
-    //     | Q.Project (q, index) -> prepare_project (q, index, ctx)
-    //     | Q.Index (q, index) -> prepare_index (q, index, ctx)
-    //     | Q.Join (left, right) -> prepare_join (left, right, ctx)
+    and prepare_project ctx (ketId, index) =
+        prepare ctx ketId
+        ==> fun ctx' ->
+                let columns = ctx'.allocations.[ketId]
 
-    //     | Q.IfQuantum (c, t, e) -> prepare_if_q (c, t, e, ctx)
-    //     | Q.IfClassic (c, t, e) -> prepare_if_c (c, t, e, ctx)
-    //     | Q.Filter (ket, cond, hint) -> prepare_filter (ket, cond, hint, ctx)
+                match columns with
+                | QRegister.Many columns -> (ctx', QRegister.One columns.[index % columns.Length]) |> Ok
+                | _ -> $"Invalid ket to project: {ketId}" |> Error
 
-    //     | Q.Block (stmts, value) -> prepare_block (stmts, value, ctx)
-        
-    //     | Q.CallMethod (method, args) -> prepare_callmethod (method, args, ctx)
+    and prepare_map ctx (ketId, lambda) =
+        prepare ctx ketId
+        ==> fun ctx' ->
+                match lambda with
+                | KetMapOperator.Not -> map_unary ctx' (ketId, ket.Not.Run)
+                | KetMapOperator.Add -> map_binary ctx' (ketId, ket.Add.Run)
+                | KetMapOperator.Multiply -> map_binary ctx' (ketId, ket.Multiply.Run)
+                | KetMapOperator.Equals -> map_binary ctx' (ketId, ket.Equals.Run)
+                //| KetMapOperator.LessThan -> map_binary ctx' (ketId, ket.LessThan.Run)
+                | KetMapOperator.And -> map_binary ctx' (ketId, ket.And.Run)
+                | KetMapOperator.Or -> map_binary ctx' (ketId, ket.Or.Run)
+                | KetMapOperator.In s -> map_in ctx' (ketId, s)
+                | KetMapOperator.Constant v -> map_constant ctx' v
+                | KetMapOperator.If -> map_if ctx' ketId
+                | err -> $"Map not implemented: {err}" |> Error
 
+    and map_constant ctx value =
+        let value = value |> Convert.toQValue
+        ket.Constant.Run(sim, value, ctx.universe).Result
+        |> qsharp_result ctx
 
-    // and prepare_var (id, ctx) =
-    //     eval_var (id, ctx.evalCtx)
-    //     ==> fun (value, evalCtx) ->
-    //             match value with
-    //             | Value.Ket ket ->
-    //                 prepare_ket (ket, { ctx with evalCtx = evalCtx })
-    //                 ==> fun (columns, ctx) -> (columns, ctx) |> Ok
-    //             | _ -> $"Invalid variable: {id}. Expecting ket." |> Error
+    and map_unary ctx (ketId, lambda) =
+        match ctx.allocations.[ketId] with
+        | QRegister.One l ->
+            lambda(sim, l, ctx.universe).Result
+            |> qsharp_result ctx
+        | err -> $"Invalid ket for unary operation: {ketId} points to columns {err}." |> Error
 
-    // and prepare_literal (values, ctx) =
-    //     eval_classic (values, ctx.evalCtx)
-    //     ==> fun (values, evalCtx) ->
-    //             match values with
-    //             | Value.Set w when w.IsEmpty ->
-    //                 (new QArray<register.Register>() :> QRegisters, { ctx with evalCtx = evalCtx }) |> Ok
-    //             | Value.Set _ ->
-    //                 ket.Tuples.Run(sim, values |> Convert.toQSet, ctx.universe).Result
-    //                 |> qsharp_result { ctx with evalCtx = evalCtx }
-    //             | _ -> $"Invalid classic value for a ket literal: {values}" |> Error
+    and map_binary ctx (ketId, lambda) =
+        match ctx.allocations.[ketId] with
+        | QRegister.Many [ l; r ] ->
+            lambda(sim, l, r, ctx.universe).Result
+            |> qsharp_result ctx
+        | err ->
+            $"Invalid ket for binary expression: {ketId} points to columns {err}."
+            |> Error
 
-    // and prepare_ketall (size, ctx) =
-    //     eval_classic (size, ctx.evalCtx)
-    //     ==> fun (size, evalCtx) ->
-    //             match size with
-    //             | Value.Int i ->
-    //                 ket.All.Run(sim, i |> int64, ctx.universe).Result
-    //                 |> qsharp_result { ctx with evalCtx = evalCtx }
-    //             | _ -> $"Invalid ket_all size, expected int got: {size}" |> Error
+    and map_in ctx (ketId, v) =
+        let values = v |> Convert.toQSet
+        let registers = ctx.allocations.[ketId] |> Convert.toQArray
+        ket.InSet.Run(sim, values, registers, ctx.universe).Result
+        |> qsharp_result ctx
 
-    // and prepare_constant (value, ctx) =
-    //     eval_classic (value, ctx.evalCtx)
-    //     ==> fun (value, evalCtx) ->
-    //         let value = value |> Convert.toQValue
-    //         ket.Constant.Run(sim, value, ctx.universe).Result
-    //         |> qsharp_result { ctx with evalCtx = evalCtx }
+    and map_if ctx ketId =
+        match ctx.allocations.[ketId] with
+        | QRegister.Many [ c; t; e ] ->
+            ket.If.Run(sim, c, t, e, ctx.universe).Result
+            |> qsharp_result ctx
+        | err ->
+            $"Invalid ket for if expression: {ketId} points to columns {err}."
+            |> Error
 
-    // and prepare_add (left, right, ctx) =
-    //     prepare (left, ctx)
-    //     ==> fun (left, ctx) ->
-    //             prepare (right, ctx)
-    //             ==> fun (right, ctx) ->
-    //                     match (left.Length, right.Length) with
-    //                     | (1L, 1L) -> ket.Add.Run(sim, left.[0], right.[0], ctx.universe).Result |> qsharp_result ctx
-    //                     | _ ->
-    //                         $"Invalid inputs for ket Add. Expected one length registers, got: left:{left.Length} && right:{right.Length}"
-    //                         |> Error
+    and prepare_filter ctx (ketId, filterId, hint) =
+        prepare ctx ketId
+        ==> fun ctx ->
+                prepare ctx filterId
+                ==> fun ctx ->
+                    match  ctx.allocations.[filterId] with
+                    | QRegister.One f ->
+                        let u = ket.Filter.Run(sim, f, hint, ctx.universe).Result
+                        ({ ctx with universe = u }, ctx.allocations.[ketId]) |> Ok
+                    | err -> $"Invalid filter ketId. Pointing to {err}" |> Error
 
-    // and prepare_multiply (left, right, ctx) =
-    //     prepare (left, ctx)
-    //     ==> fun (left, ctx) ->
-    //             prepare (right, ctx)
-    //             ==> fun (right, ctx) ->
-    //                     match (left.Length, right.Length) with
-    //                     | (1L, 1L) ->
-    //                         ket.Multiply.Run(sim, left.[0], right.[0], ctx.universe).Result
-    //                         |> qsharp_result ctx
-    //                     | _ ->
-    //                         $"Invalid inputs for ket Add. Expected one length registers, got: left:{left.Length} && right:{right.Length}"
-    //                         |> Error
-
-    // and prepare_project (q, index, ctx) =
-    //     prepare (q, ctx)
-    //     ==> fun (registers, ctx) ->
-    //             let i = index |> int64
-    //             (registers.Slice(new QRange(i, i)), ctx) |> Ok
-
-    // and prepare_index (q, index, ctx) =
-    //     prepare (q, ctx)
-    //     ==> fun (registers, ctx) ->
-    //             eval_classic (index, ctx.evalCtx)
-    //             ==> fun (index, evalCtx) ->
-    //                     match index with
-    //                     | Value.Int i ->
-    //                         let ctx = { ctx with evalCtx = evalCtx }
-    //                         let idx = i % registers.Count |> int64
-    //                         (registers.Slice(new QRange(idx, idx)), ctx) |> Ok
-    //                     | _ -> $"Invalid index, expecting int value, got {index}" |> Error
-
-    // and prepare_join (left, right, ctx) =
-    //     prepare (left, ctx)
-    //     ==> fun (left, ctx) ->
-    //             prepare (right, ctx)
-    //             ==> fun (right, ctx) -> (QArray.Add(left, right) :> QRegisters, ctx) |> Ok
-
-    // and prepare_not (q, ctx) =
-    //     prepare (q, ctx)
-    //     ==> fun (source, ctx) ->
-    //             match source.Length with
-    //             | 1L -> ket.Not.Run(sim, source.[0], ctx.universe).Result |> qsharp_result ctx
-    //             | _ ->
-    //                 $"Invalid inputs for ket not. Expected one length registers, got:: {source.Length}"
-    //                 |> Error
-
-    // and prepare_and (left, right, ctx) =
-    //     prepare (left, ctx)
-    //     ==> fun (left, ctx) ->
-    //             prepare (right, ctx)
-    //             ==> fun (right, ctx) ->
-    //                     match (left.Length, right.Length) with
-    //                     | (1L, 1L) -> ket.And.Run(sim, left.[0], right.[0], ctx.universe).Result |> qsharp_result ctx
-    //                     | _ ->
-    //                         $"Invalid inputs for ket And. Expected one length registers, got: left:{left.Length} && right:{right.Length}"
-    //                         |> Error
-
-
-    // and prepare_or (left, right, ctx) =
-    //     prepare (left, ctx)
-    //     ==> fun (left, ctx) ->
-    //             prepare (right, ctx)
-    //             ==> fun (right, ctx) ->
-    //                     match (left.Length, right.Length) with
-    //                     | (1L, 1L) -> ket.Or.Run(sim, left.[0], right.[0], ctx.universe).Result |> qsharp_result ctx
-    //                     | _ ->
-    //                         $"Invalid inputs for ket And. Expected one length registers, got: left:{left.Length} && right:{right.Length}"
-    //                         |> Error
-
-    // and prepare_equals (left, right, ctx) =
-    //     prepare (left, ctx)
-    //     ==> fun (left, ctx) ->
-    //             prepare (right, ctx)
-    //             ==> fun (right, ctx) ->
-    //                     match (left.Length, right.Length) with
-    //                     | (1L, 1L) ->
-    //                         ket.Equals.Run(sim, left.[0], right.[0], ctx.universe).Result
-    //                         |> qsharp_result ctx
-    //                     | _ ->
-    //                         $"Invalid inputs for ket And. Expected one length registers, got: left:{left.Length} && right:{right.Length}"
-    //                         |> Error
-
-    // and prepare_filter (k, condition, hint, ctx) =
-    //     prepare (condition, ctx)
-    //     ==> fun (cond, ctx) ->
-    //             prepare (k, ctx)
-    //             ==> fun (k, ctx) ->
-    //                 eval_classic (hint, ctx.evalCtx)
-    //                 ==> fun(hint, _) ->
-    //                     match hint with
-    //                     | Value.Int i ->
-    //                         let u = ket.Filter.Run(sim, cond.[0], i, ctx.universe).Result
-    //                         (k, { ctx with universe = u }) |> Ok
-    //                     | _ ->
-    //                         $"Hint must be an integer" |> Error
-
-    // and prepare_if_q (condition, then_q, else_q, ctx) =
-    //     prepare (condition, ctx)
-    //     ==> fun (cond, ctx) ->
-    //             prepare (then_q, ctx)
-    //             ==> fun (then_q, ctx) ->
-    //                     prepare (else_q, ctx)
-    //                     ==> fun (else_q, ctx) ->
-    //                             match (cond.Length, then_q.Length, else_q.Length) with
-    //                             | (1L, 1L, 1L) ->
-    //                                 ket.If.Run(sim, cond.[0], then_q.[0], else_q.[0], ctx.universe).Result
-    //                                 |> qsharp_result ctx
-
-    //                             | _ -> $"Invalid inputs for ket if: {cond} then {then_q} else {else_q}" |> Error
-
-    // and prepare_if_c (condition, then_q, else_q, ctx) =
-    //     eval_classic (condition, ctx.evalCtx)
-    //     ==> fun (cond, evalCtx) ->
-    //             let ctx = { ctx with evalCtx = evalCtx }
-
-    //             match cond with
-    //             | (Bool true) -> prepare (then_q, ctx) ==> fun (then_q, ctx) -> (then_q, ctx) |> Ok
-    //             | (Bool false) -> prepare (else_q, ctx) ==> fun (else_q, ctx) -> (else_q, ctx) |> Ok
-    //             | _ -> $"Invalid classical input for if condition. Expecting bool, got {cond}" |> Error
-
-    // and prepare_block (stmts, body, ctx) =
-    //     eval_stmts (stmts, ctx.evalCtx)
-    //     ==> fun evalCtx ->
-    //             let ctx = { ctx with evalCtx = evalCtx }
-    //             prepare (body, ctx)
-
-    // and prepare_callmethod (method, args, ctx) =
-    //     setup_method_body (method, args, ctx.evalCtx)
-    //     ==> fun (body, argsCtx) ->
-    //             match body with
-    //             | Quantum (q, _) ->
-    //                 let ctx' = { ctx with evalCtx = argsCtx }
-
-    //                 prepare (q, ctx')
-    //                 ==> fun (value, ctx') ->
-    //                         // return the heap back to the original state
-    //                         let ctx = { ctx' with evalCtx = ctx.evalCtx }
-    //                         (value, ctx) |> Ok
-    //             | _ -> $"Expecting a method with a Quantum body, got {method}" |> Error
-
-    // and qsharp_result ctx value =
-    //     let struct (u, r) = value
-    //     (r, { ctx with universe = u }) |> Ok
+    and qsharp_result ctx value =
+        let struct (u, r) = value
+        let r = if r.Length = 1 then QRegister.One r.[0] else QRegister.Many (r.ToArray() |> Array.toList)
+        ({ ctx with universe = u }, r) |> Ok
 
 
     interface QPU with

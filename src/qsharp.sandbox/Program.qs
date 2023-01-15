@@ -51,7 +51,10 @@
 
         let (u2, r2) = ket.All(2, u1);
         let (u3, r3) = ket.All(2, u2);
-        let (u4, r4) = ket.Equals(r2[0], r3[0], u3);
+        let (u4, r4) = ket.InSet([
+            [Value(0,2), Value(1,2)], 
+            [Value(2,2), Value(2,2)], 
+            [Value(2,2), Value(3,2)]], [r2[0], r3[0]], u3);
 
         Print(u4);
         let final = Sample(u4, r2 + r3 + r4, 3);

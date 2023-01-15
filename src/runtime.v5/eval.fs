@@ -121,7 +121,7 @@ module EvalV5 =
         | Join of ids: KetId list
         | Project of ket: KetId * index: int
         | Map of input: KetId * lambda: KetMapOperator
-        | Filter of input: KetId * filter: KetId
+        | Filter of input: KetId * filter: KetId * hint: int
 
     and EvalContext =
         { heap: Map<Id, Value>
@@ -165,7 +165,7 @@ module EvalV5 =
         | Q.IfQuantum(condition, then_q, else_q) -> eval_qif ctx (condition, then_q, else_q)
         | Q.IfClassic(condition, then_q, else_q) -> eval_qif_classic ctx (condition, then_q, else_q)
 
-        | Q.Filter(ket, condition, hint) -> eval_qfilter ctx (ket, condition)
+        | Q.Filter(ket, condition, hint) -> eval_qfilter ctx (ket, condition, hint)
 
         | Q.Block(stmts, value) -> eval_qblock ctx (stmts, value)
         | Q.CallMethod(method, args) -> eval_callmethod ctx (method, args)
@@ -251,14 +251,16 @@ module EvalV5 =
                 | Bool false -> eval_quantum { ctx with graph = q1 } else_q
                 | _ -> $"Invalid if condition. Expecting boolean value, got {v1}" |> Error
 
-    and eval_qfilter ctx (ket, condition) =
+    and eval_qfilter ctx (ket, condition, hint) =
         eval_quantum ctx ket
         ==> fun (k1, q1) ->
                 eval_quantum { ctx with graph = q1 } condition
                 ==> fun (k2, q2) ->
-                        match (k1, k2) with
-                        | Value.KetId k1, Value.KetId k2 -> q2 |> with_value (KetExpression.Filter(k1, k2))
-                        | _ -> $"Invalid KetIds" |> Error
+                    eval_classic { ctx with graph = q2 } hint
+                    ==> fun (v3, q3) ->
+                        match (k1, k2, v3) with
+                        | Value.KetId k1, Value.KetId k2, Value.Int i3 -> q2 |> with_value (KetExpression.Filter(k1, k2, i3))
+                        | err -> $"Invalid values for filter {err}" |> Error
 
     and eval_qblock ctx (stmts, value) =
         eval_stmts ctx stmts
@@ -299,7 +301,7 @@ module EvalV5 =
                         ==> fun (literals, graph) ->
                             let (literal, graph) = literals |> join_literals graph 
                             let (map, graph) = graph.AddExpression(KetExpression.Map(literal, KetMapOperator.In v))
-                            let (filter, graph) = graph.AddExpression(KetExpression.Filter(literal, map))
+                            let (filter, graph) = graph.AddExpression(KetExpression.Filter(literal, map, set.Count))
                             (KetId filter, graph) |> Ok
                 | _ -> $"Invaid literal constructor. Only sets supported, got {v}" |> Error
 

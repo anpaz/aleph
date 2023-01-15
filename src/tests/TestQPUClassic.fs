@@ -26,6 +26,9 @@ type TestQPUClassic() =
         let prelude = this.Prelude
 
         [
+          // // ( |@,0>, |@,0> )
+          // e.Join (e.KetAll(e.Int 0), e.KetAll(e.Int 0)), [], []
+
           // | false >
           e.Ket(e.Bool false), [ [ Bool false ] ], [ 0 ]
 
@@ -601,7 +604,7 @@ type TestQPUClassic() =
                     )
                 ) ]
 
-        [ e.Ket(e.Set []), []
+        [
           // Filter (k, k.0 == 2)
           e.Filter(e.Var "k", e.Equals(e.Project(e.Var "k", e.Int 0), e.Int 2), e.Int 3), []
           // k
