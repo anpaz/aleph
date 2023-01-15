@@ -5,7 +5,7 @@ open Microsoft.VisualStudio.TestTools.UnitTesting
 
 open aleph.parser.ast
 open aleph.parser.TypeChecker
-open aleph.runtime.EvalV5
+open aleph.runtime.Eval
 
 // alias for untyped expressions
 type e = Expression

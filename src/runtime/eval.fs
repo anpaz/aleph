@@ -2,11 +2,17 @@ namespace aleph.runtime
 
 open aleph.parser.ast
 open aleph.parser.ast.typed
-open aleph.parser.TypeChecker
 
 module Eval =
-    open System
     let random = System.Random()
+
+    let BOOL_REGISTER_SIZE = 1
+    let INT_REGISTER_DEFAULT_SIZE = 3
+    
+    let mutable max_ket = 0
+    let fresh_ketid () =
+        max_ket <- max_ket + 1
+        max_ket
 
     let (==>) (input: Result<'a, 'b>) ok = Result.bind ok input
 
@@ -14,25 +20,6 @@ module Eval =
         interface
             inherit System.IComparable
         end
-
-    [<CustomComparison; CustomEquality; StructuredFormatDisplay("id:{Id}")>]
-    type Ket =
-        { Id: int
-          StatePrep: Q
-          Context: EvalContext }
-
-        override this.Equals x =
-            match x with
-            | :? Ket as { Id = id' } -> (this.Id = id')
-            | _ -> false
-
-        override this.GetHashCode() =
-            this.Id.GetHashCode()
-            + this.StatePrep.GetHashCode()
-            + this.Context.GetHashCode()
-
-        interface System.IComparable with
-            member this.CompareTo(obj: obj) : int = failwith "Not Implemented"
 
     and [<CustomComparison; CustomEquality>] Method =
         { Args: Id list
@@ -50,13 +37,25 @@ module Eval =
         interface System.IComparable with
             member this.CompareTo(obj: obj) : int = failwith "Not Implemented"
 
+    and KetId = int
+
+        // static member Join(ketIds: KetId list) =
+        //     let rec unwrap ids =
+        //         match ids with 
+        //         | head :: tail ->
+        //             match head with
+        //             | One l -> l :: (unwrap tail)
+        //             | Many l -> l @ (unwrap tail)
+        //         | [] -> []
+        //     Many (unwrap ketIds)
+
     and Value =
         | Bool of bool
         | Int of int
         | Tuple of Value list
         | Set of Set<Value>
         | Method of Method
-        | Ket of Ket
+        | KetId of KetId
         | Universe of IUniverse
 
         static member (+)(l: Value, r: Value) =
@@ -94,310 +93,504 @@ module Eval =
             | Value.Bool l, Value.Bool r -> Value.Bool(l || r)
             | _ -> failwith "= only supported for bool values, got {l} || {r}"
 
-    and QPU =
-        abstract Prepare: U * EvalContext -> Result<Value * EvalContext, string>
-        abstract Measure: IUniverse -> Result<Value, string>
+
+    and QuantumGraph(q: Map<KetId, KetExpression>) =
+        static member empty: QuantumGraph = QuantumGraph Map.empty
+        member self.TryFind (k: KetId) = q.TryFind k
+        member self.Item (k: KetId) : KetExpression = q.Item k
+        member self.Add (k: KetId, v: KetExpression) : QuantumGraph = QuantumGraph(q.Add(k, v))
+        member self.AddExpression (v: KetExpression) : (KetId * QuantumGraph) =
+            let k = fresh_ketid()
+            k, QuantumGraph(q.Add(k, v))
+
+
+    and KetMapOperator =
+        | Constant of c: Value
+        | Add
+        | Multiply
+        | Equals
+        | LessThan
+        | Not
+        | And
+        | Or
+        | If
+        | In of c: Value
+
+    and KetExpression =
+        | Literal of size: int
+        | Join of ids: KetId list
+        | Project of ket: KetId * index: int
+        | Map of input: KetId * lambda: KetMapOperator
+        | Filter of input: KetId * filter: KetId * hint: int
 
     and EvalContext =
         { heap: Map<Id, Value>
-          qpu: QPU
-          callerCtx: EvalContext option }
+          graph: QuantumGraph
+          qpu: QPU }
 
-    let mutable max_ket = 0
+    and QPU =
+        abstract Prepare: U * EvalContext -> Result<Value * QuantumGraph, string>
+        abstract Measure: IUniverse * EvalContext -> Result<Value * QuantumGraph, string>
 
-    let rec eval (e, ctx) =
+    let width (s: Set<Value>) =
+        if s.IsEmpty then
+            0
+        else
+            let first = s |> Set.toSeq |> Seq.take 1 |> Seq.toList |> List.head
+
+            match first with
+            | Int _
+            | Bool _ -> 1
+            | Tuple t -> t.Length
+            | _ -> 0
+
+    let rec eval_quantum ctx e : Result<Value * QuantumGraph, string> =
         match e with
-        | E.Quantum (q, _) -> eval_quantum (q, ctx)
-        | E.Classic (c, _) -> eval_classic (c, ctx)
-        | E.Universe (u, _) -> ctx.qpu.Prepare(u, ctx)
+        | Q.Var id -> eval_var ctx id
+        | Q.Ket value -> eval_ket ctx value
+        | Q.KetAll size -> eval_qliteral ctx size
 
-    and eval_quantum (q, ctx) =
-        match q with
-        | Q.Var id -> eval_var (id, ctx)
-        | _ ->
-            max_ket <- max_ket + 1
+        | Q.Constant value -> eval_qmap_constant ctx value
+        | Q.Not q -> eval_qmap_unary ctx (q, KetMapOperator.Not)
+        | Q.Equals(left, right) -> eval_qmap_binary ctx (left, right, KetMapOperator.Equals)
+        | Q.Add(left, right) -> eval_qmap_binary ctx (left, right, KetMapOperator.Add)
+        | Q.Multiply(left, right) -> eval_qmap_binary ctx (left, right, KetMapOperator.Multiply)
+        | Q.And(left, right) -> eval_qmap_binary ctx (left, right, KetMapOperator.And)
+        | Q.Or(left, right) -> eval_qmap_binary ctx (left, right, KetMapOperator.Or)
 
-            (Value.Ket
-                { Id = max_ket
-                  StatePrep = q
-                  Context = ctx },
-             ctx)
-            |> Ok
+        | Q.Join(left, right) -> eval_qjoin ctx (left, right)
+        | Q.Project(ket, index) -> eval_qproject ctx (ket, index)
+        | Q.Index(ket, index) -> eval_qindex ctx (ket, index)
 
-    and eval_classic (c, ctx) =
+        | Q.IfQuantum(condition, then_q, else_q) -> eval_qif ctx (condition, then_q, else_q)
+        | Q.IfClassic(condition, then_q, else_q) -> eval_qif_classic ctx (condition, then_q, else_q)
+
+        | Q.Filter(ket, condition, hint) -> eval_qfilter ctx (ket, condition, hint)
+
+        | Q.Block(stmts, value) -> eval_qblock ctx (stmts, value)
+        | Q.CallMethod(method, args) -> eval_callmethod ctx (method, args)
+
+    and with_value (exp: KetExpression) (graph: QuantumGraph) =
+        let (k, graph) = graph.AddExpression exp
+        (KetId k, graph) |> Ok
+
+    and eval_qliteral ctx size =
+        eval_classic ctx size
+        ==> fun (v1, graph) ->
+                match v1 with
+                | Value.Int n -> graph |> with_value (KetExpression.Literal n)
+                | _ -> $"Invalid KetAll size: {v1}" |> Error
+
+    and eval_qjoin ctx (left, right) =
+        eval_quantum ctx left
+        ==> fun (k1, q1) ->
+                eval_quantum { ctx with graph = q1 } right
+                ==> fun (k2, q2) ->
+                        match (k1, k2) with
+                        | Value.KetId k1, Value.KetId k2 -> q2 |> with_value (KetExpression.Join [k1; k2])
+                        | _ -> $"Invalid KetIds" |> Error
+
+    and eval_qproject ctx (ket, index) =
+        eval_quantum ctx ket
+        ==> fun (k, graph) ->
+                match k with
+                | Value.KetId k -> graph |> with_value (KetExpression.Project (k, index))
+                | _ -> $"Invalid KetIds" |> Error
+
+    and eval_qindex ctx (ket, index) =
+        eval_classic ctx index
+        ==> fun (v1, q1) ->
+                match v1 with
+                | Value.Int i ->
+                    eval_qproject { ctx with graph = q1 } (ket, i)
+                | _ -> $"Invalid KetIds" |> Error
+
+    and eval_qmap_constant ctx value =
+        eval_classic ctx value
+        ==> fun (v, graph) -> graph |> with_value (KetExpression.Map(-1, KetMapOperator.Constant v))
+
+    and eval_qmap_unary ctx (left, lambda) =
+        eval_quantum ctx left
+        ==> fun (k1, graph) ->
+                match k1 with
+                | Value.KetId k1 -> graph |> with_value (KetExpression.Map(k1, lambda))
+                | _ -> $"Invalid KetIds" |> Error
+
+    and eval_qmap_binary ctx (left, right, lambda) =
+        eval_quantum ctx left
+        ==> fun (k1, q1) ->
+                eval_quantum { ctx with graph = q1 } right
+                ==> fun (k2, q2) ->
+                        match (k1, k2) with
+                        | Value.KetId(k1), Value.KetId(k2) ->
+                            let k = fresh_ketid()
+                            q2.Add(k, KetExpression.Join [k1; k2])
+                            |> with_value (KetExpression.Map(k, lambda))
+                        | _ -> $"Invalid KetIds" |> Error
+
+
+    and eval_qif ctx (condition, then_q, else_q) =
+        eval_quantum ctx condition
+        ==> fun (k1, q1) ->
+                eval_quantum { ctx with graph = q1 } then_q
+                ==> fun (k2, q2) ->
+                        eval_quantum { ctx with graph = q2 } else_q
+                        ==> fun (k3, q3) ->
+                                match (k1, k2, k3) with
+                                | Value.KetId k1, Value.KetId k2, Value.KetId k3 ->
+                                    let k = fresh_ketid()
+                                    q3.Add(k, KetExpression.Join [k1; k2; k3])
+                                    |> with_value (KetExpression.Map(k, KetMapOperator.If))
+                                | _ -> $"Invalid KetIds for if expression" |> Error
+
+    and eval_qif_classic ctx (condition, then_q, else_q) =
+        eval_classic ctx condition
+        ==> fun (v1, q1) ->
+                match v1 with
+                | Bool true -> eval_quantum { ctx with graph = q1 } then_q
+                | Bool false -> eval_quantum { ctx with graph = q1 } else_q
+                | _ -> $"Invalid if condition. Expecting boolean value, got {v1}" |> Error
+
+    and eval_qfilter ctx (ket, condition, hint) =
+        eval_quantum ctx ket
+        ==> fun (k1, q1) ->
+                eval_quantum { ctx with graph = q1 } condition
+                ==> fun (k2, q2) ->
+                    eval_classic { ctx with graph = q2 } hint
+                    ==> fun (v3, q3) ->
+                        match (k1, k2, v3) with
+                        | Value.KetId k1, Value.KetId k2, Value.Int i3 -> q2 |> with_value (KetExpression.Filter(k1, k2, i3))
+                        | err -> $"Invalid values for filter {err}" |> Error
+
+    and eval_qblock ctx (stmts, value) =
+        eval_stmts ctx stmts
+        ==> fun ctx' -> eval_quantum ctx' value ==> fun value -> value |> Ok
+
+    // syntactic sugar for |set>
+    // this is equivalent to create a literal and apply a filter for the elements in the set
+    and eval_ket ctx c =
+        eval_classic ctx c
+        ==> fun (v, graph) ->
+                match v with
+                | Value.Set set ->
+                    if set.IsEmpty then
+                        let literal = fresh_ketid()
+                        let graph = graph.Add(literal, KetExpression.Literal 0)
+                        (KetId literal, graph) |> Ok
+                    else
+                        let rec create_literals state value : Result<KetId list * QuantumGraph, string> = state ==> fun (literals : KetId list, graph' : QuantumGraph) ->
+                            match value with
+                            | Value.Bool _ -> 
+                                let (literal, graph') = graph'.AddExpression(KetExpression.Literal BOOL_REGISTER_SIZE)
+                                (literals @ [literal], graph') |> Ok
+                            | Value.Int i ->
+                                let size = System.Math.Max(INT_REGISTER_DEFAULT_SIZE, (int)(System.Math.Ceiling(System.Math.Log2(i))))
+                                let (literal, graph') = graph'.AddExpression(KetExpression.Literal size)
+                                (literals @ [literal], graph') |> Ok
+                            | Value.Tuple t ->
+                                let state = (literals, graph') |> Ok
+                                t |> List.fold create_literals state
+                            | error -> $"Invalid set value: {error}" |> Error
+
+                        let join_literals (graph: QuantumGraph) v =
+                            match v with
+                            | [ one ] -> (one, graph)
+                            | _ -> graph.AddExpression (KetExpression.Join v)
+
+                        create_literals (([], graph) |> Ok) set.MaximumElement 
+                        ==> fun (literals, graph) ->
+                            let (literal, graph) = literals |> join_literals graph 
+                            let (map, graph) = graph.AddExpression(KetExpression.Map(literal, KetMapOperator.In v))
+                            let (filter, graph) = graph.AddExpression(KetExpression.Filter(literal, map, set.Count))
+                            (KetId filter, graph) |> Ok
+                | _ -> $"Invaid literal constructor. Only sets supported, got {v}" |> Error
+
+
+    and eval_classic ctx c : Result<Value * QuantumGraph, string> =
         match c with
-        | C.Var id -> eval_var (id, ctx)
+        | C.Var id -> eval_var ctx id
 
-        | C.BoolLiteral b -> eval_bool (b, ctx)
-        | C.IntLiteral i -> eval_int (i, ctx)
-        | C.Method (args, body) -> eval_method (args, body, ctx)
-        | C.Tuple values -> eval_tuple (values, ctx)
-        | C.Set values -> eval_set (values, ctx)
-        | C.Range (start, stop) -> eval_range (start, stop, ctx)
+        | C.BoolLiteral b -> eval_bool ctx b
+        | C.IntLiteral i -> eval_int ctx i
+        | C.Tuple values -> eval_tuple ctx values
+        | C.Set values -> eval_set ctx values
+        | C.Range(start, stop) -> eval_range ctx (start, stop)
+        | C.Method(args, body) -> eval_method ctx (args, body)
 
-        | C.Add (left, right) -> eval_add (left, right, ctx)
-        | C.Multiply (left, right) -> eval_multiply (left, right, ctx)
-        | C.Equals (left, right) -> eval_equals (left, right, ctx)
-        | C.LessThan (left, right) -> eval_lessthan (left, right, ctx)
-        | C.And (left, right) -> eval_and (left, right, ctx)
-        | C.Or (left, right) -> eval_or (left, right, ctx)
-        | C.Not e -> eval_not (e, ctx)
+        | C.Add(left, right) -> eval_add ctx (left, right)
+        | C.Multiply(left, right) -> eval_multiply ctx (left, right)
+        | C.Equals(left, right) -> eval_equals ctx (left, right)
+        | C.LessThan(left, right) -> eval_lessthan ctx (left, right)
+        | C.And(left, right) -> eval_and ctx (left, right)
+        | C.Or(left, right) -> eval_or ctx (left, right)
+        | C.Not e -> eval_not ctx e
 
-        | C.Project (value, index) -> eval_project (value, index, ctx)
-        | C.Index (value, index) -> eval_index (value, index, ctx)
-        | C.Join (left, right) -> eval_join (left, right, ctx)
+        | C.Project(value, index) -> eval_project ctx (value, index)
+        | C.Index(value, index) -> eval_index ctx (value, index)
+        | C.Join(left, right) -> eval_join ctx (left, right)
 
-        | C.If (cond, t, e) -> eval_if (cond, t, e, ctx)
-        | C.Block (stmts, value) -> eval_block (stmts, value, ctx)
+        | C.If(cond, t, e) -> eval_if ctx (cond, t, e)
+        | C.Block(stmts, value) -> eval_block ctx (stmts, value)
 
-        | C.Sample q -> eval_sample (q, ctx)
+        | C.Sample q -> eval_sample ctx q
 
-        | C.CallMethod (method, args) -> eval_callmethod (method, args, ctx)
+        | C.CallMethod(method, args) -> eval_callmethod ctx (method, args)
 
-        | C.Element (set) -> eval_element (set, ctx)
-        | C.Append (item, set) -> eval_append (item, set, ctx)
-        | C.Remove (item, set) -> eval_remove (item, set, ctx)
-        | C.Count (set) -> eval_count (set, ctx)
+        | C.Element(set) -> eval_element ctx set
+        | C.Append(item, set) -> eval_append ctx (item, set)
+        | C.Remove(item, set) -> eval_remove ctx (item, set)
+        | C.Count(set) -> eval_count ctx set
 
-    and eval_var (id, ctx) =
+    and eval_var ctx id =
         match ctx.heap.TryFind id with
-        | Some value -> (value, ctx) |> Ok
-        | _ ->
-            match ctx.callerCtx with
-            | Some ctx' -> eval_var (id, ctx') ==> fun (value, _) -> (value, ctx) |> Ok
-            | None -> $"Variable not found: {id}" |> Error
+        | Some value -> (value, ctx.graph) |> Ok
+        | None -> $"Variable not found: {id}" |> Error
 
-    and eval_bool (b, ctx) = (Value.Bool b, ctx) |> Ok
+    and eval_bool ctx b = (Value.Bool b, ctx.graph) |> Ok
 
-    and eval_int (i, ctx) = (Value.Int i, ctx) |> Ok
+    and eval_int ctx i = (Value.Int i, ctx.graph) |> Ok
 
-    and eval_method (args, body, ctx) =
+    and eval_method ctx (args, body) =
         (Value.Method
             { Args = args
               Body = body
               Context = ctx },
-         ctx)
+         ctx.graph)
         |> Ok
 
-    and eval_tuple (values, ctx) =
-        eval_expression_list (values, ctx)
-        ==> fun (values, ctx) -> (Tuple values, ctx) |> Ok
+    and eval_tuple ctx values =
+        eval_expression_list ctx values
+        ==> fun (values, graph) -> 
+            match values with
+            | [ one ] -> (one, graph) |> Ok
+            | _ -> (Tuple values, graph) |> Ok
 
-    and eval_set (values, ctx) =
-        eval_expression_list (values, ctx)
-        ==> fun (values, ctx) -> (Set(Set.ofList values), ctx) |> Ok
+    and eval_set ctx values =
+        eval_expression_list ctx values
+        ==> fun (values, graph) -> (Set(Set.ofList values), graph) |> Ok
 
-    and eval_range (start, stop, ctx) =
-        eval_classic (start, ctx)
-        ==> fun (start, ctx) ->
-                eval_classic (stop, ctx)
-                ==> fun (stop, ctx) ->
-                        match (start, stop) with
-                        | Value.Int start, Value.Int stop ->
-                            let values = seq { start .. stop - 1 } |> Seq.map Value.Int
-                            (Set(Set.ofSeq values), ctx) |> Ok
+    and eval_range ctx (start, stop) =
+        eval_classic ctx start
+        ==> fun (v1, q1) ->
+                eval_classic { ctx with graph = q1 } stop
+                ==> fun (v2, q2) ->
+                        match (v1, v2) with
+                        | Value.Int v1, Value.Int v2 ->
+                            let values = seq { v1 .. v2 - 1 } |> Seq.map Value.Int
+                            (Set(Set.ofSeq values), q2) |> Ok
                         | _ -> $"Range start..stop must be int, got: {start}..{stop}" |> Error
 
-    and eval_add (left, right, ctx) =
-        eval_classic (left, ctx)
-        ==> fun (left, ctx) -> eval_classic (right, ctx) ==> fun (right, ctx) -> (left + right, ctx) |> Ok
+    and eval_add ctx (left, right) =
+        eval_classic ctx left
+        ==> fun (v1, q1) ->
+                eval_classic { ctx with graph = q1 } right
+                ==> fun (v2, q2) -> (v1 + v2, q2) |> Ok
 
-    and eval_multiply (left, right, ctx) =
-        eval_classic (left, ctx)
-        ==> fun (left, ctx) -> eval_classic (right, ctx) ==> fun (right, ctx) -> (left * right, ctx) |> Ok
+    and eval_multiply ctx (left, right) =
+        eval_classic ctx left
+        ==> fun (v1, q1) ->
+                eval_classic { ctx with graph = q1 } right
+                ==> fun (v2, q2) -> (v1 * v2, q2) |> Ok
 
-    and eval_equals (left, right, ctx) =
-        eval_classic (left, ctx)
-        ==> fun (left, ctx) -> eval_classic (right, ctx) ==> fun (right, ctx) -> (left == right, ctx) |> Ok
+    and eval_equals ctx (left, right) =
+        eval_classic ctx left
+        ==> fun (v1, q1) ->
+                eval_classic { ctx with graph = q1 } right
+                ==> fun (v2, q2) -> (v1 == v2, q2) |> Ok
 
-    and eval_lessthan (left, right, ctx) =
-        eval_classic (left, ctx)
-        ==> fun (left, ctx) ->
-                eval_classic (right, ctx)
-                ==> fun (right, ctx) -> (Value.LessThan(left, right), ctx) |> Ok
+    and eval_lessthan ctx (left, right) =
+        eval_classic ctx left
+        ==> fun (v1, q1) ->
+                eval_classic { ctx with graph = q1 } right
+                ==> fun (v2, q2) -> (Value.LessThan(v1, v2), q2) |> Ok
 
-    and eval_and (left, right, ctx) =
-        eval_classic (left, ctx)
-        ==> fun (left, ctx) ->
-                eval_classic (right, ctx)
-                ==> fun (right, ctx) -> (Value.And(left, right), ctx) |> Ok
+    and eval_and ctx (left, right) =
+        eval_classic ctx left
+        ==> fun (v1, q1) ->
+                eval_classic { ctx with graph = q1 } right
+                ==> fun (v2, q2) -> (Value.And(v1, v2), q2) |> Ok
 
-    and eval_or (left, right, ctx) =
-        eval_classic (left, ctx)
-        ==> fun (left, ctx) ->
-                eval_classic (right, ctx)
-                ==> fun (right, ctx) -> (Value.Or(left, right), ctx) |> Ok
+    and eval_or ctx (left, right) =
+        eval_classic ctx left
+        ==> fun (v1, q1) ->
+                eval_classic { ctx with graph = q1 } right
+                ==> fun (v2, q2) -> (Value.Or(v1, v2), q2) |> Ok
 
-    and eval_not (e, ctx) =
-        eval_classic (e, ctx) ==> fun (e, ctx) -> (Value.Not e, ctx) |> Ok
+    and eval_not ctx e =
+        eval_classic ctx e ==> fun (v1, graph) -> (Value.Not v1, graph) |> Ok
 
-    and eval_project (value, i, ctx) =
-        eval_classic (value, ctx)
-        ==> fun (value, ctx) ->
+    and eval_project ctx (value, i) =
+        eval_classic ctx value
+        ==> fun (value, q) ->
                 match value with
-                | Value.Tuple t -> (t.[i], ctx) |> Ok
+                | Value.Tuple t -> (t.[i], q) |> Ok
                 | _ -> $"project only avaiable for tuples, got: {value}" |> Error
 
-    and eval_index (value, i, ctx) =
-        eval_classic (value, ctx)
-        ==> fun (value, ctx) ->
-                eval_classic (i, ctx)
-                ==> fun (i, ctx) ->
+    and eval_index ctx (value, i) =
+        eval_classic ctx value
+        ==> fun (value, q1) ->
+                eval_classic { ctx with graph = q1 } i
+                ==> fun (i, q2) ->
                         match (value, i) with
-                        | Value.Tuple t, Value.Int i -> (t.[i], ctx) |> Ok
+                        | Value.Tuple t, Value.Int i -> (t.[i], q2) |> Ok
                         | _ -> $"project only avaiable for tuples and int index, got: {value}[{i}]" |> Error
 
-    and eval_join (left, right, ctx) =
-        eval_classic (left, ctx)
-        ==> fun (left, ctx) ->
-                eval_classic (right, ctx)
-                ==> fun (right, ctx) ->
-                        match (left, right) with
-                        | Value.Tuple l, Value.Tuple r -> (Value.Tuple(l @ r), ctx) |> Ok
+    and eval_join ctx (left, right) =
+        eval_classic ctx left
+        ==> fun (v1, q1) ->
+                eval_classic { ctx with graph = q1 } right
+                ==> fun (v2, q2) ->
+                        match (v1, v2) with
+                        | Value.Tuple l, Value.Tuple r -> (Value.Tuple(l @ r), q2) |> Ok
                         | _ -> $"Join only avaiable for tuples, got: {left}, {right}" |> Error
 
-    and eval_if (cond, then_e, else_e, ctx) =
-        eval_classic (cond, ctx)
-        ==> fun (cond, ctx) ->
+    and eval_if ctx (cond, then_e, else_e) =
+        eval_classic ctx cond
+        ==> fun (cond, q1) ->
                 match cond with
-                | Value.Bool true -> eval_classic (then_e, ctx)
-                | Value.Bool false -> eval_classic (else_e, ctx)
+                | Value.Bool true -> eval_classic { ctx with graph = q1 } then_e ==> fun (v2, q2) -> (v2, q2) |> Ok
+                | Value.Bool false ->
+                    eval_classic { ctx with graph = q1 } else_e
+                    ==> fun (v3, graph3) -> (v3, graph3) |> Ok
                 | _ -> $"if condition must be a boolean expression, got: {cond}" |> Error
 
-    and eval_block (stmts, value, ctx) =
-        eval_stmts (stmts, ctx)
-        ==> fun (ctx) ->
-                eval_classic (value, ctx)
-                ==> fun (value, _) -> (value, ctx.callerCtx.Value) |> Ok
+    and eval_block ctx (stmts, value) =
+        eval_stmts ctx stmts
+        ==> fun (ctx) -> eval_classic ctx value ==> fun value -> value |> Ok
 
-    and eval_sample (u, ctx) =
+    and eval_sample ctx u =
         let qpu = ctx.qpu
 
         qpu.Prepare(u, ctx)
-        ==> fun (u, ctx) ->
+        ==> fun (u, graph) ->
                 match u with
-                | Value.Universe u -> qpu.Measure u ==> fun (v) -> (v, ctx) |> Ok
+                | Value.Universe u -> qpu.Measure (u, { ctx with graph = graph })
                 | _ -> $"Expecting Prepare to return Universe, got {u}" |> Error
 
-    and eval_callmethod (method, args, ctx) =
-        setup_method_body (method, args, ctx)
-        ==> fun (body, ctx') ->
-                eval (body, ctx')
-                ==> fun (value, ctx') ->
-                        // return the heap back to the original state
-                        let ctx = { ctx' with heap = ctx.heap }
-                        (value, ctx) |> Ok
+    and eval_callmethod ctx (method, args) =
+        setup_method_ctx ctx (method, args)
+        ==> fun (body, ctx') -> eval ctx' body ==> fun (v2, q2) -> (v2, q2) |> Ok
 
-    and eval_element (set, ctx) =
+    and eval_element ctx set =
         let pick_random (s: Set<Value>) =
             let i = random.Next(s.Count)
             (Set.toList s).[i]
 
-        eval_classic (set, ctx)
-        ==> fun (set, ctx) ->
+        eval_classic ctx set
+        ==> fun (set, q1) ->
                 match set with
-                | Value.Set s -> (s |> pick_random, ctx) |> Ok
+                | Value.Set s -> (s |> pick_random, q1) |> Ok
                 | _ -> $"Append only available for sets, got: {set}" |> Error
 
-    and eval_append (item, set, ctx) =
-        eval_classic (item, ctx)
-        ==> fun (item, ctx) ->
-                eval_classic (set, ctx)
-                ==> fun (set, ctx) ->
+    and eval_append ctx (item, set) =
+        eval_classic ctx item
+        ==> fun (item, q1) ->
+                eval_classic { ctx with graph = q1 } set
+                ==> fun (set, q2) ->
                         match set with
-                        | Value.Set s -> (Value.Set(s.Add item), ctx) |> Ok
+                        | Value.Set s -> (Value.Set(s.Add item), q2) |> Ok
                         | _ -> $"Append only available for sets, got: {set}" |> Error
 
-    and eval_remove (item, set, ctx) =
-        eval_classic (item, ctx)
-        ==> fun (item, ctx) ->
-                eval_classic (set, ctx)
-                ==> fun (set, ctx) ->
+    and eval_remove ctx (item, set) =
+        eval_classic ctx item
+        ==> fun (item, q1) ->
+                eval_classic { ctx with graph = q1 } set
+                ==> fun (set, q2) ->
                         match set with
-                        | Value.Set s -> (Value.Set(s.Remove item), ctx) |> Ok
+                        | Value.Set s -> (Value.Set(s.Remove item), q2) |> Ok
                         | _ -> $"Remove only available for sets, got: {set}" |> Error
 
-    and eval_count (set, ctx) =
-        eval_classic (set, ctx)
-        ==> fun (set, ctx) ->
-                match set with
-                | Value.Set s -> (Value.Int s.Count, ctx) |> Ok
+    and eval_count ctx set =
+        eval_classic ctx set
+        ==> fun (v1, q1) ->
+                match v1 with
+                | Value.Set s -> (Value.Int s.Count, q1) |> Ok
                 | _ -> $"Count only available for sets, got: {set}" |> Error
 
-    and eval_expression_list (values, ctx) =
-        let rec next (items, ctx: EvalContext) =
+    and eval_expression_list ctx values =
+        let rec next items =
             match items with
-            | head :: tail ->
-                eval_classic (head, ctx)
-                ==> fun (head, ctx) -> next (tail, ctx) ==> fun (tail, ctx) -> (head :: tail, ctx) |> Ok
-            | [] -> ([], ctx) |> Ok
+            | head :: tail, graph ->
+                eval_classic { ctx with graph = graph } head
+                ==> fun (v1, q1) -> next (tail, q1) ==> fun (v2, q2) -> (v1 :: v2, q2) |> Ok
+            | [], graph -> ([], graph) |> Ok
 
-        next (values, ctx)
+        next (values, ctx.graph)
 
-    and eval_stmts (stmts, ctx) =
-        let eval_one ctx' stmt =
+    and eval_stmts ctx stmts =
+        let eval_one (ctx': Result<EvalContext, string>) stmt =
             ctx'
             ==> fun (ctx') ->
                     match stmt with
-                    | Let (id, e) ->
-                        eval (e, ctx')
-                        ==> fun (value, ctx') -> { ctx' with heap = ctx'.heap.Add(id, value) } |> Ok
-                    | Print (msg, expressions) ->
+                    | Let(id, e) ->
+                        eval ctx' e
+                        ==> fun (value, graph) ->
+                                { ctx' with
+                                    heap = ctx'.heap.Add(id, value)
+                                    graph = graph }
+                                |> Ok
+                    | Print(msg, expressions) ->
                         printf "%s" msg
 
                         let print_one ctx' e =
                             ctx'
                             ==> fun (ctx') ->
-                                    eval (e, ctx')
-                                    ==> fun (value, ctx') ->
+                                    eval ctx' e
+                                    ==> fun (value, graph) ->
                                             printfn "%A" value
-                                            ctx' |> Ok
+                                            { ctx' with graph = graph } |> Ok
 
                         expressions |> List.fold print_one (ctx' |> Ok)
 
-        let ctx =
-            { ctx with
-                heap = Map.empty
-                callerCtx = ctx |> Some }
-
         stmts |> List.fold eval_one (ctx |> Ok)
 
-    and setup_args ids args ctx =
-        let add_argument (heap': Result<Map<Id, Value>, string>) (id, value) =
-            heap'
-            ==> fun heap' -> eval (value, ctx) ==> fun (value, _) -> heap'.Add(id, value) |> Ok
+    and setup_ctx_with_args ctx ids args =
+        let rec next items =
+            match items with
+            | head :: tail, graph ->
+                eval { ctx with graph = graph } head
+                ==> fun (v1, q1) -> next (tail, q1) ==> fun (v2, q2) -> (v1 :: v2, q2) |> Ok
+            | [], graph -> ([], graph) |> Ok
 
-        args |> List.zip ids |> List.fold add_argument (Map.empty |> Ok)
+        next (args, ctx.graph)
+        ==> fun (values, graph) ->
+                let heap' =
+                    values
+                    |> List.zip ids
+                    |> List.fold (fun (h: Map<Id, Value>) (id, value) -> h.Add(id, value)) ctx.heap
 
-    and setup_method_body (method, args, ctx) =
-        eval_classic (method, ctx)
-        ==> fun (m, ctx) ->
-                match m with
-                | Value.Method ({ Args = ids
-                                  Body = body
-                                  Context = context }) ->
-                    setup_args ids args ctx
-                    ==> fun args_map ->
-                            let args_map =
-                                // If the method comes from a variable, add it to the context
-                                // so it can be invoked recursively:
-                                match method with
-                                | C.Var id -> args_map.Add(id, m)
-                                | _ -> args_map
+                (heap', graph) |> Ok
 
+    and setup_method_ctx ctx (method, args) =
+        eval_classic ctx method
+        ==> fun (v1, q1) ->
+                match v1 with
+                | Value.Method({ Args = ids
+                                 Body = body
+                                 Context = context }) ->
+                    setup_ctx_with_args { ctx with graph = q1 } ids args
+                    ==> fun (heap', graph') ->
                             let ctx =
-                                { ctx with
-                                    heap = args_map
-                                    callerCtx = context |> Some }
+                                { context with
+                                    heap = heap'
+                                    graph = graph' }
 
                             (body, ctx) |> Ok
                 | _ -> $"Expecting method, got {method}" |> Error
 
-    let start (program: Expression, qpu: QPU) =
+
+    and eval ctx e : Result<Value * QuantumGraph, string> =
+        match e with
+        | E.Classic(c, _) -> eval_classic ctx c
+        | E.Quantum(q, _) -> eval_quantum ctx q
+        | E.Universe (u, _) -> ctx.qpu.Prepare(u, ctx)
+
+    let apply (program: Expression, qpu: QPU) =
         aleph.parser.TypeChecker.start (program)
         ==> fun (e, _) ->
                 let ctx =
                     { heap = Map.empty
-                      qpu = qpu
-                      callerCtx = None }
-                eval (e, ctx)
+                      graph = QuantumGraph.empty
+                      qpu = qpu }
+
+                eval ctx e

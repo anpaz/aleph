@@ -4,10 +4,10 @@ open Microsoft.VisualStudio.TestTools.UnitTesting
 
 open aleph.parser.ast
 open aleph.parser.TypeChecker
-open aleph.runtime.EvalV5
+open aleph.runtime.Eval
 
 open aleph.tests.Utils
-open aleph.runtime.qpu.classicv5
+open aleph.runtime.qpu.classic
 
 [<TestClass>]
 (*
@@ -17,7 +17,7 @@ open aleph.runtime.qpu.classicv5
     from the preparation matches some expected values.
 *)
 type TestQPUClassic() =
-    member this.QPU = aleph.runtime.qpu.classicv5.Processor()
+    member this.QPU = aleph.runtime.qpu.classic.Processor()
 
     member this.Prelude = ClassicValueContext.Prelude
 

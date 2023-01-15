@@ -6,9 +6,9 @@ open Microsoft.Quantum.Simulation.Simulators
 
 open aleph.parser.ast
 open aleph.qsharp
-open aleph.runtime.EvalV5
-open aleph.runtime.qpu.qsharpV5
-open aleph.runtime.qpu.qsharpV5.Convert
+open aleph.runtime.Eval
+open aleph.runtime.qpu.qsharp
+open aleph.runtime.qpu.qsharp.Convert
 
 open aleph.tests.Utils
 

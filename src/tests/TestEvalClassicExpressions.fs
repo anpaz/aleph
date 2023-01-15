@@ -5,7 +5,7 @@ open Microsoft.VisualStudio.TestTools.UnitTesting
 open aleph.parser.ast
 open aleph.parser.TypeChecker
 open aleph.parser.ast.typed
-open aleph.runtime.EvalV5
+open aleph.runtime.Eval
 
 
 module ClassicValueContext =
@@ -38,7 +38,7 @@ type TestEval() =
 
         let block = e.Block(prelude, expr)
 
-        match aleph.runtime.EvalV5.apply (block, ClassicValueContext.NoQPU) with
+        match aleph.runtime.Eval.apply (block, ClassicValueContext.NoQPU) with
         | Ok (v', _) -> Assert.AreEqual(v, v')
         | Error msg -> Assert.AreEqual($"Expecting Value {v}", $"Got Error msg: {msg}")
 
@@ -47,7 +47,7 @@ type TestEval() =
 
         let block = e.Block(stmts, expr)
 
-        match aleph.runtime.EvalV5.apply (block, ClassicValueContext.NoQPU) with
+        match aleph.runtime.Eval.apply (block, ClassicValueContext.NoQPU) with
         | Ok (v, _) -> Assert.AreEqual($"Expected error: {error}", $"Got Value: {v}")
         | Error msg -> Assert.AreEqual(error, msg)
 
