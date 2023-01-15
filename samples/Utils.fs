@@ -5,7 +5,7 @@ open Microsoft.Quantum.Simulation.Simulators
 open Microsoft.Quantum.IQSharp.ExecutionPathTracer
 
 let run qpu program =
-    match start (program, qpu) with
+    match apply (program, qpu) with
     | Ok(v, _) ->
         printfn $"\nresult: {v}\n"
         0
@@ -27,7 +27,7 @@ let estimate program =
     let sim = res // (res).WithExecutionPathTracer(tracer)
 
     printfn ("==> Starting resources estimation...")
-    start (program, aleph.runtime.qpu.qsharp.Processor(sim, 1)) |> ignore
+    apply (program, aleph.runtime.qpu.qsharp.Processor(sim)) |> ignore
 
     let estimate (key: string) =
         let row =
@@ -49,12 +49,7 @@ let estimate program =
     (width, depth)
 
 let qsharp program =
-    let (width, depth) = estimate program
-
-    if width < 40 then
-        printfn ("==> Starting quantum execution...")
-        let sim = new SparseSimulator()
-        program |> run (aleph.runtime.qpu.qsharp.Processor(sim, 3)) |> ignore
-        0
-    else
-        1
+    printfn ("==> Starting quantum execution...")
+    let sim = new SparseSimulator()
+    program |> run (aleph.runtime.qpu.qsharp.Processor(sim)) |> ignore
+    0

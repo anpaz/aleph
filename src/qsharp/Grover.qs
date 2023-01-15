@@ -10,23 +10,23 @@ namespace aleph.qsharp.grover {
 
     open aleph.qsharp.log as log;
 
-    operation Apply(oracle: (Qubit[], Qubit) => Unit is Adj, all: Qubit[], output: Qubit[]) : Unit 
+    operation Apply(oracle: (Qubit[], Qubit) => Unit is Adj, all: Qubit[], literals: Qubit[]) : Unit 
     {
         // Since we don't require the number of answers, we run grover multiple times, each with different
         // number of iterations, based on the algorithm in:
         // Tight Bounds on Quantum Searching (Boyer, Brassard, Hoyer, Tapp)
         use answer = Qubit();
-        let n = Length(output); // number of qubits
+        let n = Length(literals); // number of qubits
         let max = PI() * Sqrt(IntAsDouble(1 <<< n)) / 4.0; // max number of grover iterations
-        mutable stop = Floor(max) * 4;  // we will eventually stop trying to find an answer (as none might exist)
+        mutable stop = Floor(max) * 2;  // we will eventually stop trying to find an answer (as none might exist)
         mutable m = 1.0;    // the max number of iteratiosn to try at each round.
 
         repeat {
             let iterations = DrawRandomInt(0, Floor(m));
 
-            log.Info($"Starting {iterations} iterations for m:{m}, n:{n}, to-go:{stop}, max:{max}, output:{output}");
+            log.Info($"Starting {iterations} iterations for m:{m}, n:{n}, to-go:{stop}, max:{max}, literals:{literals}");
             for i in 1..iterations {
-                GroverIteration(_toPhaseOracle(oracle, _), all, output, log.DEBUG_ON() and i == 1);
+                GroverIteration(_toPhaseOracle(oracle, _), all, literals, log.DEBUG_ON() and i == 1);
             }
 
             oracle (all, answer);
@@ -35,8 +35,9 @@ namespace aleph.qsharp.grover {
             set m = m * (8.0 / 7.0);
             set m = m > max ? max | m;
             set stop -= 1;
-            ResetAll(output);
-            ApplyToEach(H, output);
+
+            ResetAll(literals);
+            ApplyToEach(H, literals);
 
             Reset(answer);
         }

@@ -14,7 +14,7 @@ let program =
           Let("eq2", Multiply(Int 2, Var "x"))
 
           // let solution = (x, eq1, eq2) | eq1 == eq2 : 1
-          Let("solution", Filter((Join(Var "x", Join(Var "eq1", Var "eq2")), Equals(Var "eq1", Var "eq2"), Int 1))) ],
+          Let("solution", Filter((Join(Var "x", Join(Var "eq1", Var "eq2")), Equals(Var "eq1", Var "eq2")))) ],
 
         // |`solution`|
         Sample(Prepare(Var "solution"))
