@@ -8,11 +8,11 @@ namespace aleph.qsharp.universe {
     open aleph.qsharp.universe as u;
     open aleph.qsharp.value as v;
 
-    operation Sample(universe: Universe, outputs: r.Register[], maxTries: Int) : v.Value[] {
+    operation Sample(universe: Universe, outputs: r.Register[]) : v.Value[] {
         let width = u.GetWidth(universe);
         use qubits = Qubit[width];
 
-        Prepare(universe, qubits, maxTries);
+        Prepare(universe, qubits);
 
         mutable result = [];
         for r in outputs {

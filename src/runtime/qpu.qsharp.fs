@@ -66,11 +66,11 @@ type Universe(sim: IOperationFactory, state: QUniverse, registers: QRegister) =
     interface IUniverse with
         member this.CompareTo(obj: obj) : int = failwith "Not Implemented"
 
-    member this.Sample(maxTries: int64) =
+    member this.Sample() =
         match value with
         | Some v -> v
         | None ->
-            let sample = universe.Sample.Run(sim, state, registers |> Convert.toQArray, maxTries).Result |> Convert.toValue
+            let sample = universe.Sample.Run(sim, state, registers |> Convert.toQArray).Result |> Convert.toValue
             value <- Some sample
             sample
 
@@ -78,7 +78,7 @@ type Universe(sim: IOperationFactory, state: QUniverse, registers: QRegister) =
         universe.Print.Run(sim, state).Result |> ignore
         "[see above]"
 
-type Processor(sim: IOperationFactory, maxTries: int64) =
+type Processor(sim: IOperationFactory) =
 
     let rec prepare (ctx: QsharpContext) (k: KetId) =
         if k < 0 then
@@ -205,7 +205,7 @@ type Processor(sim: IOperationFactory, maxTries: int64) =
     interface QPU with
         member this.Measure(universe: IUniverse, evalCtx: EvalContext) =
             let u = universe :?> Universe
-            (u.Sample(maxTries), evalCtx.graph) |> Ok
+            (u.Sample(), evalCtx.graph) |> Ok
 
         member this.Prepare(u, evalCtx) =
             assert (evalCtx.qpu = this)

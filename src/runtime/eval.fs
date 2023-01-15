@@ -132,18 +132,6 @@ module Eval =
         abstract Prepare: U * EvalContext -> Result<Value * QuantumGraph, string>
         abstract Measure: IUniverse * EvalContext -> Result<Value * QuantumGraph, string>
 
-    let width (s: Set<Value>) =
-        if s.IsEmpty then
-            0
-        else
-            let first = s |> Set.toSeq |> Seq.take 1 |> Seq.toList |> List.head
-
-            match first with
-            | Int _
-            | Bool _ -> 1
-            | Tuple t -> t.Length
-            | _ -> 0
-
     let rec eval_quantum ctx e : Result<Value * QuantumGraph, string> =
         match e with
         | Q.Var id -> eval_var ctx id

@@ -15,7 +15,7 @@ open aleph.tests.Utils
 
 [<TestClass>]
 type TestQPUQsharp() =
-    member this.QPU = Processor(new SparseSimulator(), 3)
+    member this.QPU = Processor(new SparseSimulator())
 
     member this.Prelude = ClassicValueContext.Prelude
 
