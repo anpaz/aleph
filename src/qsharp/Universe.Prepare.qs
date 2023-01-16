@@ -40,8 +40,6 @@ namespace aleph.qsharp.universe {
 
             let oracle = _uber_oracle(u2, _, _);
 
-            ResetAll(literals);
-            ApplyToEachA(H, literals);
             grover.Apply(oracle, all, literals);
             Reset(tracker);
         }

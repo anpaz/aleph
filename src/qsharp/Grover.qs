@@ -24,6 +24,9 @@ namespace aleph.qsharp.grover {
         repeat {
             let iterations = DrawRandomInt(0, Floor(m));
 
+            ResetAll(literals);
+            ApplyToEach(H, literals);
+
             log.Info($"Starting {iterations} iterations for m:{m}, n:{n}, to-go:{stop}, max:{max}, literals:{literals}");
             for i in 1..iterations {
                 GroverIteration(_toPhaseOracle(oracle, _), all, literals, log.DEBUG_ON() and i == 1);
@@ -35,11 +38,6 @@ namespace aleph.qsharp.grover {
             set m = m * (8.0 / 7.0);
             set m = m > max ? max | m;
             set stop -= 1;
-
-            ResetAll(literals);
-            ApplyToEach(H, literals);
-
-            Reset(answer);
         }
     }
 
