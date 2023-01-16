@@ -41,22 +41,30 @@ type ColumnIndex =
 
 type ColumnsMap = Map<KetId, ColumnIndex>
 
-type QuantumContext =
-    { graph: QuantumGraph
-      state: Value list list
-      allocations: ColumnsMap }
+type QuantumState = Value list list
 
-type Universe(state: Value list list, columns: ColumnIndex) =
+type Universe(state: Value list list, outputColumns: ColumnIndex) =
     let random = System.Random()
     let mutable value = None
+
+    // Creates a row for this Universe with random values:
+    let random_values() =
+        // Pick the max number of columns based on the columns of the output register of this universe.
+        let max_column =
+            match outputColumns with
+            | One c -> c
+            | Many c -> c |> List.max
+
+        seq { for i in 0 .. max_column -> (Value.Int(random.Next())) }
+        |> Seq.toList
+
+    member val State = state
+    member val Columns = outputColumns
 
     interface IUniverse with
         member this.CompareTo(obj: obj) : int = failwith "Not Implemented"
 
-    member val State = state
-    member val Columns = columns
-
-    (*
+   (*
         Sample works by randomly picking a row from the universe with the same probability
         from the universe, and then projecting (selecting) only the columns
         associated with the ket.
@@ -71,35 +79,30 @@ type Universe(state: Value list list, columns: ColumnIndex) =
                 match state.Length with
                 // Universe collapsed:
                 | 1 -> state.[0]
-                // Empty universe, collapse to random value
-                | 0 ->
-                    let c =
-                        match columns with
-                        | One c -> [ c ]
-                        | Many c -> c
-
-                    let row =
-                        seq { for i in 0 .. (c |> List.max) -> (Value.Int(random.Next())) }
-                        |> Seq.toList
-
-                    row
+                // Empty universe, collapse to a row with random values
+                | 0 -> random_values()
                 // Select a random row, and collapse to this value:
                 | n ->
                     let i = int (random.NextDouble() * (double (n)))
                     state.Item i
 
-            let sample = pick_world () |> (Universe.project columns)
+            let sample = pick_world () |> (Universe.project outputColumns)
             value <- Some sample
             sample
 
     override this.ToString() =
-        sprintf "%A" (seq { for i in state -> i |> (Universe.project columns) } |> Seq.toList)
+        sprintf "%A" (seq { for i in state -> i |> (Universe.project outputColumns) } |> Seq.toList)
 
     static member project columns (row: Value list) =
         match columns with
         | One c -> row.[c]
         | Many columns -> columns |> List.fold (fun result i -> result @ [ row.[i] ]) [] |> Tuple
 
+type QuantumContext =
+    { graph: QuantumGraph
+      state: QuantumState
+      allocations: ColumnsMap }
+      
 type Processor() =
 
     (* 
