@@ -48,15 +48,14 @@ type Universe(state: Value list list, outputColumns: ColumnIndex) =
     let mutable value = None
 
     // Creates a row for this Universe with random values:
-    let random_values() =
+    let random_values () =
         // Pick the max number of columns based on the columns of the output register of this universe.
         let max_column =
             match outputColumns with
             | One c -> c
             | Many c -> c |> List.max
 
-        seq { for i in 0 .. max_column -> (Value.Int(random.Next())) }
-        |> Seq.toList
+        seq { for i in 0..max_column -> (Value.Int(random.Next())) } |> Seq.toList
 
     member val State = state
     member val Columns = outputColumns
@@ -64,7 +63,7 @@ type Universe(state: Value list list, outputColumns: ColumnIndex) =
     interface IUniverse with
         member this.CompareTo(obj: obj) : int = failwith "Not Implemented"
 
-   (*
+    (*
         Sample works by randomly picking a row from the universe with the same probability
         from the universe, and then projecting (selecting) only the columns
         associated with the ket.
@@ -80,7 +79,7 @@ type Universe(state: Value list list, outputColumns: ColumnIndex) =
                 // Universe collapsed:
                 | 1 -> state.[0]
                 // Empty universe, collapse to a row with random values
-                | 0 -> random_values()
+                | 0 -> random_values ()
                 // Select a random row, and collapse to this value:
                 | n ->
                     let i = int (random.NextDouble() * (double (n)))
@@ -102,7 +101,7 @@ type QuantumContext =
     { graph: QuantumGraph
       state: QuantumState
       allocations: ColumnsMap }
-      
+
 type Processor() =
 
     (* 
@@ -121,9 +120,9 @@ type Processor() =
                 match ctx.graph.[k] with
                 | KetExpression.Literal size -> prepare_literal ctx size
                 | KetExpression.Join ketIds -> prepare_join ctx ketIds
-                | KetExpression.Project(ketId, idx) -> prepare_project ctx (ketId, idx)
-                | KetExpression.Map(ketId, lambda) -> prepare_map ctx (ketId, lambda)
-                | KetExpression.Filter(ketId, filterId) -> prepare_filter ctx (ketId, filterId)
+                | KetExpression.Project (ketId, idx) -> prepare_project ctx (ketId, idx)
+                | KetExpression.Map (ketId, lambda) -> prepare_map ctx (ketId, lambda)
+                | KetExpression.Filter (ketId, filterId) -> prepare_filter ctx (ketId, filterId)
 
                 ==> fun (ctx', column) -> { ctx' with allocations = ctx'.allocations.Add(k, column) } |> Ok
 
@@ -133,10 +132,10 @@ type Processor() =
         | 1 -> [ Value.Bool false; Value.Bool true ] |> Ok // Literal Kets of size 1, are always boolean values.
         | n -> seq { 0 .. (int (2.0 ** n)) - 1 } |> Seq.map (Value.Int) |> Seq.toList |> Ok
         ==> fun values ->
-            let new_state = tensor_product ctx.state values
-            let new_column = if new_state.IsEmpty then 0 else new_state.Head.Length - 1
+                let new_state = tensor_product ctx.state values
+                let new_column = if new_state.IsEmpty then 0 else new_state.Head.Length - 1
 
-            ({ ctx with state = new_state }, ColumnIndex.One new_column) |> Ok
+                ({ ctx with state = new_state }, ColumnIndex.One new_column) |> Ok
 
     and prepare_join ctx (ketIds: KetId list) =
         // prepare all elements in the join so they are allocated in the state:
@@ -306,34 +305,18 @@ type Processor() =
         (*
             Measure works by sampling the universe:
         *)
-        member this.Measure(universe: IUniverse, evalCtx: EvalContext) =
+        member this.Measure(universe: IUniverse) =
             let u = universe :?> Universe
-            (u.Sample(), evalCtx.graph) |> Ok
+            u.Sample() |> Ok
 
         (*
             Prepares a Quantum Universe from the given universe expression
          *)
-        member this.Prepare(u, evalCtx: EvalContext) =
-            assert (evalCtx.qpu = this)
+        member this.Prepare(ketId: KetId, graph: QuantumGraph) =
+            let ctx =
+                { allocations = Map.empty
+                  state = []
+                  graph = graph }
 
-            match u with
-            | U.Prepare q ->
-                eval_quantum evalCtx q
-                ==> fun (value, graph) ->
-                        match value with
-                        | Value.KetId ket ->
-                            let ctx =
-                                { allocations = Map.empty
-                                  state = []
-                                  graph = graph }
-
-                            prepare ctx ket
-                            ==> fun ctx -> (Value.Universe(Universe(ctx.state, ctx.allocations.[ket])), graph) |> Ok
-                        | _ -> "" |> Error
-            | U.Var id ->
-                match evalCtx.heap.TryFind id with
-                | Some(Value.Universe u) -> (Value.Universe u, evalCtx.graph) |> Ok
-                | Some err -> $"Invalid variable: {err}. Expecting universe." |> Error
-                | None -> $"Variable {id} not found in heap." |> Error
-            | U.Block(stmts, body) -> eval_stmts evalCtx stmts ==> fun evalCtx -> (this :> QPU).Prepare(body, evalCtx)
-            | U.CallMethod(method, args) -> eval_callmethod evalCtx (method, args)
+            prepare ctx ketId
+            ==> fun ctx' -> Universe(ctx'.state, ctx'.allocations.[ketId]) :> IUniverse |> Ok

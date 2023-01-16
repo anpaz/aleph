@@ -3,7 +3,6 @@ namespace aleph.runtime.qpu.qsharp
 open Microsoft.Quantum.Simulation.Core
 open aleph.qsharp
 
-open aleph.parser.ast.typed
 open aleph.runtime.Eval
 
 type QuantumState = universe.Universe
@@ -53,7 +52,7 @@ module Convert =
             Tuple(result |> Seq.map one |> Seq.toList)
 
     let toQArray register =
-        match register  with
+        match register with
         | One n -> QArray<register.Register>(n)
         | Many m -> QArray<register.Register>(m)
 
@@ -67,7 +66,10 @@ type Universe(sim: IOperationFactory, state: QuantumState, register: QuantumRegi
         match value with
         | Some v -> v
         | None ->
-            let sample = universe.Sample.Run(sim, state, register |> Convert.toQArray).Result |> Convert.toValue
+            let sample =
+                universe.Sample.Run(sim, state, register |> Convert.toQArray).Result
+                |> Convert.toValue
+
             value <- Some sample
             sample
 
@@ -92,15 +94,14 @@ type Processor(sim: IOperationFactory) =
                 match ctx.graph.[k] with
                 | KetExpression.Literal size -> prepare_literal ctx size
                 | KetExpression.Join ketIds -> prepare_join ctx ketIds
-                | KetExpression.Project(ketId, idx) -> prepare_project ctx (ketId, idx)
-                | KetExpression.Map(ketId, lambda) -> prepare_map ctx (ketId, lambda)
-                | KetExpression.Filter(ketId, filterId) -> prepare_filter ctx (ketId, filterId)
+                | KetExpression.Project (ketId, idx) -> prepare_project ctx (ketId, idx)
+                | KetExpression.Map (ketId, lambda) -> prepare_map ctx (ketId, lambda)
+                | KetExpression.Filter (ketId, filterId) -> prepare_filter ctx (ketId, filterId)
 
                 ==> fun (ctx', register) -> { ctx' with allocations = ctx'.allocations.Add(k, register) } |> Ok
 
     and prepare_literal ctx size =
-        ket.All.Run(sim, size |> int64, ctx.state).Result
-        |> qsharp_result ctx
+        ket.All.Run(sim, size |> int64, ctx.state).Result |> qsharp_result ctx
 
     and prepare_join ctx (ketIds: KetId list) =
         // prepare all elements in the join so they are allocated in the state:
@@ -150,84 +151,66 @@ type Processor(sim: IOperationFactory) =
 
     and map_constant ctx value =
         let value = value |> Convert.toQValue
-        ket.Constant.Run(sim, value, ctx.state).Result
-        |> qsharp_result ctx
+        ket.Constant.Run(sim, value, ctx.state).Result |> qsharp_result ctx
 
     and map_unary ctx (ketId, lambda) =
         match ctx.allocations.[ketId] with
-        | QuantumRegister.One l ->
-            lambda(sim, l, ctx.state).Result
-            |> qsharp_result ctx
+        | QuantumRegister.One l -> lambda(sim, l, ctx.state).Result |> qsharp_result ctx
         | err -> $"Invalid ket for unary operation: {ketId} points to columns {err}." |> Error
 
     and map_binary ctx (ketId, lambda) =
         match ctx.allocations.[ketId] with
-        | QuantumRegister.Many [ l; r ] ->
-            lambda(sim, l, r, ctx.state).Result
-            |> qsharp_result ctx
-        | err ->
-            $"Invalid ket for binary expression: {ketId} points to columns {err}."
-            |> Error
+        | QuantumRegister.Many [ l; r ] -> lambda(sim, l, r, ctx.state).Result |> qsharp_result ctx
+        | err -> $"Invalid ket for binary expression: {ketId} points to columns {err}." |> Error
 
     and map_in ctx (ketId, v) =
         let values = v |> Convert.toQSet
         let registers = ctx.allocations.[ketId] |> Convert.toQArray
-        ket.InSet.Run(sim, values, registers, ctx.state).Result
-        |> qsharp_result ctx
+        ket.InSet.Run(sim, values, registers, ctx.state).Result |> qsharp_result ctx
 
     and map_if ctx ketId =
         match ctx.allocations.[ketId] with
-        | QuantumRegister.Many [ c; t; e ] ->
-            ket.If.Run(sim, c, t, e, ctx.state).Result
-            |> qsharp_result ctx
-        | err ->
-            $"Invalid ket for if expression: {ketId} points to columns {err}."
-            |> Error
+        | QuantumRegister.Many [ c; t; e ] -> ket.If.Run(sim, c, t, e, ctx.state).Result |> qsharp_result ctx
+        | err -> $"Invalid ket for if expression: {ketId} points to columns {err}." |> Error
 
     and prepare_filter ctx (ketId, filterId) =
         prepare ctx ketId
         ==> fun ctx ->
                 prepare ctx filterId
                 ==> fun ctx ->
-                    match  ctx.allocations.[filterId] with
-                    | QuantumRegister.One f ->
-                        let u = ket.Filter.Run(sim, f, ctx.state).Result
-                        ({ ctx with state = u }, ctx.allocations.[ketId]) |> Ok
-                    | err -> $"Invalid filter ketId. Pointing to {err}" |> Error
+                        match ctx.allocations.[filterId] with
+                        | QuantumRegister.One f ->
+                            let u = ket.Filter.Run(sim, f, ctx.state).Result
+                            ({ ctx with state = u }, ctx.allocations.[ketId]) |> Ok
+                        | err -> $"Invalid filter ketId. Pointing to {err}" |> Error
 
     and qsharp_result ctx value =
         let struct (u, r) = value
-        let r = if r.Length = 1 then QuantumRegister.One r.[0] else QuantumRegister.Many (r.ToArray() |> Array.toList)
+
+        let r =
+            if r.Length = 1 then
+                QuantumRegister.One r.[0]
+            else
+                QuantumRegister.Many(r.ToArray() |> Array.toList)
+
         ({ ctx with state = u }, r) |> Ok
 
     interface QPU with
-        member this.Measure(universe: IUniverse, evalCtx: EvalContext) =
+        (*
+            Measure works by sampling the universe:
+        *)
+        member this.Measure(universe: IUniverse) =
             let u = universe :?> Universe
-            (u.Sample(), evalCtx.graph) |> Ok
+            u.Sample() |> Ok
 
-        member this.Prepare(u, evalCtx) =
-            assert (evalCtx.qpu = this)
+        (*
+            Prepares a Quantum Universe from the given universe expression
+         *)
+        member this.Prepare(ketId: KetId, graph: QuantumGraph) =
+            let ctx =
+                { allocations = Map.empty
+                  state = universe.BigBang.Run(sim).Result
+                  graph = graph }
 
-            match u with
-            | U.Prepare q ->
-                eval_quantum evalCtx q
-                ==> fun (ket, graph) ->
-                        match ket with
-                        | Value.KetId ket ->
-                            let ctx =
-                                { allocations = Map.empty
-                                  state = universe.BigBang.Run(sim).Result
-                                  graph = graph }
-
-                            prepare ctx ket
-                            ==> fun ctx -> (Value.Universe(Universe(sim, ctx.state, ctx.allocations.[ket])), graph) |> Ok
-                        | _ -> "" |> Error
-            | U.Var id ->
-                match evalCtx.heap.TryFind id with
-                | Some(Value.Universe u) -> (Value.Universe u, evalCtx.graph) |> Ok
-                | Some err -> $"Invalid variable: {err}. Expecting universe." |> Error
-                | None -> $"Variable {id} not found in heap." |> Error
-            | U.Block (stmts, body) ->
-                eval_stmts evalCtx stmts
-                ==> fun evalCtx -> (this :> QPU).Prepare(body, evalCtx)
-            | U.CallMethod (method, args) -> eval_callmethod evalCtx (method, args)
+            prepare ctx ketId
+            ==> fun ctx' -> Universe(sim, ctx'.state, ctx'.allocations.[ketId]) :> IUniverse |> Ok
