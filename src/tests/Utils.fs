@@ -41,10 +41,10 @@ module Utils =
 
     let measure (u, ctx) =
         let qpu = ctx.qpu
-        let m = qpu.Measure (u, ctx)
+        let m = qpu.Measure u
 
         match m with
-        | Ok (t, _) -> t
+        | Ok t -> t
         | Error msg ->
             printfn "u: %A" u
             Assert.AreEqual($"Expecting valid measurement.", $"Got Error msg: {msg}")
