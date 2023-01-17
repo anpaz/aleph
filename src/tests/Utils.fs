@@ -23,7 +23,7 @@ module Utils =
     //     | Error msg -> failwith msg
 
     let prepare (expr, ctx) =
-        match start (e.Prepare expr, ctx.qpu) with
+        match apply (e.Prepare expr, ctx.qpu) with
         | Ok (Universe universe, _) -> universe
         | Ok (v, _) ->
             printfn "e: %A" expr
@@ -68,7 +68,7 @@ module Utils =
         let ctx =
             { heap = Map.empty
               qpu = qpu
-              callerCtx = None }
+              graph = QuantumGraph.empty }
 
         let expr = Block(prelude, body)
 
@@ -103,3 +103,10 @@ module Utils =
             v2 <- sample ()
             Assert.IsTrue(i < 100)
             i <- i + 1
+
+    let verify_invalid_expression (prelude: Statement list, qpu:QPU) (expr, error) =
+        let block = e.Block(prelude, expr)
+
+        match apply (block, qpu) with
+        | Ok(v, _) -> Assert.AreEqual($"Expected error: {error}", $"Got Value: {v}")
+        | Error msg -> Assert.AreEqual(error, msg)

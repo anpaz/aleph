@@ -118,7 +118,7 @@ let program =
           )
 
           // let answers = all_colorings ~ is_valid : 2
-          Let("answers", Filter(Var "all_colorings", Var "is_valid", Int 0))
+          Let("answers", Filter(Var "all_colorings", Var "is_valid"))
 
           ],
         // |answers|

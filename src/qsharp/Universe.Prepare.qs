@@ -11,7 +11,7 @@ namespace aleph.qsharp.universe {
     open aleph.qsharp.register as r;
     open aleph.qsharp.universe as u;
 
-    operation Prepare(universe: Universe, qubits: Qubit[], maxTries: Int) : Unit {
+    operation Prepare(universe: Universe, qubits: Qubit[]) : Unit {
         // Identify literal qubits, these are the ones Grover is applied to:
         mutable literals = [];
         for r in u.GetRegisters(universe) {
@@ -40,18 +40,8 @@ namespace aleph.qsharp.universe {
 
             let oracle = _uber_oracle(u2, _, _);
 
-            // Repeat max number of times:
-            let depth = u.GetDepth(u2);
-            mutable count = 1;
-            repeat {
-                ResetAll(literals);
-                ApplyToEachA(H, literals);
-                grover.Apply(oracle, all, literals, depth);
-            }
-            until ((M(tracker) == One) or (depth == 0) or (count >= maxTries))
-            fixup {
-                set count = count + 1;
-            }
+            grover.Apply(oracle, all, literals);
+            Reset(tracker);
         }
 
         // Once the oracles have filtered the literals, apply the expressions once more

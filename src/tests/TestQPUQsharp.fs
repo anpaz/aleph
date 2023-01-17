@@ -15,7 +15,7 @@ open aleph.tests.Utils
 
 [<TestClass>]
 type TestQPUQsharp() =
-    member this.QPU = Processor(new SparseSimulator(), 3)
+    member this.QPU = Processor(new SparseSimulator())
 
     member this.Prelude = ClassicValueContext.Prelude
 
@@ -28,7 +28,6 @@ type TestQPUQsharp() =
             let v = Set(new Set<Value>(values)) |> toQSet
             let struct (u, o) = ket.Tuples.Run(sim, v, bigbang).Result
             printfn "Universe = %A" u
-            Assert.AreEqual(int64 (values.Length), u.depth)
             Assert.AreEqual(int64 qubits, u.width)
 
         [ [ Bool true ], BOOL_REGISTER_SIZE
@@ -58,8 +57,6 @@ type TestQPUQsharp() =
                 ) ]
 
         [
-          // |>
-          e.Ket(e.Set []), []
           //| false >
           e.Ket(e.Bool false), [ Bool false ]
           // | 1; 2; 3 >
@@ -96,6 +93,13 @@ type TestQPUQsharp() =
           e.Project(e.Var "k", e.Int 1), [ Bool true; Bool false ] ]
         |> List.iter (verify_expression (prelude, this.QPU))
 
+        [
+          // |@,0>
+          e.KetAll(e.Int 0), "All ket literals must have a size > 0, got 0"
+          // |>
+          e.Ket(e.Set []), "All ket literals require a non-empty set." ]
+        |> List.iter (verify_invalid_expression (prelude, this.QPU))
+
 
     [<TestMethod>]
     member this.TestJoinLiterals() =
@@ -113,7 +117,27 @@ type TestQPUQsharp() =
                 s.Let("all_1", e.KetAll(e.Int 2))
                 s.Let("all_2", e.KetAll(e.Int 2)) ]
 
-        [ e.Join(e.Ket(e.Set []), e.Ket(e.Set [])), []
+        [
+          // ( |@,2>, |@,1> )
+          e.Join(e.KetAll(e.Int 2), e.KetAll(e.Int 1)),
+          [ Tuple [ Int 0; Bool false ]
+            Tuple [ Int 0; Bool true ]
+            Tuple [ Int 1; Bool false ]
+            Tuple [ Int 1; Bool true ]
+            Tuple [ Int 2; Bool false ]
+            Tuple [ Int 2; Bool true ]
+            Tuple [ Int 3; Bool false ]
+            Tuple [ Int 3; Bool true ] ]
+            
+          // ( |@,2>, |true> )
+          e.Join(e.KetAll(e.Int 2), e.Ket (e.Bool true)),
+          [ Tuple [ Int 0; Bool true ]
+            Tuple [ Int 1; Bool true ]
+            Tuple [ Int 2; Bool true ]
+            Tuple [ Int 3; Bool true ] ]
+
+    //      // ( |>, |> )
+    //       e.Join(e.Ket(e.Set []), e.Ket(e.Set [])), []
           // (| false >, | true> )
           e.Join(e.Ket(e.Set [ e.Bool false ]), e.Ket(e.Set [ e.Bool true ])), [ Tuple [ Bool false; Bool true ] ]
           // Join (| 1; 2 >, | true >)
@@ -162,13 +186,12 @@ type TestQPUQsharp() =
           [ Int 1; Int 3 ]
           // let all_1, all_2 = |@,2>;
           // (all_1, all_2, all_1 == all_2)
-          Join(Join(Var "all_1", Var "all_2"), Equals(Var "all_1", Var "all_2")),
+          e.Join(e.Join(e.Var "all_1", e.Var "all_2"), e.Equals(e.Var "all_1", e.Var "all_2")),
           seq {
               for i in 0..15 do
                   for j in 0..15 -> Tuple [ Int i; Int j; Bool(i = j) ]
-          }
-          |> Seq.toList ]
-        |> List.iter (verify_expression (prelude, this.QPU))
+          } |> Seq.toList
+        ] |> List.iter (verify_expression (prelude, this.QPU))
 
 
     [<TestMethod>]
@@ -280,11 +303,11 @@ type TestQPUQsharp() =
 
         [
           // (Filter k1, k1.0)
-          e.Filter(e.Var "k1", e.Project(e.Var "k1", e.Int 0), e.Int 2),
+          e.Filter(e.Var "k1", e.Project(e.Var "k1", e.Int 0)),
           [ Tuple [ Bool true; Int 3; Int 0 ]; Tuple [ Bool true; Int 3; Int 3 ] ]
 
           // (Filter (k2, k3), k2 == k3)
-          e.Filter(e.Join(e.Var "k2", e.Var "k3"), e.Equals(e.Var "k2", e.Var "k3"), e.Int 8),
+          e.Filter(e.Join(e.Var "k2", e.Var "k3"), e.Equals(e.Var "k2", e.Var "k3")),
           [ Tuple [ Int 0; Int 0 ]
             Tuple [ Int 1; Int 1 ]
             Tuple [ Int 2; Int 2 ]
@@ -392,3 +415,4 @@ type TestQPUQsharp() =
             Tuple [ Int 3; Int 2 ]
             Tuple [ Int 3; Int 3 ] ] ]
         |> List.iter (verify_expression (prelude, this.QPU))
+

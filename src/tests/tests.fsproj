@@ -7,7 +7,7 @@
   <ItemGroup>
     <Compile Include="Utils.fs" />
     <Compile Include="TestTypecheck.fs" />
-    <Compile Include="TestEval.fs" />
+    <Compile Include="TestEvalClassicExpressions.fs" />
     <Compile Include="TestQPUClassic.fs" />
     <Compile Include="TestQPUQsharp.fs" />
     <Compile Include="Program.fs" />

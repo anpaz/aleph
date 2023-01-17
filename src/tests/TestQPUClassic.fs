@@ -7,6 +7,7 @@ open aleph.parser.TypeChecker
 open aleph.runtime.Eval
 
 open aleph.tests.Utils
+open aleph.runtime.qpu.classic
 
 [<TestClass>]
 (*
@@ -27,17 +28,19 @@ type TestQPUClassic() =
         [
           // | false >
           e.Ket(e.Bool false), [ [ Bool false ] ], [ 0 ]
+
+          // | false, true >
+          e.Ket(e.Set [ e.Bool false; e.Bool true ]), [ [ Bool false; Bool true ]; [ Bool true; Bool true ] ], [ 0 ]
+
           // | 0, 1, 2 >
-          e.Ket(e.Set [ e.Int 0; e.Int 1; e.Int 2 ]), [ [ Int 0 ]; [ Int 1 ]; [ Int 2 ] ], [ 0 ]
+          e.Ket(e.Set [ e.Int 0; e.Int 1; e.Int 2 ]),
+          [ [ Int 0; Bool true ]; [ Int 1; Bool true ]; [ Int 2; Bool true ] ],
+          [ 0 ]
           // | (0,0), (0,1), (1,1) >
-          e.Ket(
-              e.Set
-                  [ e.Tuple [ e.Int 0; e.Int 0 ]
-                    e.Tuple [ e.Int 0; e.Int 1 ]
-                    e.Tuple [ e.Int 1; e.Int 1 ] ]
-          ),
-          [ [ Int 0; Int 0 ]; [ Int 0; Int 1 ]; [ Int 1; Int 1 ] ],
+          e.Ket(e.Set [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 0; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 1 ] ]),
+          [ [ Int 0; Int 0; Bool true ]; [ Int 0; Int 1; Bool true ]; [ Int 1; Int 1; Bool true ] ],
           [ 0; 1 ]
+
           // | (0,0,0), (0,1,1), (1,1,0), (1,1,2) >.2
           e.Project(
               e.Ket(
@@ -49,16 +52,22 @@ type TestQPUClassic() =
               ),
               e.Int 2
           ),
-          [ [ Int 0; Int 0; Int 0 ]
-            [ Int 0; Int 1; Int 1 ]
-            [ Int 1; Int 1; Int 0 ]
-            [ Int 1; Int 1; Int 2 ] ],
+          [ [ Int 0; Int 0; Int 0; Bool true ]
+            [ Int 0; Int 1; Int 1; Bool true ]
+            [ Int 1; Int 1; Int 0; Bool true ]
+            [ Int 1; Int 1; Int 2; Bool true ] ],
           [ 2 ]
+
           // ( | 0, 1 >, | 1, 2 > )
           e.Join(e.Ket(e.Set [ e.Int 0; e.Int 1 ]), e.Ket(e.Set [ e.Int 1; e.Int 2 ])),
-          [ [ Int 0; Int 1 ]; [ Int 0; Int 2 ]; [ Int 1; Int 1 ]; [ Int 1; Int 2 ] ],
-          [ 0; 1 ]
-          e.KetAll(e.Int 3),
+          [ [ Int 0; Bool true; Int 1; Bool true ]
+            [ Int 0; Bool true; Int 2; Bool true ]
+            [ Int 1; Bool true; Int 1; Bool true ]
+            [ Int 1; Bool true; Int 2; Bool true ] ],
+          [ 0; 2 ]
+
+          // |@,3>
+          e.KetAll(e.Int 4),
           [ [ Int 0 ]
             [ Int 1 ]
             [ Int 2 ]
@@ -66,16 +75,68 @@ type TestQPUClassic() =
             [ Int 4 ]
             [ Int 5 ]
             [ Int 6 ]
-            [ Int 7 ] ],
+            [ Int 7 ]
+            [ Int 8 ]
+            [ Int 9 ]
+            [ Int 10 ]
+            [ Int 11 ]
+            [ Int 12 ]
+            [ Int 13 ]
+            [ Int 14 ]
+            [ Int 15 ] ],
           [ 0 ]
-          e.Join(e.Ket(e.Set [ e.Tuple [ e.Int 0; e.Int -6 ] ]), e.KetAll(e.Int 2)),
-          [ [ Int 0; Int -6; Int 0 ]
-            [ Int 0; Int -6; Int 1 ]
-            [ Int 0; Int -6; Int 2 ]
-            [ Int 0; Int -6; Int 3 ] ],
-          [ 0; 1; 2 ] ]
+          // (|@,2>, |@,1>)
+          e.Join(e.KetAll(e.Int 2), e.KetAll(e.Int 1)),
+          [ [ Int 0; Bool false ]
+            [ Int 0; Bool true ]
+            [ Int 1; Bool false ]
+            [ Int 1; Bool true ]
+            [ Int 2; Bool false ]
+            [ Int 2; Bool true ]
+            [ Int 3; Bool false ]
+            [ Int 3; Bool true ] ],
+          [ 0; 1 ]
+          // (|@,2>, |@,1>)[1]
+          e.Project(e.Join(e.KetAll(e.Int 2), e.KetAll(e.Int 1)), e.Int 1),
+          [ [ Int 0; Bool false ]
+            [ Int 0; Bool true ]
+            [ Int 1; Bool false ]
+            [ Int 1; Bool true ]
+            [ Int 2; Bool false ]
+            [ Int 2; Bool true ]
+            [ Int 3; Bool false ]
+            [ Int 3; Bool true ] ],
+          [ 1 ]
+          // (|@,2>, |@,1>)[1]
+          e.Project(e.Join(e.KetAll(e.Int 2), e.KetAll(e.Int 1)), e.Int 0),
+          [ [ Int 0; Bool false ]
+            [ Int 0; Bool true ]
+            [ Int 1; Bool false ]
+            [ Int 1; Bool true ]
+            [ Int 2; Bool false ]
+            [ Int 2; Bool true ]
+            [ Int 3; Bool false ]
+            [ Int 3; Bool true ] ],
+          [ 0 ]
+          // let x = |@,2>; (x, x)
+          e.Block([ s.Let("x", e.KetAll(e.Int 2)); s.Let("y", e.KetAll(e.Int 1)) ], e.Join(e.Var "y", e.Var "y")),
+          [ [ Bool false ]; [ Bool true ] ],
+          [ 0; 0 ]
+          // (|(0, 6)>, |@, 2>)
+          e.Join(e.Ket(e.Set [ e.Tuple [ e.Int 0; e.Int 6 ] ]), e.KetAll(e.Int 2)),
+          [ [ Int 0; Int 6; Bool true; Int 0 ]
+            [ Int 0; Int 6; Bool true; Int 1 ]
+            [ Int 0; Int 6; Bool true; Int 2 ]
+            [ Int 0; Int 6; Bool true; Int 3 ] ],
+          [ 0; 1; 3 ] ]
         |> List.iter (this.TestExpression prelude)
 
+        [
+          // |@,0>
+          e.KetAll(e.Int 0), "All ket literals must have a size > 0, got 0"
+          // |>
+          e.Ket(e.Set []), "All ket literals require a non-empty set." ]
+        |> List.iter (verify_invalid_expression (prelude, this.QPU))
 
     [<TestMethod>]
     member this.TestAddMultiply() =
@@ -85,71 +146,69 @@ type TestQPUClassic() =
                     "k1",
                     e.Ket(
                         e.Set
-                            [ e.Tuple [ e.Int 0; e.Int 0 ]
-                              e.Tuple [ e.Int 0; e.Int 1 ]
-                              e.Tuple [ e.Int 1; e.Int 1 ] ]
+                            [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 0; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 1 ] ]
                     )
                 ) ]
 
         [
           // k1.0 + k1.1
           e.Add(e.Project(e.Var "k1", e.Int 0), e.Project(e.Var "k1", e.Int 1)),
-          [ [ Int 0; Int 0; Int 0 ]; [ Int 0; Int 1; Int 1 ]; [ Int 1; Int 1; Int 2 ] ],
-          [ 2 ]
+          [ [ Int 0; Int 0; Bool true; Int 0 ]; [ Int 0; Int 1; Bool true; Int 1 ]; [ Int 1; Int 1; Bool true; Int 2 ] ],
+          [ 3 ]
           // k1.0 + 1
           e.Add(e.Project(e.Var "k1", e.Int 0), e.Int 1),
-          [ [ Int 0; Int 0; Int 1; Int 1 ]
-            [ Int 0; Int 1; Int 1; Int 1 ]
-            [ Int 1; Int 1; Int 1; Int 2 ] ],
-          [ 3 ]
+          [ [ Int 0; Int 0; Bool true; Int 1; Int 1 ]
+            [ Int 0; Int 1; Bool true; Int 1; Int 1 ]
+            [ Int 1; Int 1; Bool true; Int 1; Int 2 ] ],
+          [ 4 ]
           // k1.0 * 5
           e.Multiply(e.Project(e.Var "k1", e.Int 0), e.Int 5),
-          [ [ Int 0; Int 0; Int 5; Int 0 ]
-            [ Int 0; Int 1; Int 5; Int 0 ]
-            [ Int 1; Int 1; Int 5; Int 5 ] ],
-          [ 3 ]
+          [ [ Int 0; Int 0; Bool true; Int 5; Int 0 ]
+            [ Int 0; Int 1; Bool true; Int 5; Int 0 ]
+            [ Int 1; Int 1; Bool true; Int 5; Int 5 ] ],
+          [ 4 ]
           // k1.0 + | 1, 2, 3 >
           e.Add(e.Project(e.Var "k1", e.Int 1), e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ])),
-          [ [ Int 0; Int 0; Int 1; Int 1 ]
-            [ Int 0; Int 0; Int 2; Int 2 ]
-            [ Int 0; Int 0; Int 3; Int 3 ]
-            [ Int 0; Int 1; Int 1; Int 2 ]
-            [ Int 0; Int 1; Int 2; Int 3 ]
-            [ Int 0; Int 1; Int 3; Int 4 ]
-            [ Int 1; Int 1; Int 1; Int 2 ]
-            [ Int 1; Int 1; Int 2; Int 3 ]
-            [ Int 1; Int 1; Int 3; Int 4 ] ],
-          [ 3 ]
+          [ [ Int 0; Int 0; Bool true; Int 1; Bool true; Int 1 ]
+            [ Int 0; Int 0; Bool true; Int 2; Bool true; Int 2 ]
+            [ Int 0; Int 0; Bool true; Int 3; Bool true; Int 3 ]
+            [ Int 0; Int 1; Bool true; Int 1; Bool true; Int 2 ]
+            [ Int 0; Int 1; Bool true; Int 2; Bool true; Int 3 ]
+            [ Int 0; Int 1; Bool true; Int 3; Bool true; Int 4 ]
+            [ Int 1; Int 1; Bool true; Int 1; Bool true; Int 2 ]
+            [ Int 1; Int 1; Bool true; Int 2; Bool true; Int 3 ]
+            [ Int 1; Int 1; Bool true; Int 3; Bool true; Int 4 ] ],
+          [ 5 ]
           // Join (k1.0, k1.1 + | 1, 2, 3 >)
           e.Join(
               e.Project(e.Var "k1", e.Int 0),
               e.Add(e.Project(e.Var "k1", e.Int 1), e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ]))
           ),
-          [ [ Int 0; Int 0; Int 1; Int 1 ]
-            [ Int 0; Int 0; Int 2; Int 2 ]
-            [ Int 0; Int 0; Int 3; Int 3 ]
-            [ Int 0; Int 1; Int 1; Int 2 ]
-            [ Int 0; Int 1; Int 2; Int 3 ]
-            [ Int 0; Int 1; Int 3; Int 4 ]
-            [ Int 1; Int 1; Int 1; Int 2 ]
-            [ Int 1; Int 1; Int 2; Int 3 ]
-            [ Int 1; Int 1; Int 3; Int 4 ] ],
-          [ 0; 3 ]
+          [ [ Int 0; Int 0; Bool true; Int 1; Bool true; Int 1 ]
+            [ Int 0; Int 0; Bool true; Int 2; Bool true; Int 2 ]
+            [ Int 0; Int 0; Bool true; Int 3; Bool true; Int 3 ]
+            [ Int 0; Int 1; Bool true; Int 1; Bool true; Int 2 ]
+            [ Int 0; Int 1; Bool true; Int 2; Bool true; Int 3 ]
+            [ Int 0; Int 1; Bool true; Int 3; Bool true; Int 4 ]
+            [ Int 1; Int 1; Bool true; Int 1; Bool true; Int 2 ]
+            [ Int 1; Int 1; Bool true; Int 2; Bool true; Int 3 ]
+            [ Int 1; Int 1; Bool true; Int 3; Bool true; Int 4 ] ],
+          [ 0; 5 ]
           // Join (k1.0, k1.1 * | 1, 2, 3 >)
           e.Join(
               e.Project(e.Var "k1", e.Int 0),
               e.Multiply(e.Project(e.Var "k1", e.Int 1), e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ]))
           ),
-          [ [ Int 0; Int 0; Int 1; Int 0 ]
-            [ Int 0; Int 0; Int 2; Int 0 ]
-            [ Int 0; Int 0; Int 3; Int 0 ]
-            [ Int 0; Int 1; Int 1; Int 1 ]
-            [ Int 0; Int 1; Int 2; Int 2 ]
-            [ Int 0; Int 1; Int 3; Int 3 ]
-            [ Int 1; Int 1; Int 1; Int 1 ]
-            [ Int 1; Int 1; Int 2; Int 2 ]
-            [ Int 1; Int 1; Int 3; Int 3 ] ],
-          [ 0; 3 ] ]
+          [ [ Int 0; Int 0; Bool true; Int 1; Bool true; Int 0 ]
+            [ Int 0; Int 0; Bool true; Int 2; Bool true; Int 0 ]
+            [ Int 0; Int 0; Bool true; Int 3; Bool true; Int 0 ]
+            [ Int 0; Int 1; Bool true; Int 1; Bool true; Int 1 ]
+            [ Int 0; Int 1; Bool true; Int 2; Bool true; Int 2 ]
+            [ Int 0; Int 1; Bool true; Int 3; Bool true; Int 3 ]
+            [ Int 1; Int 1; Bool true; Int 1; Bool true; Int 1 ]
+            [ Int 1; Int 1; Bool true; Int 2; Bool true; Int 2 ]
+            [ Int 1; Int 1; Bool true; Int 3; Bool true; Int 3 ] ],
+          [ 0; 5 ] ]
         |> List.iter (this.TestExpression prelude)
 
     [<TestMethod>]
@@ -160,9 +219,7 @@ type TestQPUClassic() =
                     "k1",
                     e.Ket(
                         e.Set
-                            [ e.Tuple [ e.Int 0; e.Int 0 ]
-                              e.Tuple [ e.Int 0; e.Int 1 ]
-                              e.Tuple [ e.Int 1; e.Int 1 ] ]
+                            [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 0; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 1 ] ]
                     )
                 )
                 s.Let("k2", e.Ket(e.Set [ e.Tuple [ e.Int 1 ]; e.Tuple [ e.Int 3 ] ])) ]
@@ -173,49 +230,51 @@ type TestQPUClassic() =
           // let x = false
           // (x, y)
           e.Block(
-              [ s.Let("x", e.Ket(e.Int 10))
-                s.Let("y", e.Var "x")
-                s.Let("x", e.Ket(e.Bool false)) ],
+              [ s.Let("x", e.Ket(e.Int 10)); s.Let("y", e.Var "x"); s.Let("x", e.Ket(e.Bool false)) ],
               e.Join(e.Var "x", e.Var "y")
           ),
           [ [ Bool false; Int 10 ] ],
           [ 0; 1 ]
 
           // Join (k1, k1)
-          e.Join(e.Var "k1", e.Var "k1"), [ [ Int 0; Int 0 ]; [ Int 0; Int 1 ]; [ Int 1; Int 1 ] ], [ 0; 1; 0; 1 ]
+          e.Join(e.Var "k1", e.Var "k1"),
+          [ [ Int 0; Int 0; Bool true ]; [ Int 0; Int 1; Bool true ]; [ Int 1; Int 1; Bool true ] ],
+          [ 0; 1; 0; 1 ]
+
           // Join (k1, k2)
           e.Join(e.Var "k1", e.Var "k2"),
-          [ [ Int 0; Int 0; Int 1 ]
-            [ Int 0; Int 0; Int 3 ]
-            [ Int 0; Int 1; Int 1 ]
-            [ Int 0; Int 1; Int 3 ]
-            [ Int 1; Int 1; Int 1 ]
-            [ Int 1; Int 1; Int 3 ] ],
-          [ 0; 1; 2 ]
+          [ [ Int 0; Int 0; Bool true; Int 1; Bool true ]
+            [ Int 0; Int 0; Bool true; Int 3; Bool true ]
+            [ Int 0; Int 1; Bool true; Int 1; Bool true ]
+            [ Int 0; Int 1; Bool true; Int 3; Bool true ]
+            [ Int 1; Int 1; Bool true; Int 1; Bool true ]
+            [ Int 1; Int 1; Bool true; Int 3; Bool true ] ],
+          [ 0; 1; 3 ]
+
           // (Join k1, |true, false>)
           e.Join(e.Var "k1", e.Ket(e.Set [ e.Bool true; e.Bool false ])),
-          [ [ Int 0; Int 0; Bool false ]
-            [ Int 0; Int 0; Bool true ]
-            [ Int 0; Int 1; Bool false ]
-            [ Int 0; Int 1; Bool true ]
-            [ Int 1; Int 1; Bool false ]
-            [ Int 1; Int 1; Bool true ] ],
-          [ 0; 1; 2 ]
+          [ [ Int 0; Int 0; Bool true; Bool false; Bool true ]
+            [ Int 0; Int 0; Bool true; Bool true; Bool true ]
+            [ Int 0; Int 1; Bool true; Bool false; Bool true ]
+            [ Int 0; Int 1; Bool true; Bool true; Bool true ]
+            [ Int 1; Int 1; Bool true; Bool false; Bool true ]
+            [ Int 1; Int 1; Bool true; Bool true; Bool true ] ],
+          [ 0; 1; 3 ]
+
           // let e1 = k1.1 + 10
           // let e2 = k2 + 10
           // (Join k1, e2 == e1 )
           e.Block(
-              [ Let("e1", e.Add(e.Project(e.Var "k1", e.Int 1), e.Int 10))
-                Let("e2", e.Add(e.Var "k2", e.Int 10)) ],
+              [ Let("e1", e.Add(e.Project(e.Var "k1", e.Int 1), e.Int 10)); Let("e2", e.Add(e.Var "k2", e.Int 10)) ],
               e.Join(e.Var "k1", e.Equals(e.Var "e2", e.Var "e1"))
           ),
-          [ [ Int 0; Int 0; Int 1; Int 10; Int 11; Int 10; Int 10; Bool false ]
-            [ Int 0; Int 0; Int 3; Int 10; Int 13; Int 10; Int 10; Bool false ]
-            [ Int 0; Int 1; Int 1; Int 10; Int 11; Int 10; Int 11; Bool true ]
-            [ Int 0; Int 1; Int 3; Int 10; Int 13; Int 10; Int 11; Bool false ]
-            [ Int 1; Int 1; Int 1; Int 10; Int 11; Int 10; Int 11; Bool true ]
-            [ Int 1; Int 1; Int 3; Int 10; Int 13; Int 10; Int 11; Bool false ] ],
-          [ 0; 1; 7 ]
+          [ [ Int 0; Int 0; Bool true; Int 1; Bool true; Int 10; Int 11; Int 10; Int 10; Bool false ]
+            [ Int 0; Int 0; Bool true; Int 3; Bool true; Int 10; Int 13; Int 10; Int 10; Bool false ]
+            [ Int 0; Int 1; Bool true; Int 1; Bool true; Int 10; Int 11; Int 10; Int 11; Bool true ]
+            [ Int 0; Int 1; Bool true; Int 3; Bool true; Int 10; Int 13; Int 10; Int 11; Bool false ]
+            [ Int 1; Int 1; Bool true; Int 1; Bool true; Int 10; Int 11; Int 10; Int 11; Bool true ]
+            [ Int 1; Int 1; Bool true; Int 3; Bool true; Int 10; Int 13; Int 10; Int 11; Bool false ] ],
+          [ 0; 1; 9 ]
 
 
           // let alpha = |3,5>
@@ -238,9 +297,9 @@ type TestQPUClassic() =
                 ) ],
               e.Join(e.Var "alpha", e.Var "x")
           ),
-          [ [ Int 3; Int 10; Int 30; Int 20; Int 600 ]
-            [ Int 5; Int 10; Int 50; Int 20; Int 1000 ] ],
-          [ 0; 2; 4 ]
+          [ [ Int 3; Bool true; Int 10; Int 30; Int 20; Int 600 ]
+            [ Int 5; Bool true; Int 10; Int 50; Int 20; Int 1000 ] ],
+          [ 0; 3; 5 ]
 
           ]
         |> List.iter (this.TestExpression prelude)
@@ -254,21 +313,19 @@ type TestQPUClassic() =
                     "k1",
                     e.Ket(
                         e.Set
-                            [ e.Tuple [ e.Int 0; e.Int 0 ]
-                              e.Tuple [ e.Int 0; e.Int 1 ]
-                              e.Tuple [ e.Int 1; e.Int 1 ] ]
+                            [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 0; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 1 ] ]
                     )
                 ) ]
 
         [
           // k1.0 + k1.[0 + 1]
           e.Add(e.Project(e.Var "k1", e.Int 0), e.Project(e.Var "k1", e.Add(e.Int 0, e.Int 1))),
-          [ [ Int 0; Int 0; Int 0 ]; [ Int 0; Int 1; Int 1 ]; [ Int 1; Int 1; Int 2 ] ],
-          [ 2 ]
+          [ [ Int 0; Int 0; Bool true; Int 0 ]; [ Int 0; Int 1; Bool true; Int 1 ]; [ Int 1; Int 1; Bool true; Int 2 ] ],
+          [ 3 ]
           // k1.0 + k1.[0 + 3]        // Index is modular, so 3 == 1
           e.Add(e.Project(e.Var "k1", e.Int 0), e.Project(e.Var "k1", e.Add(e.Int 0, e.Int 3))),
-          [ [ Int 0; Int 0; Int 0 ]; [ Int 0; Int 1; Int 1 ]; [ Int 1; Int 1; Int 2 ] ],
-          [ 2 ] ]
+          [ [ Int 0; Int 0; Bool true; Int 0 ]; [ Int 0; Int 1; Bool true; Int 1 ]; [ Int 1; Int 1; Bool true; Int 2 ] ],
+          [ 3 ] ]
         |> List.iter (this.TestExpression prelude)
 
     [<TestMethod>]
@@ -279,9 +336,7 @@ type TestQPUClassic() =
                     "k1",
                     e.Ket(
                         e.Set
-                            [ e.Tuple [ e.Int 0; e.Int 0 ]
-                              e.Tuple [ e.Int 0; e.Int 1 ]
-                              e.Tuple [ e.Int 1; e.Int 1 ] ]
+                            [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 0; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 1 ] ]
                     )
                 )
                 s.Let("k2", e.Ket(e.Set [ e.Tuple [ e.Int 2 ]; e.Tuple [ e.Int 3 ] ])) ]
@@ -293,10 +348,10 @@ type TestQPUClassic() =
               e.Project(e.Var "k1", e.Int 1),
               e.Int 42
           ),
-          [ [ Int 0; Int 0; Bool true; Int 42; Int 0 ]
-            [ Int 0; Int 1; Bool false; Int 42; Int 42 ]
-            [ Int 1; Int 1; Bool true; Int 42; Int 1 ] ],
-          [ 4 ] ]
+          [ [ Int 0; Int 0; Bool true; Bool true; Int 42; Int 0 ]
+            [ Int 0; Int 1; Bool true; Bool false; Int 42; Int 42 ]
+            [ Int 1; Int 1; Bool true; Bool true; Int 42; Int 1 ] ],
+          [ 5 ] ]
         |> List.iter (this.TestExpression prelude)
 
     [<TestMethod>]
@@ -307,9 +362,7 @@ type TestQPUClassic() =
                     "k1",
                     e.Ket(
                         e.Set
-                            [ e.Tuple [ e.Int 0; e.Int 0 ]
-                              e.Tuple [ e.Int 0; e.Int 1 ]
-                              e.Tuple [ e.Int 1; e.Int 1 ] ]
+                            [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 0; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 1 ] ]
                     )
                 )
                 s.Let("k2", e.Ket(e.Set [ e.Tuple [ e.Int 2 ]; e.Tuple [ e.Int 3 ] ])) ]
@@ -317,7 +370,7 @@ type TestQPUClassic() =
         [
           // if true then k1.1 else 42
           e.If(e.Bool true, e.Project(e.Var "k1", e.Int 1), e.Int 42),
-          [ [ Int 0; Int 0 ]; [ Int 0; Int 1 ]; [ Int 1; Int 1 ] ],
+          [ [ Int 0; Int 0; Bool true ]; [ Int 0; Int 1; Bool true ]; [ Int 1; Int 1; Bool true ] ],
           [ 1 ]
           // if false then k1.1 else 42
           e.If(e.Bool false, e.Project(e.Var "k1", e.Int 1), e.Int 42), [ [ Int 42 ] ], [ 0 ] ]
@@ -332,9 +385,7 @@ type TestQPUClassic() =
                     "k1",
                     e.Ket(
                         e.Set
-                            [ e.Tuple [ e.Int 0; e.Int 0 ]
-                              e.Tuple [ e.Int 0; e.Int 1 ]
-                              e.Tuple [ e.Int 1; e.Int 1 ] ]
+                            [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 0; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 1 ] ]
                     )
                 )
                 s.Let("k2", e.Ket(e.Set [ e.Tuple [ e.Int 2 ]; e.Tuple [ e.Int 3 ] ])) ]
@@ -342,17 +393,20 @@ type TestQPUClassic() =
         [
           // k1.1 == 1
           e.Equals(e.Project(e.Var "k1", e.Int 1), e.Int 1),
-          [ [ Int 0; Int 0; Int 1; Bool false ]
-            [ Int 0; Int 1; Int 1; Bool true ]
-            [ Int 1; Int 1; Int 1; Bool true ] ],
-          [ 3 ]
+          [ [ Int 0; Int 0; Bool true; Int 1; Bool false ]
+            [ Int 0; Int 1; Bool true; Int 1; Bool true ]
+            [ Int 1; Int 1; Bool true; Int 1; Bool true ] ],
+          [ 4 ]
           // (Filter k1, k1.1 == 1, 2)
-          e.Filter(e.Var "k1", e.Equals(e.Project(e.Var "k1", e.Int 1), e.Int 1), e.Int 2),
-          [ [ Int 0; Int 1; Int 1; Bool true ]; [ Int 1; Int 1; Int 1; Bool true ] ],
+          e.Filter(e.Var "k1", e.Equals(e.Project(e.Var "k1", e.Int 1), e.Int 1)),
+          [ [ Int 0; Int 1; Bool true; Int 1; Bool true ]; [ Int 1; Int 1; Bool true; Int 1; Bool true ] ],
           [ 0; 1 ]
           // (Filter k1, k1.0 + k1.1 == 1)
-          e.Filter(e.Var "k1", e.Equals(e.Add(e.Project(e.Var "k1", e.Int 0), e.Project(e.Var "k1", e.Int 1)), e.Int 1), e.Int 2),
-          [ [ Int 0; Int 1; Int 1; Int 1; Bool true ] ],
+          e.Filter(
+              e.Var "k1",
+              e.Equals(e.Add(e.Project(e.Var "k1", e.Int 0), e.Project(e.Var "k1", e.Int 1)), e.Int 1)
+          ),
+          [ [ Int 0; Int 1; Bool true; Int 1; Int 1; Bool true ] ],
           [ 0; 1 ]
           // (Filter k1.0, k1.1 + | 1, 2, 3 > == |2, 4> )
           e.Filter(
@@ -360,14 +414,13 @@ type TestQPUClassic() =
               e.Equals(
                   e.Add(e.Project(e.Var "k1", e.Int 1), e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ])),
                   e.Ket(e.Set [ e.Int 2; e.Int 4 ])
-              ),
-              e.Int 2
+              )
           ),
-          [ [ Int 0; Int 0; Int 2; Int 2; Int 2; Bool true ]
-            [ Int 0; Int 1; Int 1; Int 2; Int 2; Bool true ]
-            [ Int 0; Int 1; Int 3; Int 4; Int 4; Bool true ]
-            [ Int 1; Int 1; Int 1; Int 2; Int 2; Bool true ]
-            [ Int 1; Int 1; Int 3; Int 4; Int 4; Bool true ] ],
+          [ [ Int 0; Int 0; Bool true; Int 2; Bool true; Int 2; Int 2; Bool true; Bool true ]
+            [ Int 0; Int 1; Bool true; Int 1; Bool true; Int 2; Int 2; Bool true; Bool true ]
+            [ Int 0; Int 1; Bool true; Int 3; Bool true; Int 4; Int 4; Bool true; Bool true ]
+            [ Int 1; Int 1; Bool true; Int 1; Bool true; Int 2; Int 2; Bool true; Bool true ]
+            [ Int 1; Int 1; Bool true; Int 3; Bool true; Int 4; Int 4; Bool true; Bool true ] ],
           [ 1 ] ]
         |> List.iter (this.TestExpression prelude)
 
@@ -390,31 +443,31 @@ type TestQPUClassic() =
           [
             // Looks like because they are set, they are ordered differently from inputs:
             // this might be problematic for tests...
-            [ Int 0; Bool false ]
-            [ Int 0; Bool true ]
-            [ Int 1; Bool true ] ],
+            [ Int 0; Bool false; Bool true ]
+            [ Int 0; Bool true; Bool true ]
+            [ Int 1; Bool true; Bool true ] ],
           [ 0; 1 ]
 
           // not k.1
           e.Not(e.Project(e.Var "k", e.Int 1)),
-          [ [ Int 0; Bool false; Bool true ]
-            [ Int 0; Bool true; Bool false ]
-            [ Int 1; Bool true; Bool false ] ],
-          [ 2 ]
+          [ [ Int 0; Bool false; Bool true; Bool true ]
+            [ Int 0; Bool true; Bool true; Bool false ]
+            [ Int 1; Bool true; Bool true; Bool false ] ],
+          [ 3 ]
 
           // (false or k.1)
           e.Or(e.Bool false, e.Project(e.Var "k", e.Int 1)),
-          [ [ Bool false; Int 0; Bool false; Bool false ]
-            [ Bool false; Int 0; Bool true; Bool true ]
-            [ Bool false; Int 1; Bool true; Bool true ] ],
-          [ 3 ]
+          [ [ Bool false; Int 0; Bool false; Bool true; Bool false ]
+            [ Bool false; Int 0; Bool true; Bool true; Bool true ]
+            [ Bool false; Int 1; Bool true; Bool true; Bool true ] ],
+          [ 4 ]
 
           // not (k.0 == 0 and k.1)
           e.Not(e.And(e.Equals(e.Project(e.Var "k", e.Int 0), e.Int 0), e.Project(e.Var "k", e.Int 1))),
-          [ [ Int 0; Bool false; Int 0; Bool true; Bool false; Bool true ]
-            [ Int 0; Bool true; Int 0; Bool true; Bool true; Bool false ]
-            [ Int 1; Bool true; Int 0; Bool false; Bool false; Bool true ] ],
-          [ 5 ] ]
+          [ [ Int 0; Bool false; Bool true; Int 0; Bool true; Bool false; Bool true ]
+            [ Int 0; Bool true; Bool true; Int 0; Bool true; Bool true; Bool false ]
+            [ Int 1; Bool true; Bool true; Int 0; Bool false; Bool false; Bool true ] ],
+          [ 6 ] ]
         |> List.iter (this.TestExpression prelude)
 
 
@@ -436,7 +489,7 @@ type TestQPUClassic() =
                 ) ],
               e.CallMethod(e.Var "colors", [])
           ),
-          [ [ Int 1 ]; [ Int 2 ]; [ Int 3 ] ],
+          [ [ Int 1; Bool true ]; [ Int 2; Bool true ]; [ Int 3; Bool true ] ],
           [ 0 ]
           // let colors() = |1,2,3>
           // ( colors(), colors() )
@@ -451,16 +504,16 @@ type TestQPUClassic() =
                 ) ],
               e.Join(e.CallMethod(e.Var "colors", []), e.CallMethod(e.Var "colors", []))
           ),
-          [ [ Int 1; Int 1 ]
-            [ Int 1; Int 2 ]
-            [ Int 1; Int 3 ]
-            [ Int 2; Int 1 ]
-            [ Int 2; Int 2 ]
-            [ Int 2; Int 3 ]
-            [ Int 3; Int 1 ]
-            [ Int 3; Int 2 ]
-            [ Int 3; Int 3 ] ],
-          [ 0; 1 ]
+          [ [ Int 1; Bool true; Int 1; Bool true ]
+            [ Int 1; Bool true; Int 2; Bool true ]
+            [ Int 1; Bool true; Int 3; Bool true ]
+            [ Int 2; Bool true; Int 1; Bool true ]
+            [ Int 2; Bool true; Int 2; Bool true ]
+            [ Int 2; Bool true; Int 3; Bool true ]
+            [ Int 3; Bool true; Int 1; Bool true ]
+            [ Int 3; Bool true; Int 2; Bool true ]
+            [ Int 3; Bool true; Int 3; Bool true ] ],
+          [ 0; 2 ]
           // let k1 = |0,1>
           // let add_one(k: Ket<Int>) = k + 1
           // add_one(k1)
@@ -476,8 +529,8 @@ type TestQPUClassic() =
                 ) ],
               e.CallMethod(e.Var "add_one", [ e.Var "k1" ])
           ),
-          [ [ Int 0; Int 1; Int 1 ]; [ Int 1; Int 1; Int 2 ] ],
-          [ 2 ]
+          [ [ Int 0; Bool true; Int 1; Int 1 ]; [ Int 1; Bool true; Int 1; Int 2 ] ],
+          [ 3 ]
           // let k = |0,1>
           // let add_one(k: Ket<Int>) = k + 1
           // let k = add_one(k)
@@ -495,8 +548,8 @@ type TestQPUClassic() =
                 Let("k", e.CallMethod(e.Var "add_one", [ e.Var "k" ])) ],
               e.Var "k"
           ),
-          [ [ Int 0; Int 1; Int 1 ]; [ Int 1; Int 1; Int 2 ] ],
-          [ 2 ]
+          [ [ Int 0; Bool true; Int 1; Int 1 ]; [ Int 1; Bool true; Int 1; Int 2 ] ],
+          [ 3 ]
           // let k1 = |0,1>
           // let add_one(k: Ket<Int>) = k + 1
           // let k2 = add_one(k1)
@@ -516,8 +569,8 @@ type TestQPUClassic() =
                 Let("k1", e.Ket(e.Set [ e.Int 2; e.Int 3 ])) ],
               e.Var "k2"
           ),
-          [ [ Int 0; Int 1; Int 1 ]; [ Int 1; Int 1; Int 2 ] ],
-          [ 2 ]
+          [ [ Int 0; Bool true; Int 1; Int 1 ]; [ Int 1; Bool true; Int 1; Int 2 ] ],
+          [ 3 ]
           // let prepare_bell(a: int, b: int) = Prepare( |(a,a), (b,b)> )
           // prepare_bell(2, i1)
           e.Block(
@@ -534,7 +587,7 @@ type TestQPUClassic() =
                 ) ],
               e.CallMethod(e.Var "prepare_bell", [ e.Int 2; e.Var "i1" ])
           ),
-          [ [ Int 1; Int 1 ]; [ Int 2; Int 2 ] ],
+          [ [ Int 1; Int 1; Bool true ]; [ Int 2; Int 2; Bool true ] ],
           [ 0; 1 ] ]
         |> List.iter (this.TestExpression prelude)
 
@@ -552,9 +605,9 @@ type TestQPUClassic() =
                     )
                 ) ]
 
-        [ e.Ket(e.Set []), []
+        [
           // Filter (k, k.0 == 2)
-          e.Filter(e.Var "k", e.Equals(e.Project(e.Var "k", e.Int 0), e.Int 2), e.Int 3), []
+          e.Filter(e.Var "k", e.Equals(e.Project(e.Var "k", e.Int 0), e.Int 2)), []
           // k
           e.Var "k",
           [
@@ -618,7 +671,7 @@ type TestQPUClassic() =
         // If it is not already a Prepare expression, wrap in Prepare...
         let body =
             match aleph.parser.TypeChecker.start (e.Block(prelude, expr)) with
-            | Ok (result, _) ->
+            | Ok(result, _) ->
                 match result with
                 | typed.E.Universe _ -> expr
                 | _ -> e.Prepare expr
@@ -629,25 +682,23 @@ type TestQPUClassic() =
 
         let block = e.Block(prelude, body)
 
-        match start (block, this.QPU) with
-        | Ok (Universe universe, ctx) ->
-            let universe = universe :?> aleph.runtime.qpu.classic.Universe
+        let columns =
+            match columns with
+            | [ c ] -> ColumnIndex.One c
+            | many -> ColumnIndex.Many many
+
+        match apply (block, this.QPU) with
+        | Ok(Universe universe, ctx) ->
+            let universe = universe :?> Universe
             let state' = universe.State
             let columns' = universe.Columns
             printfn "columns: %A\nmemory: %A\n" columns' state'
             Assert.AreEqual(state, state')
             Assert.AreEqual(columns, columns')
-        | Ok (v, _) ->
+        | Ok(v, _) ->
             printfn "e: %A" expr
             Assert.AreEqual($"Expecting Universe value.", $"Got {v}")
         | Error msg ->
             printfn "e: %A" expr
             Assert.AreEqual($"Expecting valid expression.", $"Got Error msg: {msg}")
 
-
-    member this.TestInvalidExpression (prelude: Statement list) (expr, error) =
-        let block = e.Block(prelude, expr)
-
-        match start (block, this.QPU) with
-        | Ok (v, _) -> Assert.AreEqual($"Expected error: {error}", $"Got Value: {v}")
-        | Error msg -> Assert.AreEqual(error, msg)

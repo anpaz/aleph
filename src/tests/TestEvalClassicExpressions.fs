@@ -14,8 +14,7 @@ module ClassicValueContext =
         { new QPU with
             member this.Measure(arg1: IUniverse) : Result<Value, string> = failwith "Not Implemented"
 
-            member this.Prepare(arg1: U, arg2: EvalContext) : Result<(Value * EvalContext), string> =
-                failwith "Not Implemented" }
+            member this.Prepare(ketId: KetId, graph: QuantumGraph) : Result<IUniverse, string> = failwith "Not Implemented" }
 
     let Prelude =
         [ s.Let("i1", e.Int 1)
@@ -34,12 +33,12 @@ module ClassicValueContext =
 [<TestClass>]
 type TestEval() =
 
-    member this.TestExpression stmts (expr, v) =
+    member this.TestExpression prelude (expr, v) =
         printfn "e: %A" expr
 
-        let block = e.Block(stmts, expr)
+        let block = e.Block(prelude, expr)
 
-        match aleph.runtime.Eval.start (block, ClassicValueContext.NoQPU) with
+        match aleph.runtime.Eval.apply (block, ClassicValueContext.NoQPU) with
         | Ok (v', _) -> Assert.AreEqual(v, v')
         | Error msg -> Assert.AreEqual($"Expecting Value {v}", $"Got Error msg: {msg}")
 
@@ -48,7 +47,7 @@ type TestEval() =
 
         let block = e.Block(stmts, expr)
 
-        match aleph.runtime.Eval.start (block, ClassicValueContext.NoQPU) with
+        match aleph.runtime.Eval.apply (block, ClassicValueContext.NoQPU) with
         | Ok (v, _) -> Assert.AreEqual($"Expected error: {error}", $"Got Value: {v}")
         | Error msg -> Assert.AreEqual(error, msg)
 
@@ -58,8 +57,8 @@ type TestEval() =
 
         let emptyCtx: EvalContext =
             { heap = Map.empty
-              qpu = ClassicValueContext.NoQPU
-              callerCtx = None }
+              graph = QuantumGraph.empty
+              qpu = ClassicValueContext.NoQPU }
 
         [
           // false
@@ -87,7 +86,7 @@ type TestEval() =
           )
           // { 1..5 }
           e.Range(e.Int 1, e.Int 5), Value.Set(Set.ofList [ Int 1; Int 2; Int 3; Int 4 ])
-          // (a: Int) -> a + 1
+          // function (a: Int) -> a + 1
           e.Method(arguments = [ "a", Type.Int ], returns = Type.Int, body = (e.Add(e.Var "a", e.Int 1))),
           Value.Method
               { Args = [ "a" ]
@@ -532,7 +531,7 @@ type TestEval() =
           //          let elem = Element(set)
           //          let rest = Remove(elem, set)
           //          elem + sum(rest)
-          // sum( 1 .. 10)
+          // sum( 1 .. 10 )
           e.Block(
               [ s.Let(
                     "sum",

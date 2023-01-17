@@ -6,6 +6,6 @@ namespace aleph.qsharp.universe {
     open aleph.qsharp.log as log;
 
     function BigBang(): Universe {
-        return Universe(1, 0, [], [], []);
+        return Universe(0, [], [], []);
     }
 }

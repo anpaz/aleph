@@ -137,7 +137,7 @@ let program =
 
           // Filter out only those colorings that are valid:
           // let answers = all_colorings | is_valid : 2
-          Let("answers", Filter(Var "all_colorings", Var "is_valid", Int 2)) ],
+          Let("answers", Filter(Var "all_colorings", Var "is_valid")) ],
 
         // |`answers`|
         Sample(Var "answers")

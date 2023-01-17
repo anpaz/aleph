@@ -39,7 +39,7 @@ type Expression =
 
     | CallMethod of method: Expression * arguments: Expression list
 
-    | Filter of ket: Expression * cond: Expression * hint: Expression
+    | Filter of ket: Expression * cond: Expression
     | Sample of ket: Expression
     | Prepare of universe: Expression
 

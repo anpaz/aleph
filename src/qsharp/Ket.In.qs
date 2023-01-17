@@ -1,5 +1,6 @@
 namespace aleph.qsharp.ket {
 
+    open Microsoft.Quantum.Canon;
     open Microsoft.Quantum.Convert;
     open Microsoft.Quantum.Intrinsic;
 
@@ -8,36 +9,36 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.value as v;
     open aleph.qsharp.log as log;
 
-    function Tuples(values: v.Value[][], old: u.Universe) : (u.Universe, r.Register[])
+    function InSet(values: v.Value[][], registers: r.Register[], old: u.Universe) : (u.Universe, r.Register[])
     {
-        let width = Length(values[0]);
+        let (output, u) = u.AddExpressionOutput(1, old);
+        let expr = _In_eval(values, registers, output, _);
+        let universe = u.AddExpression(expr, u);
 
-        // Add a literal for every item in the tuple
-        mutable u = old;
-        mutable outputs = [];
-        for i in 0..width-1 {
-            let (r_i, u_i) = u.AddLiteral(v.GetSize(values[0][i]), u);
-            set outputs = outputs + [r_i];
-            set u = u_i;
-        }
-
-        let start = u.GetWidth(old);
-        let end = u.GetWidth(u) - 1;
-        let oracle = _Tuples_oracle(values, outputs, start, end, _, _);
-        let universe = u.AddOracle(oracle, u);
-
-        log.Info($"Ket.Tuples::Init --> values: {values}, output: {outputs}");
-        return (universe, outputs);
+        log.Info($"Ket.In::Init --> values: {values}, registers: {registers}, output: {output}");
+        return (universe, [output]);
     }
 
-    operation _Tuples_oracle(
+    function get_controls (registers: r.Register[], all: Qubit[]) : Qubit[] {
+        mutable ctrls = [];
+
+        for r in registers {
+            set ctrls += all[r.GetRange(r)];
+        }
+        
+        return ctrls;
+    }
+
+    operation _In_eval(
         values: v.Value[][],
         registers: r.Register[],
-        first: Int,
-        last: Int,
-        all: Qubit[], target: Qubit) : Unit
+        answer: r.Register,
+        all: Qubit[]) : Unit
     is Adj + Ctl {
-        log.Debug($"Ket.Tuples::oracle: target:{target}, first:{first}, last:{last}");
+        log.Debug($"Ket.In::eval: registers:{registers}, answer:{answer}");
+
+        let ctrls = get_controls(registers, all);
+        let target = all[r.GetRange(answer)][0];
 
         for i in 0..Length(values) - 1 {
             within {
@@ -55,7 +56,6 @@ namespace aleph.qsharp.ket {
                 }
             }
             apply {
-                let ctrls = all[first..last];
                 Controlled X (ctrls, target);
             }
         }
