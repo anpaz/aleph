@@ -108,7 +108,7 @@ type TestTypecheck() =
 
         [ e.Tuple [ e.Var "foo" ], "Variable not found: foo"
           e.Tuple [ e.Var "i1"; e.Var "b1"; e.Var "m1" ],
-          "Invalid tuple element. Expected bool or int expression, got: Method ([], Int)" ]
+          "Invalid tuple element. Expected bool or int expression; got: Method ([], Int)" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
 
@@ -147,7 +147,7 @@ type TestTypecheck() =
 
         [ e.Set [ e.Var "foo" ], "Variable not found: foo"
           e.Set [ e.Var "i1"; e.Var "b1"; e.Var "m1" ],
-          "Invalid set element. Expected int, bool or tuple expression, got: Method ([], Int)"
+          "Invalid set element. Expected int, bool or tuple expression; got: Method ([], Int)"
           e.Set [ e.Int 4; e.Bool true ], "All elements in a set must be of the same type."
           e.Set [ e.Tuple [ e.Int 4; e.Bool true ]; e.Tuple [ e.Int 1; e.Int 2 ] ],
           "All elements in a set must be of the same type."
@@ -199,9 +199,9 @@ type TestTypecheck() =
 
         [
           // Element 4
-          e.Element(e.Int 4), "Element expects a Set, got: Int"
+          e.Element(e.Int 4), "Element expects a Set; got: Int"
           // Element 4
-          e.Count(e.Int 4), "Count expects a Set, got: Int"
+          e.Count(e.Int 4), "Count expects a Set; got: Int"
           // Append (false, [3])
           e.Append(e.Bool false, e.Set [ e.Int 10 ]), "Item to append must be of the same type as set."
           // Remove (false, [3])
@@ -234,9 +234,9 @@ type TestTypecheck() =
         |> List.iter (this.TestQuantumExpression ctx)
 
         [ e.And(e.Var "foo", e.Bool true), "Variable not found: foo"
-          e.And(e.Bool true, e.Int 23), "Boolean expressions require boolean arguments, got Bool == Int"
-          e.Or(e.Bool true, e.Int 23), "Boolean expressions require boolean arguments, got Bool == Int"
-          e.Not(e.Int 23), "Not must be applied to a boolean expression, got: Int" ]
+          e.And(e.Bool true, e.Int 23), "Expecting the type of the right expression to be: Bool; got: Int"
+          e.Or(e.Int 23, e.Bool true), "Expecting the type of the left expression to be: Bool; got: Int"
+          e.Not(e.Int 23), "Not must be applied to a boolean expression; got: Int" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
 
@@ -254,9 +254,9 @@ type TestTypecheck() =
 
         [
           // t1 .. 10: Invalid start type
-          e.Range(e.Var "t1", e.Int 0), "Start must be an int expression, got: Classic (Var \"t1\", Tuple [Bool; Int])"
+          e.Range(e.Var "t1", e.Int 0), "Start must be an int expression; got: Classic (Var \"t1\", Tuple [Bool; Int])"
           // 10 .. t1: Invalid start type
-          e.Range(e.Int 10, e.Var "t1"), "Stop must be an int expression, got: Classic (Var \"t1\", Tuple [Bool; Int])" ]
+          e.Range(e.Int 10, e.Var "t1"), "Stop must be an int expression; got: Classic (Var \"t1\", Tuple [Bool; Int])" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
 
@@ -411,7 +411,7 @@ type TestTypecheck() =
           e.KetAll(e.Var "i1"), QInt, Q.KetAll(C.Var "i1") ]
         |> List.iter (this.TestQuantumExpression ctx)
 
-        [ e.KetAll(e.Bool false), "Ket size must be an int expression, got: Classic (BoolLiteral false, Bool)" ]
+        [ e.KetAll(e.Bool false), "Ket size must be an int expression; got: Classic (BoolLiteral false, Bool)" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
 
@@ -426,9 +426,10 @@ type TestTypecheck() =
 
         [
           // No overloading:
-          e.Add(e.Bool true, e.Bool false), "Add can only be applied to int expressions"
-          e.Add(e.Int 1, e.Bool false), "Add can only be applied to int expressions"
-          e.Add(e.Tuple [ e.Int 1 ], e.Tuple [ e.Int 1 ]), "Add can only be applied to int expressions" ]
+          e.Add(e.Bool true, e.Bool false), "Expecting arguments: Int, Int; got: Bool; Bool"
+          e.Add(e.Int 1, e.Bool false), "Expecting the type of the right expression to be: Int; got: Bool"
+          e.Add(e.Bool true, e.Int 1), "Expecting the type of the left expression to be: Int; got: Bool"
+          e.Add(e.Tuple [ e.Int 1 ], e.Tuple [ e.Int 1 ]), "Expecting arguments: Int, Int; got: Tuple [Int]; Tuple [Int]" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
     [<TestMethod>]
@@ -456,7 +457,7 @@ type TestTypecheck() =
         [ e.Add(e.Ket(e.Set [ e.Bool true; e.Int 1 ]), e.Ket(e.Set [ e.Bool false; e.Int 2; e.Int 3 ])),
           "All elements in a set must be of the same type."
           e.Add(e.Ket(e.Set [ e.Bool true ]), e.Ket(e.Set [ e.Bool false ])),
-          "Quantum addition can only be applied to int Kets, got Ket [Bool] + Ket [Bool]" ]
+          "Expecting Ket arguments: Int, Int; got: Bool; Bool" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
 
@@ -472,11 +473,11 @@ type TestTypecheck() =
         [
           // No overloading:
           e.Equals(e.Bool true, e.Bool false),
-          "Expressions that compare values can only be applied to int operands, got: [Bool; Bool]"
+          "Expecting arguments: Int, Int; got: Bool; Bool"
           e.Equals(e.Int 1, e.Bool false),
-          "Expressions that compare values can only be applied to int operands, got: [Int; Bool]"
+          "Expecting the type of the right expression to be: Int; got: Bool"
           e.Equals(e.Tuple [ e.Int 1 ], e.Tuple [ e.Int 1 ]),
-          "Expressions that compare values can only be applied to int operands, got: [Tuple [Int]; Tuple [Int]]" ]
+          "Expecting arguments: Int, Int; got: Tuple [Int]; Tuple [Int]" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
     [<TestMethod>]
@@ -504,7 +505,7 @@ type TestTypecheck() =
         [ e.Equals(e.Ket(e.Set [ e.Bool true; e.Int 1 ]), e.Ket(e.Set [ e.Bool false; e.Int 2; e.Int 3 ])),
           "All elements in a set must be of the same type."
           e.Equals(e.Ket(e.Set [ e.Bool true ]), e.Ket(e.Set [ e.Bool false ])),
-          "Quantum expressions that compare values can only be applied to Ket Int operands, got: [Ket [Bool]; Ket [Bool]]" ]
+          "Expecting Ket arguments: Int, Int; got: Bool; Bool" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
     [<TestMethod>]
@@ -518,9 +519,9 @@ type TestTypecheck() =
 
         [
           // No overloading:
-          e.Multiply(e.Bool true, e.Bool false), "Multiply can only be applied to int expressions"
-          e.Multiply(e.Int 1, e.Bool false), "Multiply can only be applied to int expressions"
-          e.Multiply(e.Tuple [ e.Int 1 ], e.Tuple [ e.Int 1 ]), "Multiply can only be applied to int expressions" ]
+          e.Multiply(e.Bool true, e.Bool false), "Expecting arguments: Int, Int; got: Bool; Bool"
+          e.Multiply(e.Int 1, e.Bool false), "Expecting the type of the right expression to be: Int; got: Bool"
+          e.Multiply(e.Tuple [ e.Int 1 ], e.Tuple [ e.Int 1 ]), "Expecting arguments: Int, Int; got: Tuple [Int]; Tuple [Int]" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
     [<TestMethod>]
@@ -548,7 +549,7 @@ type TestTypecheck() =
         [ e.Multiply(e.Ket(e.Set [ e.Bool true; e.Int 1 ]), e.Ket(e.Set [ e.Bool false; e.Int 2; e.Int 3 ])),
           "All elements in a set must be of the same type."
           e.Multiply(e.Ket(e.Set [ e.Bool true ]), e.Ket(e.Set [ e.Bool false ])),
-          "Quantum multiplication can only be applied to int Kets" ]
+          "Expecting Ket arguments: Int, Int; got: Bool; Bool" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
 
@@ -564,9 +565,9 @@ type TestTypecheck() =
         |> List.iter (this.TestClassicExpression ctx)
 
         [ e.LessThanEquals(e.Bool true, e.Bool false),
-          "Expressions that compare values can only be applied to int operands, got: [Bool; Bool]"
+          "Expecting arguments: Int, Int; got: Bool; Bool"
           e.GreaterThan(e.Bool true, e.Bool false),
-          "Expressions that compare values can only be applied to int operands, got: [Bool; Bool]" ]
+          "Expecting arguments: Int, Int; got: Bool; Bool" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
 
@@ -668,7 +669,7 @@ type TestTypecheck() =
         |> List.iter (this.TestQuantumExpression ctx)
 
         [ e.Join(e.Bool true, e.Int 1),
-          "Join is only supported on tuples and kets, got: Classic (BoolLiteral true, Bool) , Classic (IntLiteral 1, Int)" ]
+          "Join is only supported on tuples and kets; got: Classic (BoolLiteral true, Bool) , Classic (IntLiteral 1, Int)" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
 
@@ -723,7 +724,7 @@ type TestTypecheck() =
           "Project is only supported on tuples and kets"
           // [1, 2, 3].[false]
           e.Project(e.Set [ Int 1; e.Int 2; Int 3 ], e.Bool false),
-          "Invalid projection index. Expected int expression, got: Classic (BoolLiteral false, Bool)" ]
+          "Invalid projection index. Expected int expression; got: Classic (BoolLiteral false, Bool)" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
 
@@ -799,7 +800,7 @@ type TestTypecheck() =
         [
           // { let a = 5 == false; a}
           e.Block([ s.Let("a", e.Equals(e.Int 5, e.Bool false)) ], e.Var "a"),
-          "Expressions that compare values can only be applied to int operands, got: [Int; Bool]"
+          "Expecting the type of the right expression to be: Int; got: Bool"
           // { let a = { let b = 2; b } b }
           e.Block([ s.Let("a", e.Block([ s.Let("b", e.Int 2) ], e.Var "b")) ], e.Var "b"), "Variable not found: b" ]
         |> List.iter (this.TestInvalidExpression ctx)
@@ -884,8 +885,8 @@ type TestTypecheck() =
         |> List.iter (this.TestQuantumExpression ctx)
 
         [ e.Filter(e.Tuple [ e.Int 1; e.Int 2 ], e.Equals(e.Project(e.Var "k2", e.Int 1), e.Bool true)),
-          "Filter argument must be a quantum ket, got: Tuple [Int; Int]"
-          e.Filter(e.Var "k2", e.Bool true), "Filter condition must be a quantum boolean expression, got: Bool" ]
+          "Filter argument must be a quantum ket; got: Tuple [Int; Int]"
+          e.Filter(e.Var "k2", e.Bool true), "Filter condition must be a quantum boolean expression; got: Bool" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
 
@@ -904,7 +905,7 @@ type TestTypecheck() =
           e.Sample(e.Prepare(e.Var "k2")), Type.Tuple [ Type.Int; Type.Bool ], C.Sample(U.Prepare(Q.Var "k2")) ]
         |> List.iter (this.TestClassicExpression ctx)
 
-        [ e.Sample(e.Tuple [ e.Int 1; e.Int 2 ]), "Sample argument must be a quantum universe, got: Tuple [Int; Int]" ]
+        [ e.Sample(e.Tuple [ e.Int 1; e.Int 2 ]), "Sample argument must be a quantum universe; got: Tuple [Int; Int]" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
 

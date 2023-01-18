@@ -184,7 +184,7 @@ type TestEval() =
         [
           // t1[t2[0]]
           e.Project(e.Var "t2", e.Project(e.Var "t2", e.Int 0)),
-          "Invalid projection index. Expected int expression, got: Classic (Project (Var \"t2\", 0), Bool)" ]
+          "Invalid projection index. Expected int expression; got: Classic (Project (Var \"t2\", 0), Bool)" ]
         |> List.iter (this.TestInvalidExpression prelude)
 
     [<TestMethod>]

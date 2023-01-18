@@ -52,32 +52,29 @@ module TypeChecker =
         | Expression.Var id -> typecheck_var (id, ctx)
         | Expression.Bool b -> typecheck_bool (b, ctx)
         | Expression.Int i -> typecheck_int (i, ctx)
+        | Expression.Method (arguments, returnType, body) -> typecheck_method (arguments, returnType, body, ctx)
         | Expression.Tuple values -> typecheck_tuple (values, ctx)
         | Expression.Set values -> typecheck_set (values, ctx)
 
-        | Expression.Not value -> typecheck_not (value, ctx)
-        | Expression.Or (left, right) -> (C.Or, Q.Or) |> typecheck_bool_expression (left, right, ctx)
-        | Expression.And (left, right) -> (C.And, Q.And) |> typecheck_bool_expression (left, right, ctx)
-
-        | Expression.Add (left, right) -> typecheck_add (left, right, ctx)
-        | Expression.Multiply (left, right) -> typecheck_multiply (left, right, ctx)
-
         | Expression.Range (start, stop) -> typecheck_range (start, stop, ctx)
 
-        | Expression.Method (arguments, returnType, body) -> typecheck_method (arguments, returnType, body, ctx)
+        | Expression.Not value -> typecheck_not (value, ctx)
+        | Expression.Or (left, right) -> typecheck_binary (left, right, Type.Bool, Type.Bool, Type.Bool, C.Or, Q.Or, ctx)
+        | Expression.And (left, right) -> typecheck_binary (left, right, Type.Bool, Type.Bool, Type.Bool, C.And, Q.And, ctx)
+        | Expression.Add (left, right) -> typecheck_binary (left, right, Type.Int, Type.Int, Type.Int, C.Add, Q.Add, ctx)
+        | Expression.Multiply (left, right) -> typecheck_binary (left, right, Type.Int, Type.Int, Type.Int, C.Multiply, Q.Multiply, ctx)
+        | Expression.Equals (left, right) -> typecheck_binary (left, right, Type.Int, Type.Int, Type.Bool, C.Equals, Q.Equals, ctx)
+        | Expression.LessThanEquals (left, right) -> typecheck_binary (left, right, Type.Int, Type.Int, Type.Bool, C.LessThanEqual, Q.LessThanEqual, ctx)
+        | Expression.GreaterThan (left, right) -> typecheck_binary (left, right, Type.Int, Type.Int, Type.Bool, C.GreaterThan, Q.GreaterThan, ctx)
 
         | Expression.Ket values -> typecheck_ket (values, ctx)
         | Expression.KetAll size -> typecheck_ketall (size, ctx)
 
         | Expression.CallMethod (method, args) -> typecheck_callmethod (method, args, ctx)
 
-        | Expression.Equals (left, right) -> typecheck_compare_ints_op (left, right, C.Equals, Q.Equals, ctx)
-        | Expression.LessThanEquals (left, right) -> typecheck_compare_ints_op (left, right, C.LessThanEqual, Q.LessThanEqual, ctx)
-        | Expression.GreaterThan (left, right) -> typecheck_compare_ints_op (left, right, C.GreaterThan, Q.GreaterThan, ctx)
-
         | Expression.Join (left, right) -> typecheck_join (left, right, ctx)
-
         | Expression.Project (value, index) -> typecheck_project (value, index, ctx)
+
         | Expression.Block (stmts, r) -> typecheck_block (stmts, r, ctx)
         | Expression.If (c, t, f) -> typecheck_if (c, t, f, ctx)
 
@@ -128,9 +125,9 @@ module TypeChecker =
             match e with
             | Classic (_, Type.Bool)
             | Classic (_, Type.Int) -> e |> Ok
-            | Classic (e, t) -> msg + $"Expected bool or int expression, got: {t}" |> Error
-            | Quantum (e, t) -> msg + $"Expected bool or int expression, got: {t}" |> Error
-            | Universe (e, t) -> msg + $"Expected bool or int expression, got: {t}" |> Error
+            | Classic (e, t) -> msg + $"Expected bool or int expression; got: {t}" |> Error
+            | Quantum (e, t) -> msg + $"Expected bool or int expression; got: {t}" |> Error
+            | Universe (e, t) -> msg + $"Expected bool or int expression; got: {t}" |> Error
 
         typecheck_expression_list (is_bool_or_int "Invalid tuple element. ") (values, ctx)
         ==> fun (values, ctx) ->
@@ -143,9 +140,9 @@ module TypeChecker =
             | Classic (_, Type.Int _)
             | Classic (_, Type.Bool _)
             | Classic (_, Type.Tuple _) -> e |> Ok
-            | Classic (e, t) -> msg + $"Expected int, bool or tuple expression, got: {t}" |> Error
-            | Quantum (e, t) -> msg + $"Expected int, bool or tuple expression, got: {t}" |> Error
-            | Universe (e, t) -> msg + $"Expected int, bool or tuple expression, got: {t}" |> Error
+            | Classic (e, t) -> msg + $"Expected int, bool or tuple expression; got: {t}" |> Error
+            | Quantum (e, t) -> msg + $"Expected int, bool or tuple expression; got: {t}" |> Error
+            | Universe (e, t) -> msg + $"Expected int, bool or tuple expression; got: {t}" |> Error
 
         match values with
         | [] -> (Classic(C.Set [], Type.Set(Type.Tuple [])), ctx) |> Ok
@@ -162,37 +159,6 @@ module TypeChecker =
                             else
                                 "All elements in a set must be of the same type." |> Error
 
-    and typecheck_bool_expression
-        (left: Expression, right: Expression, ctx)
-        (classic: C * C -> C, quantum: Q * Q -> Q)
-        =
-        typecheck (left, ctx)
-        ==> fun (left, ctx) ->
-                typecheck (right, ctx)
-                ==> fun (right, ctx) ->
-                        match (left, right) with
-                        | Classic _, Classic _ -> typecheck_bool_classic (left, right, classic, ctx)
-                        | _ -> typecheck_bool_quantum (left, right, quantum, ctx)
-
-    and typecheck_bool_classic (left, right, op, ctx) =
-        match (left, right) with
-        | Classic (l, Type.Bool), Classic (r, Type.Bool) -> (Classic(op (l, r), Type.Bool), ctx) |> Ok
-        | Classic (_, lt), Classic (_, rt) ->
-            $"Boolean expressions require boolean arguments, got {lt} == {rt}" |> Error
-        | _ ->
-            assert false // we should never be here.
-            $"Expecting only classical expressions" |> Error
-
-    and typecheck_bool_quantum (left, right, op, ctx) =
-        make_q left
-        ==> fun (l, lt) ->
-                make_q right
-                ==> fun (r, rt) ->
-                        match (lt, rt) with
-                        | Type.Ket [ Type.Bool ], Type.Ket [ Type.Bool ] ->
-                            (Quantum(op (l, r), Type.Ket [ Type.Bool ]), ctx) |> Ok
-                        | lt, rt -> $"Boolean expressions require boolean arguments, got {lt} == {rt}" |> Error
-
 
     and typecheck_not (value, ctx) =
         typecheck (value, ctx)
@@ -200,9 +166,9 @@ module TypeChecker =
                 match value with
                 | Classic (v, Type.Bool) -> (Classic(C.Not v, Type.Bool), ctx) |> Ok
                 | Quantum (v, Type.Ket [ Type.Bool ]) -> (Quantum(Q.Not v, Type.Ket [ Type.Bool ]), ctx) |> Ok
-                | Classic (_, t) -> $"Not must be applied to a boolean expression, got: {t}" |> Error
-                | Quantum (_, t) -> $"Not must be applied to a boolean expression, got: {t}" |> Error
-                | Universe (_, t) -> $"Not must be applied to a boolean expression, got: {t}" |> Error
+                | Classic (_, t) -> $"Not must be applied to a boolean expression; got: {t}" |> Error
+                | Quantum (_, t) -> $"Not must be applied to a boolean expression; got: {t}" |> Error
+                | Universe (_, t) -> $"Not must be applied to a boolean expression; got: {t}" |> Error
 
     and typecheck_range (start, stop, ctx) =
         typecheck (start, ctx)
@@ -213,8 +179,8 @@ module TypeChecker =
                     ==> fun (stop, ctx) ->
                             match stop with
                             | Classic (stop, Type.Int) -> (Classic(C.Range(start, stop), Type.Set Type.Int), ctx) |> Ok
-                            | _ -> $"Stop must be an int expression, got: {stop}" |> Error
-                | _ -> $"Start must be an int expression, got: {start}" |> Error
+                            | _ -> $"Stop must be an int expression; got: {stop}" |> Error
+                | _ -> $"Start must be an int expression; got: {start}" |> Error
 
     and typecheck_method (arguments, returnType, body, ctx) =
         let ctx' =
@@ -237,84 +203,37 @@ module TypeChecker =
                         $"Method return type doesn't match signature. Expecting {returnType}, got {t}"
                         |> Error
 
-    and typecheck_add (left, right, ctx) =
+    and typecheck_binary (left, right, leftType, rightType, outType, op, qop, ctx) =
         typecheck (left, ctx)
         ==> fun (left, ctx) ->
                 typecheck (right, ctx)
                 ==> fun (right, ctx) ->
                         match (left, right) with
-                        | Classic _, Classic _ -> typecheck_add_classic (left, right, ctx)
-                        | _ -> typecheck_add_quantum (left, right, ctx)
+                        | Classic _, Classic _ -> typecheck_binary_classic (left, right, leftType, rightType, outType, op, ctx)
+                        | _ -> typecheck_binary_quantum (left, right, leftType, rightType, outType, qop, ctx)
 
-    and typecheck_add_classic (left, right, ctx) =
+    and typecheck_binary_classic (left, right, leftType, rightType, outType, op, ctx) =
         unzip_classic [ left; right ]
         ==> fun (values, types) ->
                 match (types) with
-                | [ Type.Int; Type.Int ] -> (Classic(C.Add(values.[0], values.[1]), Type.Int), ctx) |> Ok
-                | _ -> $"Add can only be applied to int expressions" |> Error
+                | [ l; r ] when l = leftType && r = rightType -> (Classic(op(values.[0], values.[1]), outType), ctx) |> Ok
+                | [ l; r ] when l = leftType -> $"Expecting the type of the right expression to be: {rightType}; got: {r}" |> Error
+                | [ l; r ] when r = rightType -> $"Expecting the type of the left expression to be: {leftType}; got: {l}" |> Error
+                | [ l; r ] -> $"Expecting arguments: {leftType}, {rightType}; got: {l}; {r}" |> Error
+                | err -> $"Invalid number of arguments: : {err}" |> Error
 
-    and typecheck_add_quantum (left, right, ctx) =
+    and typecheck_binary_quantum (left, right,  leftType, rightType, outType, qop, ctx) =
         make_q left
         ==> fun (l, lt) ->
                 make_q right
                 ==> fun (r, rt) ->
                         match (lt, rt) with
-                        | Type.Ket [ Type.Int ], Type.Ket [ Type.Int ] ->
-                            (Quantum(Q.Add(l, r), Type.Ket [ Type.Int ]), ctx) |> Ok
-                        | _ -> $"Quantum addition can only be applied to int Kets, got {lt} + {rt}" |> Error
-
-    and typecheck_multiply (left, right, ctx) =
-        typecheck (left, ctx)
-        ==> fun (left, ctx) ->
-                typecheck (right, ctx)
-                ==> fun (right, ctx) ->
-                        match (left, right) with
-                        | Classic _, Classic _ -> typecheck_multiply_classic (left, right, ctx)
-                        | _ -> typecheck_multiply_quantum (left, right, ctx)
-
-    and typecheck_multiply_classic (left, right, ctx) =
-        unzip_classic [ left; right ]
-        ==> fun (values, types) ->
-                match (types) with
-                | [ Type.Int; Type.Int ] -> (Classic(C.Multiply(values.[0], values.[1]), Type.Int), ctx) |> Ok
-                | _ -> $"Multiply can only be applied to int expressions" |> Error
-
-    and typecheck_multiply_quantum (left, right, ctx) =
-        make_q left
-        ==> fun (l, lt) ->
-                make_q right
-                ==> fun (r, rt) ->
-                        match (lt, rt) with
-                        | Type.Ket [ Type.Int ], Type.Ket [ Type.Int ] ->
-                            (Quantum(Q.Multiply(l, r), Type.Ket [ Type.Int ]), ctx) |> Ok
-                        | _ -> $"Quantum multiplication can only be applied to int Kets" |> Error
-
-
-    and typecheck_compare_ints_op (left, right, op, qop, ctx) =
-        typecheck (left, ctx)
-        ==> fun (left, ctx) ->
-                typecheck (right, ctx)
-                ==> fun (right, ctx) ->
-                        match (left, right) with
-                        | Classic _, Classic _ -> typecheck_compare_ints_classic (left, right, op, ctx)
-                        | _ -> typecheck_compare_ints_quantum (left, right, qop, ctx)
-
-    and typecheck_compare_ints_classic (left, right, op, ctx) =
-        unzip_classic [ left; right ]
-        ==> fun (values, types) ->
-                match (types) with
-                | [ Type.Int; Type.Int ] -> (Classic(op(values.[0], values.[1]), Type.Bool), ctx) |> Ok
-                | _ -> $"Expressions that compare values can only be applied to int operands, got: {types}" |> Error
-
-    and typecheck_compare_ints_quantum (left, right, qop, ctx) =
-        make_q left
-        ==> fun (l, lt) ->
-                make_q right
-                ==> fun (r, rt) ->
-                        match (lt, rt) with
-                        | Type.Ket [ Type.Int ], Type.Ket [ Type.Int ] ->
-                            (Quantum(qop(l, r), Type.Ket [ Type.Bool ]), ctx) |> Ok
-                        | lt, rt -> $"Quantum expressions that compare values can only be applied to Ket Int operands, got: [{lt}; {rt}]" |> Error
+                        | Type.Ket [ lt ], Type.Ket [ rt ] when lt = leftType && rt = rightType ->
+                            (Quantum(qop(l, r), Type.Ket [ outType ]), ctx) |> Ok
+                        | Type.Ket [ lt ], Type.Ket [ rt ] when lt = leftType -> $"Expecting the type of the right Ket expression to be {rightType}, got {rt}" |> Error
+                        | Type.Ket [ lt ], Type.Ket [ rt ] when rt = rightType -> $"Expecting the type of the left Ket expression to be {leftType}, got {lt}" |> Error
+                        | Type.Ket [ lt ], Type.Ket [ rt ] -> $"Expecting Ket arguments: {leftType}, {rightType}; got: {lt}; {rt}" |> Error
+                        | err -> $"Invalid number of ket arguments: : {err}" |> Error
 
     and typecheck_join (left, right, ctx) =
         typecheck (left, ctx)
@@ -326,7 +245,7 @@ module TypeChecker =
                             (Classic(C.Join(left, right), Type.Tuple(lt @ rt)), ctx) |> Ok
                         | Quantum (left, Type.Ket lt), Quantum (right, Type.Ket rt) ->
                             (Quantum(Q.Join(left, right), Type.Ket(lt @ rt)), ctx) |> Ok
-                        | _ -> $"Join is only supported on tuples and kets, got: {left} , {right}" |> Error
+                        | _ -> $"Join is only supported on tuples and kets; got: {left} , {right}" |> Error
 
     and typecheck_callmethod (method, args, ctx) =
         let any_type e = e |> Ok
@@ -369,7 +288,7 @@ module TypeChecker =
         ==> fun (size, ctx) ->
                 match size with
                 | Classic (v, Type.Int) -> (Quantum(Q.KetAll v, Type.Ket [ Type.Int ]), ctx) |> Ok
-                | _ -> $"Ket size must be an int expression, got: {size}" |> Error
+                | _ -> $"Ket size must be an int expression; got: {size}" |> Error
 
     and typecheck_project (value, index, ctx) =
         // we received an int literal as index,
@@ -413,7 +332,7 @@ module TypeChecker =
                         match index with
                         | Classic ((C.IntLiteral i), Type.Int) -> use_project (value, i, ctx)
                         | Classic (i, Type.Int) -> use_index (value, i, ctx)
-                        | _ -> $"Invalid projection index. Expected int expression, got: {index}" |> Error
+                        | _ -> $"Invalid projection index. Expected int expression; got: {index}" |> Error
 
     and typecheck_block (stmts, r, ctx) =
         typecheck_statements (stmts, ctx)
@@ -478,18 +397,18 @@ module TypeChecker =
                         | Quantum (_, t)
                         | Classic (_, t)
                         | Universe (_, t) ->
-                            $"Filter condition must be a quantum boolean expression, got: {t}" |> Error
+                            $"Filter condition must be a quantum boolean expression; got: {t}" |> Error
                 | Classic (_, t)
-                | Universe (_, t) -> $"Filter argument must be a quantum ket, got: {t}" |> Error
+                | Universe (_, t) -> $"Filter argument must be a quantum ket; got: {t}" |> Error
 
     and typecheck_prepare (ket, ctx) =
         typecheck (ket, ctx)
         ==> fun (ket, ctx) ->
                 match ket with
                 | Quantum (ket, Type.Ket t) -> (Universe(U.Prepare ket, Type.Universe t), ctx) |> Ok
-                | Quantum (_, t) -> $"Prepare argument must be a quantum ket, got: {t}" |> Error
-                | Classic (_, t) -> $"Prepare argument must be a quantum ket, got: {t}" |> Error
-                | Universe (_, t) -> $"Prepare argument must be a quantum ket, got: {t}" |> Error
+                | Quantum (_, t) -> $"Prepare argument must be a quantum ket; got: {t}" |> Error
+                | Classic (_, t) -> $"Prepare argument must be a quantum ket; got: {t}" |> Error
+                | Universe (_, t) -> $"Prepare argument must be a quantum ket; got: {t}" |> Error
 
     and typecheck_sample (universe, ctx) =
         typecheck (universe, ctx)
@@ -497,18 +416,18 @@ module TypeChecker =
                 match universe with
                 | Universe (u, Type.Universe t) -> (Classic(C.Sample u, Type.Tuple t), ctx) |> Ok
                 | Quantum (k, Type.Ket t) -> (Classic(C.Sample (U.Prepare k), Type.Tuple t), ctx) |> Ok
-                | Universe (_, t) -> $"Sample argument must be a quantum universe, got: {t}" |> Error
-                | Quantum (_, t) -> $"Sample argument must be a quantum universe, got: {t}" |> Error
-                | Classic (_, t) -> $"Sample argument must be a quantum universe, got: {t}" |> Error
+                | Universe (_, t) -> $"Sample argument must be a quantum universe; got: {t}" |> Error
+                | Quantum (_, t) -> $"Sample argument must be a quantum universe; got: {t}" |> Error
+                | Classic (_, t) -> $"Sample argument must be a quantum universe; got: {t}" |> Error
 
     and typecheck_element (set, ctx) =
         typecheck (set, ctx)
         ==> fun (set, ctx) ->
                 match set with
                 | Classic (s, Type.Set t) -> (Classic(C.Element s, t), ctx) |> Ok
-                | Classic (_, t) -> $"Element expects a Set, got: {t}" |> Error
-                | Quantum (_, t) -> $"Element expects a Set, got: {t}" |> Error
-                | Universe (_, t) -> $"Element expects a Set, got: {t}" |> Error
+                | Classic (_, t) -> $"Element expects a Set; got: {t}" |> Error
+                | Quantum (_, t) -> $"Element expects a Set; got: {t}" |> Error
+                | Universe (_, t) -> $"Element expects a Set; got: {t}" |> Error
 
     and typecheck_append (item, set, ctx) =
         typecheck (item, ctx)
@@ -537,9 +456,9 @@ module TypeChecker =
         ==> fun (set, ctx) ->
                 match set with
                 | Classic (s, Type.Set _) -> (Classic(C.Count s, Type.Int), ctx) |> Ok
-                | Classic (_, t) -> $"Count expects a Set, got: {t}" |> Error
-                | Quantum (_, t) -> $"Count expects a Set, got: {t}" |> Error
-                | Universe (_, t) -> $"Count expects a Set, got: {t}" |> Error
+                | Classic (_, t) -> $"Count expects a Set; got: {t}" |> Error
+                | Quantum (_, t) -> $"Count expects a Set; got: {t}" |> Error
+                | Universe (_, t) -> $"Count expects a Set; got: {t}" |> Error
 
 
     and typecheck_statements (stmts, ctx) =
