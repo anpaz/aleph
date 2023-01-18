@@ -50,7 +50,6 @@ module Utils =
             Assert.AreEqual($"Expecting valid measurement.", $"Got Error msg: {msg}")
             Bool false // not reachable.
 
-
     let is_valid_answer (answers: Value list) (value: Value) =
         if answers.IsEmpty then
             true

@@ -56,8 +56,7 @@ type TestTypecheck() =
     member this.TestBoolInt() =
         let ctx = { heap = Map.empty; previousCtx = None }
 
-        [ e.Bool false, Type.Bool, C.BoolLiteral false
-          e.Int 5, Type.Int, C.IntLiteral 5 ]
+        [ e.Bool false, Type.Bool, C.BoolLiteral false; e.Int 5, Type.Int, C.IntLiteral 5 ]
         |> List.iter (this.TestClassicExpression ctx)
 
 
@@ -65,8 +64,7 @@ type TestTypecheck() =
     member this.TestVar() =
         let ctx = this.TypeContext
 
-        [ e.Var "i1", Type.Int, C.Var "i1"
-          e.Var "m1", Type.Method([], Type.Int), C.Var "m1" ]
+        [ e.Var "i1", Type.Int, C.Var "i1"; e.Var "m1", Type.Method([], Type.Int), C.Var "m1" ]
         |> List.iter (this.TestClassicExpression ctx)
 
         [ e.Var "qb1", QBool, Q.Var "qb1"; e.Var "k1", QInt, Q.Var "k1" ]
@@ -128,11 +126,7 @@ type TestTypecheck() =
           // [false, true, false, false]
           e.Set [ e.Bool false; e.Bool true; e.Bool false; e.Bool false ],
           Type.Set(Type.Bool),
-          C.Set
-              [ C.BoolLiteral false
-                C.BoolLiteral true
-                C.BoolLiteral false
-                C.BoolLiteral false ]
+          C.Set [ C.BoolLiteral false; C.BoolLiteral true; C.BoolLiteral false; C.BoolLiteral false ]
           // [(3,5)]
           e.Set [ e.Tuple [ e.Int 3; e.Int 5 ] ],
           Type.Set(Type.Tuple [ Type.Int; Type.Int ]),
@@ -176,11 +170,7 @@ type TestTypecheck() =
           // (Element [false, true, false, false])
           e.Set [ e.Bool false; e.Bool true; e.Bool false; e.Bool false ],
           Type.Set(Type.Bool),
-          C.Set
-              [ C.BoolLiteral false
-                C.BoolLiteral true
-                C.BoolLiteral false
-                C.BoolLiteral false ]
+          C.Set [ C.BoolLiteral false; C.BoolLiteral true; C.BoolLiteral false; C.BoolLiteral false ]
           // (Element [(3,5)])
           e.Element(e.Set [ e.Tuple [ e.Int 3; e.Int 5 ] ]),
           Type.Tuple [ Type.Int; Type.Int ],
@@ -240,7 +230,7 @@ type TestTypecheck() =
           // (qb1 or k2.1) and not | true >
           e.And(e.Or(e.Var "qb1", e.Project(e.Var "k2", e.Int 1)), e.Not(e.Ket(e.Bool true))),
           Type.Ket [ Type.Bool ],
-          Q.And(Q.Or(Q.Var "qb1", Q.Project(Q.Var "k2", 1)), (Q.Not(Q.Constant(C.BoolLiteral true )))) ]
+          Q.And(Q.Or(Q.Var "qb1", Q.Project(Q.Var "k2", 1)), (Q.Not(Q.Constant(C.BoolLiteral true)))) ]
         |> List.iter (this.TestQuantumExpression ctx)
 
         [ e.And(e.Var "foo", e.Bool true), "Variable not found: foo"
@@ -395,18 +385,12 @@ type TestTypecheck() =
           // |(1,2), (3,4)>
           e.Ket(e.Set [ e.Tuple [ e.Int 1; e.Int 2 ]; e.Tuple [ e.Int 3; e.Int 4 ] ]),
           Type.Ket [ Type.Int; Type.Int ],
-          Q.Ket(
-              C.Set
-                  [ C.Tuple [ C.IntLiteral 1; C.IntLiteral 2 ]
-                    C.Tuple [ C.IntLiteral 3; C.IntLiteral 4 ] ]
-          )
+          Q.Ket(C.Set [ C.Tuple [ C.IntLiteral 1; C.IntLiteral 2 ]; C.Tuple [ C.IntLiteral 3; C.IntLiteral 4 ] ])
           // |(1,false), (3,true)>
           e.Ket(e.Set [ e.Tuple [ e.Int 1; e.Bool false ]; e.Tuple [ e.Int 3; e.Bool true ] ]),
           Type.Ket [ Type.Int; Type.Bool ],
           Q.Ket(
-              C.Set
-                  [ C.Tuple [ C.IntLiteral 1; C.BoolLiteral false ]
-                    C.Tuple [ C.IntLiteral 3; C.BoolLiteral true ] ]
+              C.Set [ C.Tuple [ C.IntLiteral 1; C.BoolLiteral false ]; C.Tuple [ C.IntLiteral 3; C.BoolLiteral true ] ]
           ) ]
         |> List.iter (this.TestQuantumExpression ctx)
 
@@ -462,17 +446,11 @@ type TestTypecheck() =
           // 1 + |1, 2, 3>
           e.Add(e.Int 1, e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ])),
           Type.Ket [ Type.Int ],
-          Q.Add(
-              Q.Constant(C.IntLiteral 1),
-              Q.Ket(C.Set [ C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3 ])
-          )
+          Q.Add(Q.Constant(C.IntLiteral 1), Q.Ket(C.Set [ C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3 ]))
           // |1, 2, 3> + 1
           e.Add(e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ]), e.Int 1),
           Type.Ket [ Type.Int ],
-          Q.Add(
-              Q.Ket(C.Set [ C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3 ]),
-              Q.Constant(C.IntLiteral 1)
-          ) ]
+          Q.Add(Q.Ket(C.Set [ C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3 ]), Q.Constant(C.IntLiteral 1)) ]
         |> List.iter (this.TestQuantumExpression ctx)
 
         [ e.Add(e.Ket(e.Set [ e.Bool true; e.Int 1 ]), e.Ket(e.Set [ e.Bool false; e.Int 2; e.Int 3 ])),
@@ -493,9 +471,12 @@ type TestTypecheck() =
 
         [
           // No overloading:
-          e.Equals(e.Bool true, e.Bool false), "== can only be applied to int expressions"
-          e.Equals(e.Int 1, e.Bool false), "== can only be applied to int expressions"
-          e.Equals(e.Tuple [ e.Int 1 ], e.Tuple [ e.Int 1 ]), "== can only be applied to int expressions" ]
+          e.Equals(e.Bool true, e.Bool false),
+          "Expressions that compare values can only be applied to int operands, got: [Bool; Bool]"
+          e.Equals(e.Int 1, e.Bool false),
+          "Expressions that compare values can only be applied to int operands, got: [Int; Bool]"
+          e.Equals(e.Tuple [ e.Int 1 ], e.Tuple [ e.Int 1 ]),
+          "Expressions that compare values can only be applied to int operands, got: [Tuple [Int]; Tuple [Int]]" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
     [<TestMethod>]
@@ -513,23 +494,17 @@ type TestTypecheck() =
           // 1 = |1, 2, 3>
           e.Equals(e.Int 1, e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ])),
           Type.Ket [ Type.Bool ],
-          Q.Equals(
-              Q.Constant(C.IntLiteral 1),
-              Q.Ket(C.Set [ C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3 ])
-          )
+          Q.Equals(Q.Constant(C.IntLiteral 1), Q.Ket(C.Set [ C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3 ]))
           // |1, 2, 3> = 1
           e.Equals(e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ]), e.Int 1),
           Type.Ket [ Type.Bool ],
-          Q.Equals(
-              Q.Ket(C.Set [ C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3 ]),
-              Q.Constant(C.IntLiteral 1)
-          ) ]
+          Q.Equals(Q.Ket(C.Set [ C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3 ]), Q.Constant(C.IntLiteral 1)) ]
         |> List.iter (this.TestQuantumExpression ctx)
 
         [ e.Equals(e.Ket(e.Set [ e.Bool true; e.Int 1 ]), e.Ket(e.Set [ e.Bool false; e.Int 2; e.Int 3 ])),
           "All elements in a set must be of the same type."
           e.Equals(e.Ket(e.Set [ e.Bool true ]), e.Ket(e.Set [ e.Bool false ])),
-          "Quantum == can only be applied to int Kets" ]
+          "Quantum expressions that compare values can only be applied to Ket Int operands, got: [Ket [Bool]; Ket [Bool]]" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
     [<TestMethod>]
@@ -563,17 +538,11 @@ type TestTypecheck() =
           // 1 * |1, 2, 3>
           e.Multiply(e.Int 1, e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ])),
           Type.Ket [ Type.Int ],
-          Q.Multiply(
-              Q.Constant(C.IntLiteral 1),
-              Q.Ket(C.Set [ C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3 ])
-          )
+          Q.Multiply(Q.Constant(C.IntLiteral 1), Q.Ket(C.Set [ C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3 ]))
           // |1, 2, 3> * 1
           e.Multiply(e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ]), e.Int 1),
           Type.Ket [ Type.Int ],
-          Q.Multiply(
-              Q.Ket(C.Set [ C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3 ]),
-              Q.Constant(C.IntLiteral 1)
-          ) ]
+          Q.Multiply(Q.Ket(C.Set [ C.IntLiteral 1; C.IntLiteral 2; C.IntLiteral 3 ]), Q.Constant(C.IntLiteral 1)) ]
         |> List.iter (this.TestQuantumExpression ctx)
 
         [ e.Multiply(e.Ket(e.Set [ e.Bool true; e.Int 1 ]), e.Ket(e.Set [ e.Bool false; e.Int 2; e.Int 3 ])),
@@ -584,15 +553,20 @@ type TestTypecheck() =
 
 
     [<TestMethod>]
-    member this.TestLessThan() =
+    member this.TestCompareOps() =
         let ctx = this.TypeContext
 
         [
-          // 1 < 1
-          e.LessThan(e.Int 1, e.Int 1), Type.Bool, C.LessThan(C.IntLiteral 1, C.IntLiteral 1) ]
+          // 1 <= 1
+          e.LessThanEquals(e.Int 1, e.Int 1), Type.Bool, C.LessThanEqual(C.IntLiteral 1, C.IntLiteral 1)
+          // 1 > 1
+          e.GreaterThan(e.Int 1, e.Int 1), Type.Bool, C.GreaterThan(C.IntLiteral 1, C.IntLiteral 1) ]
         |> List.iter (this.TestClassicExpression ctx)
 
-        [ e.LessThan(e.Bool true, e.Bool false), "Both expressions for < must be int. Got Bool < Bool" ]
+        [ e.LessThanEquals(e.Bool true, e.Bool false),
+          "Expressions that compare values can only be applied to int operands, got: [Bool; Bool]"
+          e.GreaterThan(e.Bool true, e.Bool false),
+          "Expressions that compare values can only be applied to int operands, got: [Bool; Bool]" ]
         |> List.iter (this.TestInvalidExpression ctx)
 
 
@@ -720,9 +694,7 @@ type TestTypecheck() =
 
         [
           // |1>.0
-          e.Project(e.Ket(e.Set [ Int 1 ]), Int 0),
-          Type.Ket [ Type.Int ],
-          Q.Project(Q.Ket(C.Set [ C.IntLiteral 1 ]), 0)
+          e.Project(e.Ket(e.Set [ Int 1 ]), Int 0), Type.Ket [ Type.Int ], Q.Project(Q.Ket(C.Set [ C.IntLiteral 1 ]), 0)
           // k1.2  --> Note, index in projection is modular, so 2 == 0
           e.Project(e.Var "k1", Int 2), Type.Ket [ Type.Int ], Q.Project(Q.Var "k1", 0)
           // k2.1
@@ -783,9 +755,7 @@ type TestTypecheck() =
           )
           // { let a = 15; let b = a + 2; a = true; (a, b) }
           e.Block(
-              [ s.Let("a", e.Int 15)
-                s.Let("b", e.Add(e.Var "a", e.Int 2))
-                s.Let("a", e.Bool true) ],
+              [ s.Let("a", e.Int 15); s.Let("b", e.Add(e.Var "a", e.Int 2)); s.Let("a", e.Bool true) ],
               e.Tuple [ e.Var "a"; e.Var "b" ]
           ),
           Type.Tuple [ Type.Bool; Type.Int ],
@@ -797,8 +767,7 @@ type TestTypecheck() =
           )
           // { let a = 15; let b = { let a = true; a }; (a, b) }
           e.Block(
-              [ s.Let("a", e.Int 15)
-                s.Let("b", e.Block([ s.Let("a", e.Bool true) ], e.Var "a")) ],
+              [ s.Let("a", e.Int 15); s.Let("b", e.Block([ s.Let("a", e.Bool true) ], e.Var "a")) ],
               e.Tuple [ e.Var "a"; e.Var "b" ]
           ),
           Type.Tuple [ Type.Int; Type.Bool ],
@@ -830,7 +799,7 @@ type TestTypecheck() =
         [
           // { let a = 5 == false; a}
           e.Block([ s.Let("a", e.Equals(e.Int 5, e.Bool false)) ], e.Var "a"),
-          "== can only be applied to int expressions"
+          "Expressions that compare values can only be applied to int operands, got: [Int; Bool]"
           // { let a = { let b = 2; b } b }
           e.Block([ s.Let("a", e.Block([ s.Let("b", e.Int 2) ], e.Var "b")) ], e.Var "b"), "Variable not found: b" ]
         |> List.iter (this.TestInvalidExpression ctx)
@@ -875,13 +844,17 @@ type TestTypecheck() =
               Q.Ket(C.Set [ C.Tuple [ C.IntLiteral 0; C.IntLiteral 0 ] ])
           )
           // { if b1 or k1.1 then (0, 1) else (0, 0) }
-          e.If (e.Or (e.Var "b1", e.Project (e.Var "k2", e.Int 1)), e.Tuple [e.Int 0; e.Int 1], e.Tuple [e.Int 0; e.Int 0]),
-              Type.Ket [Type.Int; Type.Int],
-              Q.IfQuantum (
-                  Q.Or (Q.Constant (C.Var "b1"), Q.Project (Q.Var "k2", 1)),
-                  Q.Ket (C.Set [ C.Tuple [C.IntLiteral 0; C.IntLiteral 1] ]),
-                  Q.Ket (C.Set [ C.Tuple [C.IntLiteral 0; C.IntLiteral 0] ]))
-          ]
+          e.If(
+              e.Or(e.Var "b1", e.Project(e.Var "k2", e.Int 1)),
+              e.Tuple [ e.Int 0; e.Int 1 ],
+              e.Tuple [ e.Int 0; e.Int 0 ]
+          ),
+          Type.Ket [ Type.Int; Type.Int ],
+          Q.IfQuantum(
+              Q.Or(Q.Constant(C.Var "b1"), Q.Project(Q.Var "k2", 1)),
+              Q.Ket(C.Set [ C.Tuple [ C.IntLiteral 0; C.IntLiteral 1 ] ]),
+              Q.Ket(C.Set [ C.Tuple [ C.IntLiteral 0; C.IntLiteral 0 ] ])
+          ) ]
         |> List.iter (this.TestQuantumExpression ctx)
 
         [
@@ -907,7 +880,7 @@ type TestTypecheck() =
           // k2 | k2.[0] == 1
           e.Filter(e.Var "k2", e.Equals(e.Project(e.Var "k2", e.Int 0), e.Int 1)),
           Type.Ket [ Type.Int; Type.Bool ],
-          Q.Filter(Q.Var "k2", Q.Equals(Q.Project(Q.Var "k2", 0), Q.Constant (C.IntLiteral 1))) ]
+          Q.Filter(Q.Var "k2", Q.Equals(Q.Project(Q.Var "k2", 0), Q.Constant(C.IntLiteral 1))) ]
         |> List.iter (this.TestQuantumExpression ctx)
 
         [ e.Filter(e.Tuple [ e.Int 1; e.Int 2 ], e.Equals(e.Project(e.Var "k2", e.Int 1), e.Bool true)),

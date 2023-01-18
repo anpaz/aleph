@@ -141,13 +141,13 @@ type Processor(sim: IOperationFactory) =
                 | KetMapOperator.Add -> map_binary ctx' (ketId, ket.Add.Run)
                 | KetMapOperator.Multiply -> map_binary ctx' (ketId, ket.Multiply.Run)
                 | KetMapOperator.Equals -> map_binary ctx' (ketId, ket.Equals.Run)
-                //| KetMapOperator.LessThan -> map_binary ctx' (ketId, ket.LessThan.Run)
+                | KetMapOperator.LessThanEqual -> map_binary ctx' (ketId, ket.LessThanEqual.Run)
+                | KetMapOperator.GreaterThan -> map_binary ctx' (ketId, ket.GreaterThan.Run)
                 | KetMapOperator.And -> map_binary ctx' (ketId, ket.And.Run)
                 | KetMapOperator.Or -> map_binary ctx' (ketId, ket.Or.Run)
                 | KetMapOperator.In s -> map_in ctx' (ketId, s)
                 | KetMapOperator.Constant v -> map_constant ctx' v
                 | KetMapOperator.If -> map_if ctx' ketId
-                | err -> $"Map not implemented: {err}" |> Error
 
     and map_constant ctx value =
         let value = value |> Convert.toQValue

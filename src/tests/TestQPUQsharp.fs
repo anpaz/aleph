@@ -62,11 +62,7 @@ type TestQPUQsharp() =
           // | 1; 2; 3 >
           e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ]), [ Int 1; Int 2; Int 3 ]
           // | (false, false), (false, true) >
-          e.Ket(
-              e.Set
-                  [ e.Tuple [ e.Bool false; e.Bool false ]
-                    e.Tuple [ e.Bool false; e.Bool true ] ]
-          ),
+          e.Ket(e.Set [ e.Tuple [ e.Bool false; e.Bool false ]; e.Tuple [ e.Bool false; e.Bool true ] ]),
           [ Tuple [ Bool false; Bool false ]; Tuple [ Bool false; Bool true ] ]
           // | (0, false, 0), (0, true, 1), (0, true, 2), (0, true, 3) >
           e.Ket(
@@ -83,10 +79,7 @@ type TestQPUQsharp() =
           // |@,4>
           e.KetAll(e.Int 4), seq { 0..15 } |> Seq.toList |> List.map Int
           // k
-          e.Var "k",
-          [ Tuple [ Int 0; Bool true ]
-            Tuple [ Int 0; Bool false ]
-            Tuple [ Int 1; Bool true ] ]
+          e.Var "k", [ Tuple [ Int 0; Bool true ]; Tuple [ Int 0; Bool false ]; Tuple [ Int 1; Bool true ] ]
           // k.0
           e.Project(e.Var "k", e.Int 0), [ Int 0; Int 1 ]
           // k.1
@@ -128,16 +121,16 @@ type TestQPUQsharp() =
             Tuple [ Int 2; Bool true ]
             Tuple [ Int 3; Bool false ]
             Tuple [ Int 3; Bool true ] ]
-            
+
           // ( |@,2>, |true> )
-          e.Join(e.KetAll(e.Int 2), e.Ket (e.Bool true)),
+          e.Join(e.KetAll(e.Int 2), e.Ket(e.Bool true)),
           [ Tuple [ Int 0; Bool true ]
             Tuple [ Int 1; Bool true ]
             Tuple [ Int 2; Bool true ]
             Tuple [ Int 3; Bool true ] ]
 
-    //      // ( |>, |> )
-    //       e.Join(e.Ket(e.Set []), e.Ket(e.Set [])), []
+          //      // ( |>, |> )
+          //       e.Join(e.Ket(e.Set []), e.Ket(e.Set [])), []
           // (| false >, | true> )
           e.Join(e.Ket(e.Set [ e.Bool false ]), e.Ket(e.Set [ e.Bool true ])), [ Tuple [ Bool false; Bool true ] ]
           // Join (| 1; 2 >, | true >)
@@ -145,11 +138,7 @@ type TestQPUQsharp() =
           [ Tuple [ Int 1; Bool true ]; Tuple [ Int 2; Bool true ] ]
           // Join( | (false, false), (false, true) >, |1, 3> )
           e.Join(
-              e.Ket(
-                  e.Set
-                      [ e.Tuple [ e.Bool false; e.Bool false ]
-                        e.Tuple [ e.Bool false; e.Bool true ] ]
-              ),
+              e.Ket(e.Set [ e.Tuple [ e.Bool false; e.Bool false ]; e.Tuple [ e.Bool false; e.Bool true ] ]),
               e.Ket(e.Set [ e.Int 1; e.Int 3 ])
           ),
           [ Tuple [ Bool false; Bool false; Int 1 ]
@@ -190,8 +179,9 @@ type TestQPUQsharp() =
           seq {
               for i in 0..15 do
                   for j in 0..15 -> Tuple [ Int i; Int j; Bool(i = j) ]
-          } |> Seq.toList
-        ] |> List.iter (verify_expression (prelude, this.QPU))
+          }
+          |> Seq.toList ]
+        |> List.iter (verify_expression (prelude, this.QPU))
 
 
     [<TestMethod>]
@@ -225,18 +215,14 @@ type TestQPUQsharp() =
             Tuple [ Bool true; Bool true; Bool true ] ]
           // (k3.0, k3.1 && k3.2)
           e.Join(e.Project(e.Var "k3", e.Int 0), e.And(e.Project(e.Var "k3", e.Int 1), e.Project(e.Var "k3", e.Int 2))),
-          [ Tuple [ Int 0; Bool true ]
-            Tuple [ Int 1; Bool false ]
-            Tuple [ Int 2; Bool false ] ]
+          [ Tuple [ Int 0; Bool true ]; Tuple [ Int 1; Bool false ]; Tuple [ Int 2; Bool false ] ]
 
           // (k3.0, !(k3.1 && k3.2))
           e.Join(
               e.Project(e.Var "k3", e.Int 0),
               e.Not(e.And(e.Project(e.Var "k3", e.Int 1), e.Project(e.Var "k3", e.Int 2)))
           ),
-          [ Tuple [ Int 0; Bool false ]
-            Tuple [ Int 1; Bool true ]
-            Tuple [ Int 2; Bool true ] ] ]
+          [ Tuple [ Int 0; Bool false ]; Tuple [ Int 1; Bool true ]; Tuple [ Int 2; Bool true ] ] ]
         |> List.iter (verify_expression (prelude, this.QPU))
 
 
@@ -247,9 +233,7 @@ type TestQPUQsharp() =
             @ [ s.Let(
                     "k1",
                     e.Ket(
-                        e.Set
-                            [ e.Tuple [ e.Bool true; e.Int 3; e.Int 0 ]
-                              e.Tuple [ e.Bool false; e.Int 1; e.Int 2 ] ]
+                        e.Set [ e.Tuple [ e.Bool true; e.Int 3; e.Int 0 ]; e.Tuple [ e.Bool false; e.Int 1; e.Int 2 ] ]
                     )
                 ) ]
 
@@ -268,9 +252,7 @@ type TestQPUQsharp() =
                     "k1",
                     e.Ket(
                         e.Set
-                            [ e.Tuple [ e.Int 0; e.Int 0 ]
-                              e.Tuple [ e.Int 0; e.Int 1 ]
-                              e.Tuple [ e.Int 1; e.Int 1 ] ]
+                            [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 0; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 1 ] ]
                     )
                 ) ]
 
@@ -320,11 +302,56 @@ type TestQPUQsharp() =
 
 
     [<TestMethod>]
+    member this.TestCompareOps() =
+        let prelude =
+            this.Prelude
+            @ [ s.Let("k1", e.KetAll(e.Int 2)); s.Let("k2", e.KetAll(e.Int 2)) ]
+
+        [
+          // (k1, k2, k1 <= k2)
+          e.Join(e.Var "k1", e.Join(e.Var "k2", e.LessThanEquals(e.Var "k1", e.Var "k2"))),
+          [ Tuple [ Int 0; Int 0; Bool true ]
+            Tuple [ Int 0; Int 1; Bool true ]
+            Tuple [ Int 0; Int 2; Bool true ]
+            Tuple [ Int 0; Int 3; Bool true ]
+            Tuple [ Int 1; Int 0; Bool false ]
+            Tuple [ Int 1; Int 1; Bool true ]
+            Tuple [ Int 1; Int 2; Bool true ]
+            Tuple [ Int 1; Int 3; Bool true ]
+            Tuple [ Int 2; Int 0; Bool false ]
+            Tuple [ Int 2; Int 1; Bool false ]
+            Tuple [ Int 2; Int 2; Bool true ]
+            Tuple [ Int 2; Int 3; Bool true ]
+            Tuple [ Int 3; Int 0; Bool false ]
+            Tuple [ Int 3; Int 1; Bool false ]
+            Tuple [ Int 3; Int 2; Bool false ]
+            Tuple [ Int 3; Int 3; Bool true ] ]
+
+          // (k1, k2, k1 <= k2)
+          e.Join(e.Var "k1", e.Join(e.Var "k2", e.GreaterThan(e.Var "k1", e.Var "k2"))),
+          [ Tuple [ Int 0; Int 0; Bool false ]
+            Tuple [ Int 0; Int 1; Bool false ]
+            Tuple [ Int 0; Int 2; Bool false ]
+            Tuple [ Int 0; Int 3; Bool false ]
+            Tuple [ Int 1; Int 0; Bool true ]
+            Tuple [ Int 1; Int 1; Bool false ]
+            Tuple [ Int 1; Int 2; Bool false ]
+            Tuple [ Int 1; Int 3; Bool false ]
+            Tuple [ Int 2; Int 0; Bool true ]
+            Tuple [ Int 2; Int 1; Bool true ]
+            Tuple [ Int 2; Int 2; Bool false ]
+            Tuple [ Int 2; Int 3; Bool false ]
+            Tuple [ Int 3; Int 0; Bool true ]
+            Tuple [ Int 3; Int 1; Bool true ]
+            Tuple [ Int 3; Int 2; Bool true ]
+            Tuple [ Int 3; Int 3; Bool false ] ] ]
+        |> List.iter (verify_expression (prelude, this.QPU))
+
+    [<TestMethod>]
     member this.TestArithmeticExpressions() =
         let prelude =
             this.Prelude
-            @ [ s.Let("k1", e.Ket(e.Set [ e.Int 0; e.Int 1 ]))
-                s.Let("k2", e.Ket(e.Set [ e.Int 1; e.Int 2 ])) ]
+            @ [ s.Let("k1", e.Ket(e.Set [ e.Int 0; e.Int 1 ])); s.Let("k2", e.Ket(e.Set [ e.Int 1; e.Int 2 ])) ]
 
         [
           // (k1, k2, k1 + k2)
@@ -357,20 +384,21 @@ type TestQPUQsharp() =
             Tuple [ Int 0; Int 2; Int 0 ]
             Tuple [ Int 1; Int 1; Int 1 ]
             Tuple [ Int 1; Int 2; Int 2 ] ]
-          // (k2, k2 == (k1 * k2))
+          // (k2, k1, k2 == (k1 * k2))
+          e.Join(e.Var("k2"), e.Join(e.Var("k1"), e.Equals(e.Var("k2"), e.Multiply(e.Var "k1", e.Var "k2")))),
+          [ Tuple [ Int 1; Int 0; Bool false ]
+            Tuple [ Int 1; Int 1; Bool true ]
+            Tuple [ Int 2; Int 0; Bool false ]
+            Tuple [ Int 2; Int 1; Bool true ] ]
+          // (k2, k1 + 1, k2 < (k1 + 1))
           e.Join(
-              e.Var ("k2"),
-              e.Join(
-                e.Var ("k1"),
-                e.Equals(
-                    e.Var ("k2"),
-                    e.Multiply(e.Var "k1", e.Var "k2")))),
-          [
-              Tuple [ Int 1; Int 0; Bool false ]
-              Tuple [ Int 1; Int 1; Bool true ]
-              Tuple [ Int 2; Int 0; Bool false ]
-              Tuple [ Int 2; Int 1; Bool true ] ]
-          ]
+              e.Var("k2"),
+              e.Join(e.Add(e.Var "k1", e.Int 1), e.LessThanEquals(e.Var("k2"), e.Add(e.Var "k1", e.Int 1)))
+          ),
+          [ Tuple [ Int 1; Int 1; Bool true ]
+            Tuple [ Int 1; Int 2; Bool true ]
+            Tuple [ Int 2; Int 1; Bool false ]
+            Tuple [ Int 2; Int 2; Bool true ] ] ]
         |> List.iter (verify_expression (prelude, this.QPU))
 
     [<TestMethod>]
@@ -415,4 +443,3 @@ type TestQPUQsharp() =
             Tuple [ Int 3; Int 2 ]
             Tuple [ Int 3; Int 3 ] ] ]
         |> List.iter (verify_expression (prelude, this.QPU))
-

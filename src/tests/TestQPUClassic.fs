@@ -212,6 +212,55 @@ type TestQPUClassic() =
         |> List.iter (this.TestExpression prelude)
 
     [<TestMethod>]
+    member this.TestCompareOps() =
+        let prelude =
+            this.Prelude
+            @ [ s.Let("k1", e.KetAll(e.Int 2)); s.Let("k2", e.KetAll(e.Int 2)) ]
+
+        [
+          // k1 <= k2
+          e.LessThanEquals(e.Var "k1", e.Var "k2"),
+          [ [ Int 0; Int 0; Bool true ]
+            [ Int 0; Int 1; Bool true ]
+            [ Int 0; Int 2; Bool true ]
+            [ Int 0; Int 3; Bool true ]
+            [ Int 1; Int 0; Bool false ]
+            [ Int 1; Int 1; Bool true ]
+            [ Int 1; Int 2; Bool true ]
+            [ Int 1; Int 3; Bool true ]
+            [ Int 2; Int 0; Bool false ]
+            [ Int 2; Int 1; Bool false ]
+            [ Int 2; Int 2; Bool true ]
+            [ Int 2; Int 3; Bool true ]
+            [ Int 3; Int 0; Bool false ]
+            [ Int 3; Int 1; Bool false ]
+            [ Int 3; Int 2; Bool false ]
+            [ Int 3; Int 3; Bool true ] ],
+          [ 2 ]
+
+          // k1 > k2
+          e.GreaterThan(e.Var "k1", e.Var "k2"),
+          [ [ Int 0; Int 0; Bool false ]
+            [ Int 0; Int 1; Bool false ]
+            [ Int 0; Int 2; Bool false ]
+            [ Int 0; Int 3; Bool false ]
+            [ Int 1; Int 0; Bool true ]
+            [ Int 1; Int 1; Bool false ]
+            [ Int 1; Int 2; Bool false ]
+            [ Int 1; Int 3; Bool false ]
+            [ Int 2; Int 0; Bool true ]
+            [ Int 2; Int 1; Bool true ]
+            [ Int 2; Int 2; Bool false ]
+            [ Int 2; Int 3; Bool false ]
+            [ Int 3; Int 0; Bool true ]
+            [ Int 3; Int 1; Bool true ]
+            [ Int 3; Int 2; Bool true ]
+            [ Int 3; Int 3; Bool false ] ],
+          [ 2 ] ]
+        |> List.iter (this.TestExpression prelude)
+
+
+    [<TestMethod>]
     member this.TestJoin() =
         let prelude =
             this.Prelude
@@ -402,10 +451,7 @@ type TestQPUClassic() =
           [ [ Int 0; Int 1; Bool true; Int 1; Bool true ]; [ Int 1; Int 1; Bool true; Int 1; Bool true ] ],
           [ 0; 1 ]
           // (Filter k1, k1.0 + k1.1 == 1)
-          e.Filter(
-              e.Var "k1",
-              e.Equals(e.Add(e.Project(e.Var "k1", e.Int 0), e.Project(e.Var "k1", e.Int 1)), e.Int 1)
-          ),
+          e.Filter(e.Var "k1", e.Equals(e.Add(e.Project(e.Var "k1", e.Int 0), e.Project(e.Var "k1", e.Int 1)), e.Int 1)),
           [ [ Int 0; Int 1; Bool true; Int 1; Int 1; Bool true ] ],
           [ 0; 1 ]
           // (Filter k1.0, k1.1 + | 1, 2, 3 > == |2, 4> )
@@ -671,7 +717,7 @@ type TestQPUClassic() =
         // If it is not already a Prepare expression, wrap in Prepare...
         let body =
             match aleph.parser.TypeChecker.start (e.Block(prelude, expr)) with
-            | Ok(result, _) ->
+            | Ok (result, _) ->
                 match result with
                 | typed.E.Universe _ -> expr
                 | _ -> e.Prepare expr
@@ -688,17 +734,16 @@ type TestQPUClassic() =
             | many -> ColumnIndex.Many many
 
         match apply (block, this.QPU) with
-        | Ok(Universe universe, ctx) ->
+        | Ok (Universe universe, ctx) ->
             let universe = universe :?> Universe
             let state' = universe.State
             let columns' = universe.Columns
             printfn "columns: %A\nmemory: %A\n" columns' state'
             Assert.AreEqual(state, state')
             Assert.AreEqual(columns, columns')
-        | Ok(v, _) ->
+        | Ok (v, _) ->
             printfn "e: %A" expr
             Assert.AreEqual($"Expecting Universe value.", $"Got {v}")
         | Error msg ->
             printfn "e: %A" expr
             Assert.AreEqual($"Expecting valid expression.", $"Got Error msg: {msg}")
-

@@ -64,10 +64,15 @@ module Eval =
             | Value.Int l, Value.Int r -> Value.Bool(l = r)
             | _ -> failwith "= only supported for ints, got {l} == {r}"
 
-        static member LessThan(l: Value, r: Value) =
+        static member LessThanEqual(l: Value, r: Value) =
             match (l, r) with
-            | Value.Int l, Value.Int r -> Value.Bool(l < r)
-            | _ -> failwith "< only supported for ints, got {l} == {r}"
+            | Value.Int l, Value.Int r -> Value.Bool(l <= r)
+            | _ -> failwith "<= only supported for ints, got {l} <= {r}"
+
+        static member GreaterThan(l: Value, r: Value) =
+            match (l, r) with
+            | Value.Int l, Value.Int r -> Value.Bool(l > r)
+            | _ -> failwith "> only supported for ints, got {l} > {r}"
 
         static member Not(l: Value) =
             match l with
@@ -100,7 +105,8 @@ module Eval =
         | Add
         | Multiply
         | Equals
-        | LessThan
+        | LessThanEqual
+        | GreaterThan
         | Not
         | And
         | Or
@@ -180,11 +186,17 @@ module Eval =
                 eval_classic { ctx with graph = q1 } right
                 ==> fun (v2, q2) -> (v1 == v2, q2) |> Ok
 
-    and eval_lessthan ctx (left, right) =
+    and eval_lessthanequal ctx (left, right) =
         eval_classic ctx left
         ==> fun (v1, q1) ->
                 eval_classic { ctx with graph = q1 } right
-                ==> fun (v2, q2) -> (Value.LessThan(v1, v2), q2) |> Ok
+                ==> fun (v2, q2) -> (Value.LessThanEqual(v1, v2), q2) |> Ok
+
+    and eval_greaterthan ctx (left, right) =
+        eval_classic ctx left
+        ==> fun (v1, q1) ->
+                eval_classic { ctx with graph = q1 } right
+                ==> fun (v2, q2) -> (Value.GreaterThan(v1, v2), q2) |> Ok
 
     and eval_and ctx (left, right) =
         eval_classic ctx left
@@ -520,7 +532,8 @@ module Eval =
         | C.Add (left, right) -> eval_add ctx (left, right)
         | C.Multiply (left, right) -> eval_multiply ctx (left, right)
         | C.Equals (left, right) -> eval_equals ctx (left, right)
-        | C.LessThan (left, right) -> eval_lessthan ctx (left, right)
+        | C.LessThanEqual (left, right) -> eval_lessthanequal ctx (left, right)
+        | C.GreaterThan (left, right) -> eval_greaterthan ctx (left, right)
         | C.And (left, right) -> eval_and ctx (left, right)
         | C.Or (left, right) -> eval_or ctx (left, right)
         | C.Not e -> eval_not ctx e
@@ -528,7 +541,7 @@ module Eval =
         | C.Project (value, index) -> eval_project ctx (value, index)
         | C.Index (value, index) -> eval_index ctx (value, index)
         | C.Join (left, right) -> eval_join ctx (left, right)
-
+ 
         | C.If (cond, t, e) -> eval_if ctx (cond, t, e)
         | C.Block (stmts, value) -> eval_block ctx (stmts, value)
 
@@ -550,6 +563,8 @@ module Eval =
         | Q.Constant value -> eval_qmap_constant ctx value
         | Q.Not q -> eval_qmap_unary ctx (q, KetMapOperator.Not)
         | Q.Equals (left, right) -> eval_qmap_binary ctx (left, right, KetMapOperator.Equals)
+        | Q.LessThanEqual (left, right) -> eval_qmap_binary ctx (left, right, KetMapOperator.LessThanEqual)
+        | Q.GreaterThan (left, right) -> eval_qmap_binary ctx (left, right, KetMapOperator.GreaterThan)
         | Q.Add (left, right) -> eval_qmap_binary ctx (left, right, KetMapOperator.Add)
         | Q.Multiply (left, right) -> eval_qmap_binary ctx (left, right, KetMapOperator.Multiply)
         | Q.And (left, right) -> eval_qmap_binary ctx (left, right, KetMapOperator.And)

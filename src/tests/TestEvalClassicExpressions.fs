@@ -14,7 +14,8 @@ module ClassicValueContext =
         { new QPU with
             member this.Measure(arg1: IUniverse) : Result<Value, string> = failwith "Not Implemented"
 
-            member this.Prepare(ketId: KetId, graph: QuantumGraph) : Result<IUniverse, string> = failwith "Not Implemented" }
+            member this.Prepare(ketId: KetId, graph: QuantumGraph) : Result<IUniverse, string> =
+                failwith "Not Implemented" }
 
     let Prelude =
         [ s.Let("i1", e.Int 1)
@@ -137,11 +138,11 @@ type TestEval() =
           // (5 + 10) * 4 == 100 || true
           e.Or(e.Equals(e.Multiply(e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 100), e.Bool true), Value.Bool true
           // (5 + 10) * 4 < 50
-          e.LessThan(e.Multiply(e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 50), Value.Bool false
+          e.LessThanEquals(e.Multiply(e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 50), Value.Bool false
           // (5 + 10) * 4 < 100
-          e.LessThan(e.Multiply(e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 100), Value.Bool true
+          e.LessThanEquals(e.Multiply(e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 100), Value.Bool true
           // not ((5 + 10) * 4 < 50)
-          e.Not(e.LessThan(e.Multiply(e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 50)), Value.Bool true ]
+          e.Not(e.LessThanEquals(e.Multiply(e.Add(e.Int 5, e.Int 10), e.Int 4), e.Int 50)), Value.Bool true ]
         |> List.iter (this.TestExpression prelude)
 
     [<TestMethod>]
@@ -251,10 +252,7 @@ type TestEval() =
           // (Remove (1,2), {(0,0), (1,1), (1,2)})
           e.Remove(
               e.Tuple [ e.Int 1; e.Int 2 ],
-              e.Set
-                  [ e.Tuple [ e.Int 0; e.Int 0 ]
-                    e.Tuple [ e.Int 1; e.Int 1 ]
-                    e.Tuple [ e.Int 1; e.Int 2 ] ]
+              e.Set [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 1; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 2 ] ]
           ),
           Value.Set(Set.ofList [ Tuple [ Int 0; Int 0 ]; Tuple [ Int 1; Int 1 ] ])
 
@@ -265,12 +263,7 @@ type TestEval() =
           // ({false, false, true})
           e.Count(e.Set [ e.Bool false; e.Bool false; e.Bool true ]), Int 2
           // (Count {(0,0), (1,1), (1,2)})
-          e.Count(
-              e.Set
-                  [ e.Tuple [ e.Int 0; e.Int 0 ]
-                    e.Tuple [ e.Int 1; e.Int 1 ]
-                    e.Tuple [ e.Int 1; e.Int 2 ] ]
-          ),
+          e.Count(e.Set [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 1; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 2 ] ]),
           Int 3
 
           // (Remove(Element s1), s1), Count(s1))
@@ -281,10 +274,7 @@ type TestEval() =
                   e.Tuple [ e.Int 1; e.Int 1 ],
                   e.Remove(
                       e.Tuple [ e.Int 0; e.Int 0 ],
-                      e.Set
-                          [ e.Tuple [ e.Int 0; e.Int 0 ]
-                            e.Tuple [ e.Int 1; e.Int 1 ]
-                            e.Tuple [ e.Int 1; e.Int 2 ] ]
+                      e.Set [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 1; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 2 ] ]
                   )
               )
           ),

@@ -15,7 +15,8 @@ type C =
     | And of C * C
     | Or of C * C
     | Equals of C * C
-    | LessThan of C * C
+    | LessThanEqual of C * C
+    | GreaterThan of C * C
 
     | Add of C * C
     | Multiply of C * C
@@ -48,6 +49,8 @@ and Q =
     | And of Q * Q
     | Or of Q * Q
     | Equals of Q * Q
+    | LessThanEqual of Q * Q
+    | GreaterThan of Q * Q
 
     | Add of Q * Q
     | Multiply of Q * Q

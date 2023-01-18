@@ -24,7 +24,8 @@ type Expression =
     | And of Expression * Expression
     | Or of Expression * Expression
     | Equals of Expression * Expression
-    | LessThan of Expression * Expression
+    | LessThanEquals of Expression * Expression
+    | GreaterThan of Expression * Expression
 
     | Add of Expression * Expression
     | Multiply of Expression * Expression
