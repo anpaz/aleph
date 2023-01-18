@@ -6,23 +6,22 @@ open aleph.parser.ast
 let program =
     Block(
         [
-          // let RED   = 0
-          // let BLUE  = 1
-          // let GREEN = 2
-          Let("RED", Int 0)
-          Let("BLUE", Int 1)
-          Let("GREEN", Int 2)
+          // let MAX_COLORS = 3
+          Let("MAX_COLORS", Int 3)
 
 
           // // Return the list of all available colors:
           // let colors = function() : Ket<Int>
-          //     | RED, BLUE, GREEN >
+          //     let values = |@,2>
+          //     filter(values, values <= MAX_COLORS)
           Let(
               "colors",
               Method(
                   arguments = List.empty,
                   returns = Type.Ket [ Type.Int ],
-                  body = Ket(Set [ Var "RED"; Var "BLUE"; Var "GREEN" ])
+                  body = (Block ([
+                    Let ("values", KetAll(Int 3))
+                  ], Filter(Var "values", LessThanEquals(Var "values", Var "MAX_COLORS"))))
               )
           )
 
