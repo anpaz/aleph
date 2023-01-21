@@ -9,12 +9,6 @@ module Eval =
     let BOOL_REGISTER_SIZE = 1
     let INT_REGISTER_DEFAULT_SIZE = 3
 
-    let mutable max_ket = 0
-
-    let fresh_ketid () =
-        max_ket <- max_ket + 1
-        max_ket
-
     let (==>) (input: Result<'a, 'b>) ok = Result.bind ok input
 
     type IUniverse =
@@ -90,15 +84,15 @@ module Eval =
             | _ -> failwith "= only supported for bool values, got {l} || {r}"
 
 
-    and QuantumGraph(q: Map<KetId, KetExpression>) =
-        static member empty: QuantumGraph = QuantumGraph Map.empty
+    and QuantumGraph(q: Map<KetId, KetExpression>, max_ket: int) =
+
+        static member empty: QuantumGraph = QuantumGraph (Map.empty, 0)
         member self.Item(k: KetId) : KetExpression = q.Item k
         member self.TryFind(k: KetId) = q.TryFind k
-        member self.Add(k: KetId, v: KetExpression) : QuantumGraph = QuantumGraph(q.Add(k, v))
 
-        member self.AddExpression(v: KetExpression) : (KetId * QuantumGraph) =
-            let k = fresh_ketid ()
-            k, QuantumGraph(q.Add(k, v))
+        member self.Add(v: KetExpression) : (KetId * QuantumGraph) =
+            let k = max_ket + 1
+            k, QuantumGraph(q.Add(k, v), k)
 
     and KetMapOperator =
         | Constant of c: Value
@@ -380,7 +374,7 @@ module Eval =
                 | err -> $"Expecting KetExpression for prepare, got {err}" |> Error
 
     and with_value (exp: KetExpression) (graph: QuantumGraph) =
-        let (k, graph) = graph.AddExpression exp
+        let (k, graph) = graph.Add exp
         (KetId k, graph) |> Ok
 
     and eval_qliteral ctx size =
@@ -432,7 +426,7 @@ module Eval =
                 ==> fun (k2, q2) ->
                         match (k1, k2) with
                         | Value.KetId (k1), Value.KetId (k2) ->
-                            let (k, graph) = q2.AddExpression(KetExpression.Join [ k1; k2 ])
+                            let (k, graph) = q2.Add(KetExpression.Join [ k1; k2 ])
                             graph |> with_value (KetExpression.Map(k, lambda))
                         | _ -> $"Invalid KetIds" |> Error
 
@@ -445,7 +439,7 @@ module Eval =
                         ==> fun (k3, q3) ->
                                 match (k1, k2, k3) with
                                 | Value.KetId k1, Value.KetId k2, Value.KetId k3 ->
-                                    let (k, graph) = q3.AddExpression(KetExpression.Join [ k1; k2; k3 ])
+                                    let (k, graph) = q3.Add(KetExpression.Join [ k1; k2; k3 ])
                                     graph |> with_value (KetExpression.Map(k, KetMapOperator.If))
                                 | _ -> $"Invalid KetIds for if expression" |> Error
 
@@ -485,7 +479,7 @@ module Eval =
                                     match value with
                                     | Value.Bool _ ->
                                         let (literal, graph') =
-                                            graph'.AddExpression(KetExpression.Literal BOOL_REGISTER_SIZE)
+                                            graph'.Add(KetExpression.Literal BOOL_REGISTER_SIZE)
 
                                         (literals @ [ literal ], graph') |> Ok
                                     | Value.Int i ->
@@ -495,7 +489,7 @@ module Eval =
                                                 (int) (System.Math.Ceiling(System.Math.Log2(i)))
                                             )
 
-                                        let (literal, graph') = graph'.AddExpression(KetExpression.Literal size)
+                                        let (literal, graph') = graph'.Add(KetExpression.Literal size)
                                         (literals @ [ literal ], graph') |> Ok
                                     | Value.Tuple t ->
                                         let state = (literals, graph') |> Ok
@@ -505,16 +499,16 @@ module Eval =
                         let join_literals (graph: QuantumGraph) v =
                             match v with
                             | [ one ] -> (one, graph)
-                            | _ -> graph.AddExpression(KetExpression.Join v)
+                            | _ -> graph.Add(KetExpression.Join v)
 
                         create_literals (([], graph) |> Ok) set.MaximumElement
                         ==> fun (literals, graph) ->
                                 let (literal, graph) = literals |> join_literals graph
 
                                 let (map, graph) =
-                                    graph.AddExpression(KetExpression.Map(literal, KetMapOperator.In v))
+                                    graph.Add(KetExpression.Map(literal, KetMapOperator.In v))
 
-                                let (filter, graph) = graph.AddExpression(KetExpression.Filter(literal, map))
+                                let (filter, graph) = graph.Add(KetExpression.Filter(literal, map))
                                 (KetId filter, graph) |> Ok
                 | _ -> $"Invaid literal constructor. Only sets supported, got {v}" |> Error
 
