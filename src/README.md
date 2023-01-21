@@ -4,7 +4,7 @@
 
 ## Setup
 
-1. [Install F#](https://docs.microsoft.com/en-us/dotnet/fsharp/get-started/install-fsharp). It comes [bundle with .Net 6](https://dotnet.microsoft.com/en-us/download).
+1. Install [.NET Core](https://dotnet.microsoft.com/en-us/download) 6 (for compiler, Q#) and 7 (for server)
 2. Run the tests
 ```
 cd tests
