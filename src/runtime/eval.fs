@@ -4,12 +4,15 @@ open aleph.parser.ast
 open aleph.parser.ast.typed
 
 module Eval =
+    open Newtonsoft.Json
     let random = System.Random()
 
     let BOOL_REGISTER_SIZE = 1
     let INT_REGISTER_DEFAULT_SIZE = 3
 
     let (==>) (input: Result<'a, 'b>) ok = Result.bind ok input
+
+
 
     type IUniverse =
         interface
@@ -34,7 +37,7 @@ module Eval =
         interface System.IComparable with
             member this.CompareTo(obj: obj) : int = failwith "Not Implemented"
 
-    and Value =
+    and [<JsonConverter(typeof<ValueJsonConverter>)>] Value =
         | Bool of bool
         | Int of int
         | Tuple of Value list
@@ -83,6 +86,25 @@ module Eval =
             | Value.Bool l, Value.Bool r -> Value.Bool(l || r)
             | _ -> failwith "= only supported for bool values, got {l} || {r}"
 
+    and ValueJsonConverter () =
+        inherit JsonConverter<Value>()
+
+            override this.WriteJson (writer: JsonWriter, value: Value, serializer: JsonSerializer): unit = 
+                let rec one v =
+                    match v with
+                    | Bool b -> writer.WriteValue(b)
+                    | Int i -> writer.WriteValue(i)
+                    | Tuple t -> 
+                        writer.WriteStartArray()
+                        t |> List.iter one
+                        writer.WriteEndArray()
+                    | err -> writer.WriteComment($"Not implemented: {err}");
+                value |> one
+
+            override this.CanRead = false
+
+            override this.ReadJson (reader: JsonReader, objectType: System.Type, existingValue: Value, c: bool, serializer: JsonSerializer) : Value =
+                raise (new System.NotImplementedException());
 
     and QuantumGraph(q: Map<KetId, KetExpression>, max_ket: int) =
 
@@ -98,7 +120,7 @@ module Eval =
         | Constant of c: Value
         | Add
         | Multiply
-        | Equals
+        | Eq
         | LessThanEqual
         | GreaterThan
         | Not
@@ -556,7 +578,7 @@ module Eval =
 
         | Q.Constant value -> eval_qmap_constant ctx value
         | Q.Not q -> eval_qmap_unary ctx (q, KetMapOperator.Not)
-        | Q.Equals (left, right) -> eval_qmap_binary ctx (left, right, KetMapOperator.Equals)
+        | Q.Equals (left, right) -> eval_qmap_binary ctx (left, right, KetMapOperator.Eq)
         | Q.LessThanEqual (left, right) -> eval_qmap_binary ctx (left, right, KetMapOperator.LessThanEqual)
         | Q.GreaterThan (left, right) -> eval_qmap_binary ctx (left, right, KetMapOperator.GreaterThan)
         | Q.Add (left, right) -> eval_qmap_binary ctx (left, right, KetMapOperator.Add)

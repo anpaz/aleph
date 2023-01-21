@@ -140,7 +140,7 @@ type Processor(sim: IOperationFactory) =
                 | KetMapOperator.Not -> map_unary ctx' (ketId, ket.Not.Run)
                 | KetMapOperator.Add -> map_binary ctx' (ketId, ket.Add.Run)
                 | KetMapOperator.Multiply -> map_binary ctx' (ketId, ket.Multiply.Run)
-                | KetMapOperator.Equals -> map_binary ctx' (ketId, ket.Equals.Run)
+                | KetMapOperator.Eq -> map_binary ctx' (ketId, ket.Equals.Run)
                 | KetMapOperator.LessThanEqual -> map_binary ctx' (ketId, ket.LessThanEqual.Run)
                 | KetMapOperator.GreaterThan -> map_binary ctx' (ketId, ket.GreaterThan.Run)
                 | KetMapOperator.And -> map_binary ctx' (ketId, ket.And.Run)

@@ -174,7 +174,7 @@ type Processor() =
                 | KetMapOperator.Not -> map_unary ctx' (ketId, Value.Not)
                 | KetMapOperator.Add -> map_binary ctx' (ketId, Value.(+))
                 | KetMapOperator.Multiply -> map_binary ctx' (ketId, Value.(*))
-                | KetMapOperator.Equals -> map_binary ctx' (ketId, Value.(==))
+                | KetMapOperator.Eq -> map_binary ctx' (ketId, Value.(==))
                 | KetMapOperator.LessThanEqual -> map_binary ctx' (ketId, Value.LessThanEqual)
                 | KetMapOperator.GreaterThan -> map_binary ctx' (ketId, Value.GreaterThan)
                 | KetMapOperator.And -> map_binary ctx' (ketId, Value.And)
