@@ -3,6 +3,7 @@
         "DavidAnson.vscode-markdownlint",
         "ms-dotnettools.csharp",
         "quantum.quantum-devkit-vscode",
-        "ionide.ionide-fsharp"
+        "ionide.ionide-fsharp",
+        "ms-python.python"
     ]
 }
