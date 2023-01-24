@@ -1,5 +1,6 @@
 
 import requests
+import json
 
 import logging
 logger = logging.getLogger("aleph")
@@ -14,7 +15,7 @@ def _get(url):
     if r.ok:
         return r.text
     else:
-        raise f"aleph server returned error: {r.reason}. {r}"
+        raise Exception(f"aleph server returned error: {r.reason}. {r}")
 
 def _post(url):
     logger.debug("Sending: " + url)
@@ -45,7 +46,7 @@ class KetBool():
         if id:
             self.id = id
         else:
-            self.id = _post(graph_baseurl + f"/{graph_id}/literal?size=1")
+            self.id = _post(graph_baseurl + f"/{graph_id}/literal?width=1")
 
     def __and__(self, other):
         other = _make_quantum(other)
@@ -64,7 +65,7 @@ class KetInt:
         if id:
             self.id = id
         else:
-            self.id = _post(graph_baseurl + f"/{graph_id}/literal?size={size}")
+            self.id = _post(graph_baseurl + f"/{graph_id}/literal?width={size}")
 
     def __add__(self, other):
         other = _make_quantum(other)
@@ -116,7 +117,19 @@ def filter(ids, expression: KetBool):
         return Ket(id=id)
 
 def sample(ids):
-    import json
     ketId = join(ids)
     result = _post(sample_baseurl + f"/{graph_id}/{ketId}")
     return json.loads(result)
+
+def print_tree(ket):
+
+    def print_one(node, indent):
+        space = " " * indent
+        print(space + str(node['id']) + ': ' + node['label'])
+
+        for d in node['dependencies']:
+            print_one(d, indent + 2)
+
+    node = _get(graph_baseurl + f"/{graph_id}/{ket.id}")
+    node = json.loads(node)
+    print_one(node, 0)

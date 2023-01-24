@@ -19,7 +19,7 @@ public class GraphController : ControllerBase
     } 
 
     [HttpGet()]
-    public IEnumerable<QuantumGraph> GetAll()
+    public IEnumerable<QuantumGraph> GetMany()
     {
         return Enumerable.Empty<QuantumGraph>();
     }
@@ -35,10 +35,22 @@ public class GraphController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public ActionResult<QuantumGraph> GetOne(string id)
+    public ActionResult<QuantumGraph> GetGraph(string id)
     {
         if (_graphs.TryFind(id, out var g)) {
             return g;
+        } 
+
+        return NotFound();
+    }
+    
+    [HttpGet("{id}/{ketid}")]
+    public ActionResult<GraphNode> GetNode(string id, int ketId)
+    {
+        var nodes = new Dictionary<int, KetExpression>();
+
+        if (_graphs.TryFind(id, out var g)) {
+            return new GraphNode(ketId, g);
         }
 
         return NotFound();
@@ -46,8 +58,8 @@ public class GraphController : ControllerBase
     
 
     [HttpPost("{id}/literal")]
-    public ActionResult<int> Literal(string id, [BindRequired] int size) =>
-        BasicExpression(id, KetExpression.NewLiteral(size));
+    public ActionResult<int> Literal(string id, [BindRequired] int width) =>
+        BasicExpression(id, KetExpression.NewLiteral(width));
     
     [HttpGet("{id}/join")]
     [HttpPost("{id}/join")]

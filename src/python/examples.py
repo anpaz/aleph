@@ -28,6 +28,8 @@ print(f"{a2} <= {a1} = {a4}")
 
 f1 = aleph.filter(k3, k3 <= 2)
 (a1, a2, a3) = aleph.sample([k1, k2, f1])
+
+aleph.print_tree(f1)
 print(f"a1: {a1}, a2:{a2}, a3:{a3}")
 
 
@@ -58,5 +60,6 @@ def compare(nodes, edges):
         return  a & b
 
 answers = aleph.filter(nodes, compare(nodes, edges))
+aleph.print_tree(answers)
 
 print(aleph.sample(answers))
