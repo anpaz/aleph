@@ -1,11 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
     <IsPackable>false</IsPackable>
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Utils.fs" />
+    <Compile Include="TestSyntax.fs" />
     <Compile Include="TestTypecheck.fs" />
     <Compile Include="TestEvalClassicExpressions.fs" />
     <Compile Include="TestQPUClassic.fs" />
