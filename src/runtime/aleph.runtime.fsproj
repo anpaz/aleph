@@ -7,6 +7,7 @@
   <ItemGroup>
     <Compile Include="eval.fs" />
     <Compile Include="quals.eval.fs" />
+    <Compile Include="quals.qpu.classic.fs" />
     <Compile Include="qpu.classic.fs" />
     <Compile Include="qpu.qsharp.fs" />
   </ItemGroup>

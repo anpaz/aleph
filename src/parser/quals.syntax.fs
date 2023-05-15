@@ -9,8 +9,9 @@ type Expression =
 and Operator =
     | IsZero
     | In of values: int list
-    | LessThan 
-    | Equals 
+    | Not
+    | LessThan
+    | Equals
     | Add of weight: int
     | Multiply of  weight: int
     | If of weight: int

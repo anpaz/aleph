@@ -4,39 +4,27 @@ open aleph.quals.parser.ast
 
 module Eval =
 
-    type KetId = Expression
+    let (==>) (input: Result<'a, 'b>) ok = Result.bind ok input
 
-    type Node =
-        | Ket of weight: int
-        | Constant of value:int
-        | Map of operator:Operator * args:Node list
-        | Where of target:Node * clause : Operator * args:Node list
+    type IUniverse =
+        interface
+        end
 
-    and QuantumGraph(q: Map<KetId, Node>, max_ket: int) =
-
-        static member empty: QuantumGraph = QuantumGraph (Map.empty, 0)
-        member self.Item(k: KetId) : Node = q.Item k
-        // member self.TryFind(k: KetId) = q.TryFind k
-
-        member self.Add(v: Node) : (KetId * QuantumGraph) =
-            let k = max_ket + 1
-            k, QuantumGraph(q.Add(k, v), k)
+    type QPU =
+        abstract Prepare: Expression list -> Result<IUniverse, string>
+        abstract Measure: IUniverse -> Result<int list, string>
 
     type EvalContext = {
-        graph: QuantumGraph
+        qpu : QPU
     }
 
-    type Ket = 
-        | KetExpression of Expression
+    let prepare ctx (kets: Expression list) : Result<IUniverse, string> =
+        let qpu = ctx.qpu
+        qpu.Prepare kets
 
-    let eval ctx (ket: Expression) : (KetId * QuantumGraph) =
-        let graph = ctx.graph
-
-        match ket with
-        | Expression.Ket w ->
-            graph.Add (Ket w)
-        | Expression.Constant v ->
-            graph.Add (Constant v)
-        | _ ->
-            failwith $"Not implemented: {ket}"
+    let sample ctx (kets: Expression list) : Result<int list, string> =
+        prepare ctx kets
+        ==> fun u ->
+            let qpu = ctx.qpu
+            qpu.Measure u
 
