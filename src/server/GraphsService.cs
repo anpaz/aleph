@@ -25,15 +25,12 @@ namespace aleph.server {
         public QuantumGraph Update(string id, QuantumGraph value) =>
             _graphs[id] = value;
     }
-    
-    public class GraphNode {
 
-        private readonly QuantumGraph Graph;
+    public class GraphNode {
 
         public GraphNode(int id, QuantumGraph graph) {
             var exp = graph.Item(id);
 
-            this.Graph = graph;
             this.Id = id;
             this.Label = CreateLabel(exp);
             this.Dependencies = CreateDependencies(exp, graph);

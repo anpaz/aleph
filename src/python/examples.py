@@ -36,30 +36,38 @@ print(f"a1: {a1}, a2:{a2}, a3:{a3}")
 # -------------- #
 # graph coloring #
 # -------------- #
+import math
 
+MAX_COLORS = 3
+
+# Each node is encoded as a Ket, we initialize a Ket
+# with enough width for all colors, but filter
+# its value accordingly
 def create_node():
-    ket = aleph.KetInt(2)
-    return aleph.filter(ket, ket <= 2)
+    w = math.ceil(math.log(MAX_COLORS, 2))
+    ket = aleph.KetInt(w)
+    return aleph.filter(ket, ket <= MAX_COLORS - 1)
 
-nodes = [ create_node() for _ in range(4) ]
-edges = [(0, 1), (1, 2), (0, 2),(1, 3) ]
-
-# Compares all the edges, and tags as valid
-# the values in the nodes for which its a valid 
-# color combination:
-def compare(nodes, edges):
+# Recurisvely compares the nodes in all the edges:
+def compare(edges):
     if len(edges) == 1:
-        # get the nodes from the edge
-        (l, r) = edges[0] 
-        return nodes[l] != nodes[r]
+        (left, right) = edges[0] 
+        return left != right
     else:
         head, *tail = edges
-        (l, r) = head 
-        a = nodes[l] != nodes[r]
-        b = compare(nodes, tail)
+        (left, right) = head
+        a = left != right
+        b = compare(tail)
         return  a & b
 
-answers = aleph.filter(nodes, compare(nodes, edges))
-aleph.print_tree(answers)
+nodes = [ create_node() for _ in range(4) ]
+edges = [ 
+    (nodes[0], nodes[1]), 
+    (nodes[1], nodes[2]), 
+    (nodes[0], nodes[2]),
+    (nodes[1], nodes[3])
+]
 
+answers = aleph.filter(nodes, compare(edges))
+aleph.print_tree(answers)
 print(aleph.sample(answers))

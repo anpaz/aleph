@@ -122,14 +122,20 @@ def sample(ids):
     return json.loads(result)
 
 def print_tree(ket):
+    def label (node):
+        return  '"' + str(node['id']) + ': ' + node['label'] + '"'
 
-    def print_one(node, indent):
+    def print_one(node, src, indent):
         space = " " * indent
-        print(space + str(node['id']) + ': ' + node['label'])
+        src = label(node)
 
         for d in node['dependencies']:
-            print_one(d, indent + 2)
+            if indent > 0:
+                print("  " + src + " -> " + label(d))
+            print_one(d, src, indent + 2)
 
     node = _get(graph_baseurl + f"/{graph_id}/{ket.id}")
     node = json.loads(node)
-    print_one(node, 0)
+    print ("digraph G {")
+    print_one(node, "", 0)
+    print ("}")
