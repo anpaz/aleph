@@ -65,10 +65,17 @@ type TestQPUClassic() =
         let a = Ket(Literal 1)
         let b = Ket(Literal 1)
 
-        let c =
-            (Ket(Map(Multiply 4, [ Ket(Literal 2); Ket(Constant 3) ])))
-                .Add(b)
-                .Where(LessThan, Ket(Constant 5))
+        let c = Ket(Literal 2)
+                    .Multiply(3)
+                    .Where(LessThan, Ket(Constant 3))
+                    .Add(b, weight=4)
+
+        let d = Ket(Literal 2)
+                    .Multiply(3, weight=4)
+                    .Add(b)
+                    .Where(LessThan, Ket(Constant 5))
+
+        let e = c.Add(a.Where(Equals, Ket(Constant 0)))
 
         [ [ Ket(Map(Add(1), [ a; b ])) ],
           Universe(state = [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ], outputColumns = [ 2 ], filters = [])
@@ -77,6 +84,19 @@ type TestQPUClassic() =
           [ Ket(Map(Add(2), [ a; b ])) ],
           Universe(state = [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 2 ] ], outputColumns = [ 2 ], filters = [])
           [ c ],
+          Universe(
+              state =
+                  [ [ 0; 3; 0; 3; 1; 0; 0 ]
+                    [ 0; 3; 0; 3; 1; 1; 1 ]
+                    [ 1; 3; 3; 3; 0; 0; 3 ]
+                    [ 1; 3; 3; 3; 0; 1; 4 ]
+                    [ 2; 3; 2; 3; 1; 0; 2 ]
+                    [ 2; 3; 2; 3; 1; 1; 3 ]
+                    [ 3; 3; 1; 3; 1; 0; 1 ]
+                    [ 3; 3; 1; 3; 1; 1; 2 ] ],
+              outputColumns = [ 6 ],
+              filters = [ c.Id - 1 ])
+          [ d ],
           Universe(
               state =
                   [ [ 0; 3; 0; 0; 0; 5; 1 ]
@@ -88,8 +108,30 @@ type TestQPUClassic() =
                     [ 3; 3; 9; 0; 9; 5; 0 ]
                     [ 3; 3; 9; 1; 10; 5; 0 ] ],
               outputColumns = [ 4 ],
-              filters = [ c.Id ]
-          ) ]
+              filters = [ d.Id ])
+              
+          [ e ],
+          Universe(
+              state =
+                  [ [ 0; 3; 0; 3; 1; 0; 0; 0; 0; 1; 0 ]
+                    [ 0; 3; 0; 3; 1; 0; 0; 1; 0; 0; 1 ]
+                    [ 0; 3; 0; 3; 1; 1; 1; 0; 0; 1; 1 ]
+                    [ 0; 3; 0; 3; 1; 1; 1; 1; 0; 0; 2 ]
+                    [ 1; 3; 3; 3; 0; 0; 3; 0; 0; 1; 3 ]
+                    [ 1; 3; 3; 3; 0; 0; 3; 1; 0; 0; 4 ]
+                    [ 1; 3; 3; 3; 0; 1; 4; 0; 0; 1; 4 ]
+                    [ 1; 3; 3; 3; 0; 1; 4; 1; 0; 0; 5 ]
+                    [ 2; 3; 2; 3; 1; 0; 2; 0; 0; 1; 2 ]
+                    [ 2; 3; 2; 3; 1; 0; 2; 1; 0; 0; 3 ]
+                    [ 2; 3; 2; 3; 1; 1; 3; 0; 0; 1; 3 ]
+                    [ 2; 3; 2; 3; 1; 1; 3; 1; 0; 0; 4 ]
+                    [ 3; 3; 1; 3; 1; 0; 1; 0; 0; 1; 1 ]
+                    [ 3; 3; 1; 3; 1; 0; 1; 1; 0; 0; 2 ]
+                    [ 3; 3; 1; 3; 1; 1; 2; 0; 0; 1; 2 ]
+                    [ 3; 3; 1; 3; 1; 1; 2; 1; 0; 0; 3 ] ],
+              outputColumns = [ 10 ],
+              filters = [ c.Id - 1; e.Id - 1 ])
+        ]
         |> List.iter (this.TestExpression)
 
 

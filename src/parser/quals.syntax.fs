@@ -16,7 +16,8 @@ and Operator =
     | Add of weight: int
     | Multiply of weight: int
     | If of weight: int
-    // These are not in the paper
+
+    // These were not in the paper
     | In of values: int list
     | And
     | Or
@@ -56,9 +57,9 @@ and Ket(expression: Expression) =
 
     member this.Where(op: Operator, arg: Ket) = Ket(Where(this, op, [ arg ]))
 
-    member this.IsZero(k1: Ket) = Ket(Map(IsZero, [ k1 ]))
+    member this.IsZero() = Ket(Map(IsZero, [ this ]))
 
-    member this.Not() = Ket(Map(Not, []))
+    member this.Not() = Ket(Map(Not, [ this ]))
 
     member this.And(k2: Ket) = Ket(Map(And, [ this; k2 ]))
 
@@ -72,21 +73,35 @@ and Ket(expression: Expression) =
         let k2 = Ket(Constant(if c then 1 else 0))
         this.Or(k2)
 
+    member this.Add(k2: Ket, weight: int) =
+        Ket(Map(Add weight, [ this; k2 ]))
+
     member this.Add(k2: Ket) =
         let w = Math.Max(this.Width, k2.Width)
-        Ket(Map(Add w, [ this; k2 ]))
+        this.Add(k2, w)
 
     member this.Add(c: int) =
         let k2 = Ket(Constant c)
         this.Add(k2)
+        
+    member this.Add(c: int, weight: int) =
+        let k2 = Ket(Constant c)
+        this.Add(k2, weight)
+
+    member this.Multiply(k2: Ket, weigth: int) =
+        Ket(Map(Multiply weigth, [ this; k2 ]))
 
     member this.Multiply(k2: Ket) =
         let w = Math.Max(this.Width, k2.Width)
-        Ket(Map(Multiply w, [ this; k2 ]))
+        this.Multiply(k2, w)
 
     member this.Multiply(c: int) =
         let k2 = Ket(Constant c)
         this.Multiply(k2)
+        
+    member this.Multiply(c: int, weight: int) =
+        let k2 = Ket(Constant c)
+        this.Multiply(k2, weight)
 
     member this.Equals(k2: Ket) =
         let w = Math.Max(this.Width, k2.Width)
