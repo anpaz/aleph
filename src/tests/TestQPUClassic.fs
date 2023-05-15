@@ -16,170 +16,82 @@ open aleph.tests.Utils
     from the preparation matches some expected values.
 *)
 type TestQPUClassic() =
+
     member this.QPU = Processor()
 
     [<TestMethod>]
     member this.TestBasicExpressions() =
-        let a = Ket(2)
-        let b = Ket(3)
+        let a = Ket(Literal 2)
+        let b = Ket(Literal 2)
 
-        [
-          [Ket(1)], [ [0]; [1] ], [0], []
-          [a], [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ], [ 0 ], [ ]
-          [b], [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ]; [4]; [5]; [6]; [7] ], [ 0 ], [ ]
-          [ a; b], [
-            [ 0; 0 ]
-            [ 0; 1 ]
-            [ 0; 2 ]
-            [ 0; 3 ]
-            [ 0; 4 ]
-            [ 0; 5 ]
-            [ 0; 6 ]
-            [ 0; 7 ]
-            [ 1; 0 ]
-            [ 1; 1 ]
-            [ 1; 2 ]
-            [ 1; 3 ]
-            [ 1; 4 ]
-            [ 1; 5 ]
-            [ 1; 6 ]
-            [ 1; 7 ]
-            [ 2; 0 ]
-            [ 2; 1 ]
-            [ 2; 2 ]
-            [ 2; 3 ]
-            [ 2; 4 ]
-            [ 2; 5 ]
-            [ 2; 6 ]
-            [ 2; 7 ]
-            [ 3; 0 ]
-            [ 3; 1 ]
-            [ 3; 2 ]
-            [ 3; 3 ]
-            [ 3; 4 ]
-            [ 3; 5 ]
-            [ 3; 6 ]
-            [ 3; 7 ]
-          ], [ 0; 1], []
-        ]
+        [ [ Ket(Literal 1) ], Universe(state = [ [ 0 ]; [ 1 ] ], outputColumns = [ 0 ], filters = [])
+          [ a ], Universe(state = [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ], outputColumns = [ 0 ], filters = [])
+          [ b ], Universe(state = [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ], outputColumns = [ 0 ], filters = [])
+          [ a; a ], Universe(state = [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ], outputColumns = [ 0; 0 ], filters = [])
+          [ a; b ],
+          Universe(
+              state =
+                  [ [ 0; 0 ]
+                    [ 0; 1 ]
+                    [ 0; 2 ]
+                    [ 0; 3 ]
+                    [ 1; 0 ]
+                    [ 1; 1 ]
+                    [ 1; 2 ]
+                    [ 1; 3 ]
+                    [ 2; 0 ]
+                    [ 2; 1 ]
+                    [ 2; 2 ]
+                    [ 2; 3 ]
+                    [ 3; 0 ]
+                    [ 3; 1 ]
+                    [ 3; 2 ]
+                    [ 3; 3 ] ],
+              filters = [],
+              outputColumns = [ 0; 1 ]
+          )
+          [ a; Ket(Literal 1) ],
+          Universe(
+              state = [ [ 0; 0 ]; [ 0; 1 ]; [ 1; 0 ]; [ 1; 1 ]; [ 2; 0 ]; [ 2; 1 ]; [ 3; 0 ]; [ 3; 1 ] ],
+              filters = [],
+              outputColumns = [ 0; 1 ]
+          )
+          [ Ket(Literal 1); Ket(Constant 4) ],
+          Universe(state = [ [ 0; 4 ]; [ 1; 4 ] ], outputColumns = [ 0; 1 ], filters = []) ]
         |> List.iter (this.TestExpression)
 
-    // [<TestMethod>]
-    // member this.TestBasicExpressions() =
-    //     let prelude = this.Prelude
+    [<TestMethod>]
+    member this.TestAddMultiply() =
+        let a = Ket(Literal 1)
+        let b = Ket(Literal 1)
 
-    //     [
-    //       // | false >
-    //       e.Ket(e.Bool false), [ [ Bool false ] ], [ 0 ]
+        let c =
+            (Ket(Map(Multiply 4, [ Ket(Literal 2); Ket(Constant 3) ])))
+                .Add(b)
+                .Where(LessThan, Ket(Constant 5))
 
-    //       // | false, true >
-    //       e.Ket(e.Set [ e.Bool false; e.Bool true ]), [ [ Bool false; Bool true ]; [ Bool true; Bool true ] ], [ 0 ]
+        [ [ Ket(Map(Add(1), [ a; b ])) ],
+          Universe(state = [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ], outputColumns = [ 2 ], filters = [])
+          [ a.Add(b) ],
+          Universe(state = [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ], outputColumns = [ 2 ], filters = [])
+          [ Ket(Map(Add(2), [ a; b ])) ],
+          Universe(state = [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 2 ] ], outputColumns = [ 2 ], filters = [])
+          [ c ],
+          Universe(
+              state =
+                  [ [ 0; 3; 0; 0; 0; 5; 1 ]
+                    [ 0; 3; 0; 1; 1; 5; 1 ]
+                    [ 1; 3; 3; 0; 3; 5; 1 ]
+                    [ 1; 3; 3; 1; 4; 5; 1 ]
+                    [ 2; 3; 6; 0; 6; 5; 0 ]
+                    [ 2; 3; 6; 1; 7; 5; 0 ]
+                    [ 3; 3; 9; 0; 9; 5; 0 ]
+                    [ 3; 3; 9; 1; 10; 5; 0 ] ],
+              outputColumns = [ 4 ],
+              filters = [ c.Id ]
+          ) ]
+        |> List.iter (this.TestExpression)
 
-    //       // | 0, 1, 2 >
-    //       e.Ket(e.Set [ e.Int 0; e.Int 1; e.Int 2 ]),
-    //       [ [ Int 0; Bool true ]; [ Int 1; Bool true ]; [ Int 2; Bool true ] ],
-    //       [ 0 ]
-    //       // | (0,0), (0,1), (1,1) >
-    //       e.Ket(e.Set [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 0; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 1 ] ]),
-    //       [ [ Int 0; Int 0; Bool true ]; [ Int 0; Int 1; Bool true ]; [ Int 1; Int 1; Bool true ] ],
-    //       [ 0; 1 ]
-
-    //       // | (0,0,0), (0,1,1), (1,1,0), (1,1,2) >.2
-    //       e.Project(
-    //           e.Ket(
-    //               e.Set
-    //                   [ e.Tuple [ e.Int 0; e.Int 0; e.Int 0 ]
-    //                     e.Tuple [ e.Int 0; e.Int 1; e.Int 1 ]
-    //                     e.Tuple [ e.Int 1; e.Int 1; e.Int 0 ]
-    //                     e.Tuple [ e.Int 1; e.Int 1; e.Int 2 ] ]
-    //           ),
-    //           e.Int 2
-    //       ),
-    //       [ [ Int 0; Int 0; Int 0; Bool true ]
-    //         [ Int 0; Int 1; Int 1; Bool true ]
-    //         [ Int 1; Int 1; Int 0; Bool true ]
-    //         [ Int 1; Int 1; Int 2; Bool true ] ],
-    //       [ 2 ]
-
-    //       // ( | 0, 1 >, | 1, 2 > )
-    //       e.Join(e.Ket(e.Set [ e.Int 0; e.Int 1 ]), e.Ket(e.Set [ e.Int 1; e.Int 2 ])),
-    //       [ [ Int 0; Bool true; Int 1; Bool true ]
-    //         [ Int 0; Bool true; Int 2; Bool true ]
-    //         [ Int 1; Bool true; Int 1; Bool true ]
-    //         [ Int 1; Bool true; Int 2; Bool true ] ],
-    //       [ 0; 2 ]
-
-    //       // |@,3>
-    //       e.KetAll(e.Int 4),
-    //       [ [ Int 0 ]
-    //         [ Int 1 ]
-    //         [ Int 2 ]
-    //         [ Int 3 ]
-    //         [ Int 4 ]
-    //         [ Int 5 ]
-    //         [ Int 6 ]
-    //         [ Int 7 ]
-    //         [ Int 8 ]
-    //         [ Int 9 ]
-    //         [ Int 10 ]
-    //         [ Int 11 ]
-    //         [ Int 12 ]
-    //         [ Int 13 ]
-    //         [ Int 14 ]
-    //         [ Int 15 ] ],
-    //       [ 0 ]
-    //       // (|@,2>, |@,1>)
-    //       e.Join(e.KetAll(e.Int 2), e.KetAll(e.Int 1)),
-    //       [ [ Int 0; Bool false ]
-    //         [ Int 0; Bool true ]
-    //         [ Int 1; Bool false ]
-    //         [ Int 1; Bool true ]
-    //         [ Int 2; Bool false ]
-    //         [ Int 2; Bool true ]
-    //         [ Int 3; Bool false ]
-    //         [ Int 3; Bool true ] ],
-    //       [ 0; 1 ]
-    //       // (|@,2>, |@,1>)[1]
-    //       e.Project(e.Join(e.KetAll(e.Int 2), e.KetAll(e.Int 1)), e.Int 1),
-    //       [ [ Int 0; Bool false ]
-    //         [ Int 0; Bool true ]
-    //         [ Int 1; Bool false ]
-    //         [ Int 1; Bool true ]
-    //         [ Int 2; Bool false ]
-    //         [ Int 2; Bool true ]
-    //         [ Int 3; Bool false ]
-    //         [ Int 3; Bool true ] ],
-    //       [ 1 ]
-    //       // (|@,2>, |@,1>)[1]
-    //       e.Project(e.Join(e.KetAll(e.Int 2), e.KetAll(e.Int 1)), e.Int 0),
-    //       [ [ Int 0; Bool false ]
-    //         [ Int 0; Bool true ]
-    //         [ Int 1; Bool false ]
-    //         [ Int 1; Bool true ]
-    //         [ Int 2; Bool false ]
-    //         [ Int 2; Bool true ]
-    //         [ Int 3; Bool false ]
-    //         [ Int 3; Bool true ] ],
-    //       [ 0 ]
-    //       // let x = |@,2>; (x, x)
-    //       e.Block([ s.Let("x", e.KetAll(e.Int 2)); s.Let("y", e.KetAll(e.Int 1)) ], e.Join(e.Var "y", e.Var "y")),
-    //       [ [ Bool false ]; [ Bool true ] ],
-    //       [ 0; 0 ]
-    //       // (|(0, 6)>, |@, 2>)
-    //       e.Join(e.Ket(e.Set [ e.Tuple [ e.Int 0; e.Int 6 ] ]), e.KetAll(e.Int 2)),
-    //       [ [ Int 0; Int 6; Bool true; Int 0 ]
-    //         [ Int 0; Int 6; Bool true; Int 1 ]
-    //         [ Int 0; Int 6; Bool true; Int 2 ]
-    //         [ Int 0; Int 6; Bool true; Int 3 ] ],
-    //       [ 0; 1; 3 ] ]
-    //     |> List.iter (this.TestExpression prelude)
-
-    //     [
-    //       // |@,0>
-    //       e.KetAll(e.Int 0), "All ket literals must have a size > 0, got 0"
-    //       // |>
-    //       e.Ket(e.Set []), "All ket literals require a non-empty set." ]
-    //     |> List.iter (verify_invalid_expression (prelude, this.QPU))
 
     // [<TestMethod>]
     // member this.TestAddMultiply() =
@@ -757,21 +669,18 @@ type TestQPUClassic() =
     //     |> List.iter (verify_expression (prelude, this.QPU))
 
 
-    member this.TestExpression (exprs, state, outputs: int list, filters: int list) =
+    member this.TestExpression(exprs, expected) =
         printfn "expr: %A" exprs
 
         let ctx = { qpu = this.QPU }
 
         match aleph.quals.runtime.Eval.prepare ctx exprs with
         | Ok universe ->
-            let universe = universe :?> Universe
-            let state' = universe.State
-            let outputs' = universe.Outputs
-            let filters' = universe.Filters
-            printfn "outputs: %A\nfilters: %A\nmemory: %A\n" outputs' filters' state'
-            Assert.AreEqual(state, state')
-            Assert.AreEqual(outputs, outputs')
-            Assert.AreEqual(filters, filters')
+            let actual = universe :?> Universe
+            printfn "outputs: %A\nfilters: %A\nmemory: %A\n" actual.Outputs actual.Filters actual.State
+            Assert.AreEqual(expected.State, actual.State)
+            Assert.AreEqual(expected.Outputs, actual.Outputs)
+            Assert.AreEqual(expected.Filters, actual.Filters)
         | Error msg ->
             printfn "e: %A" exprs
             Assert.AreEqual($"Expecting valid expression.", $"Got Error msg: {msg}")

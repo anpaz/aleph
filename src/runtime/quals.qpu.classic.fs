@@ -37,7 +37,7 @@ of each prepare method below...
 
 type ColumnIndex = int
 
-type ColumnsMap = Map<Expression, ColumnIndex>
+type ColumnsMap = Map<int, ColumnIndex>
 
 type QuantumState = int list list
 
@@ -48,8 +48,7 @@ type Universe(state: QuantumState, filters: ColumnIndex list, outputColumns: Col
     // Creates a row for this Universe with random values:
     let random_values () =
         // Pick the max number of columns based on the columns of the output register of this universe.
-        let max_column =
-            outputColumns |> List.max
+        let max_column = outputColumns |> List.max
 
         seq { for i in 0..max_column -> (random.Next()) } |> Seq.toList
 
@@ -93,37 +92,46 @@ type Universe(state: QuantumState, filters: ColumnIndex list, outputColumns: Col
 
 type QuantumContext =
     { state: QuantumState
-      filters: ColumnIndex list
       allocations: ColumnsMap }
 
 type Processor() =
 
-    let rec init (ctx: QuantumContext) (k: Expression) =
-        match ctx.allocations.TryFind k with
-        | Some columns -> ctx |> Ok // Already prepared...
+    let add_values (current: QuantumState) (right: int list) : QuantumState =
+        if current.IsEmpty then
+            seq {
+                for j in right do
+                    [ j ]
+            }
+        else
+            seq {
+                for i in current do
+                    for j in right do
+                        i @ [ j ]
+            }
+        |> Seq.toList
+
+    let rec init (ctx: QuantumContext) (k: Ket) =
+        match ctx.allocations.TryFind k.Id with
+        | Some _ -> ctx |> Ok // Already prepared...
         | None ->
-            let v = 
-                match k with
-                | Expression.Ket width ->
-                    init_literal ctx width
-                | Expression.Constant value ->
-                    init_constant ctx value
-                | Expression.Map (op, args) ->
-                    init_map ctx (op, args)
-                | Expression.Where (target, clause, args) ->
-                    init_filter ctx (target, clause, args)
-            v ==> fun (ctx', column) -> { ctx' with allocations = ctx'.allocations.Add(k, column) } |> Ok
+            let v =
+                match k.Expression with
+                | Literal width -> init_literal ctx width
+                | Constant value -> init_constant ctx value
+                | Map (op, args) -> init_map ctx (op, args)
+                | Where (target, op, args) -> init_filter ctx (target, op, args)
+
+            v
+            ==> fun (ctx', column) -> { ctx' with allocations = ctx'.allocations.Add(k.Id, column) } |> Ok
 
     and init_many ctx expressions =
-        let init_one (previous: Result<QuantumContext, string>) (next: Expression) =
-            previous
-            ==> fun ctx' -> init ctx' next
+        let init_one previous next = previous ==> fun ctx' -> init ctx' next
         expressions |> List.fold init_one (Ok ctx)
 
     and init_literal ctx width =
         match width with
         | 0 -> "All literals must have a size." |> Error
-        | n -> 
+        | n ->
             let values = seq { 0 .. (int (2.0 ** n)) - 1 } |> Seq.toList
             let new_state = add_values ctx.state values
             let new_column = new_state.Head.Length - 1
@@ -134,30 +142,31 @@ type Processor() =
         let new_column = new_state.Head.Length - 1
         ({ ctx with state = new_state }, new_column) |> Ok
 
+    and init_filter ctx (target, op, args) =
+        init ctx target
+        ==> fun ctx' ->
+                init_map ctx' (op, target :: args)
+                ==> fun (ctx'', _) -> (ctx'', ctx''.allocations.[target.Id]) |> Ok
+
     and init_map ctx (op, args) =
         init_many ctx args
         ==> fun ctx' ->
                 match op with
-                | Operator.IsZero -> 
-                    map_unary ctx' (args.[0], (fun i -> if i = 0 then 1 else 0))
-                | Operator.Not ->
-                    map_unary ctx' (args.[0], (fun i -> if i = 1 then 0 else 1))
-                | Operator.LessThan ->
-                    map_binary ctx' (args.[0], args.[1], fun (x, y) -> if x < y then 1 else 0)
-                | Operator.Equals ->
-                    map_binary ctx' (args.[0], args.[1], fun (x, y) -> if x = y then 1 else 0)
+                | Operator.IsZero -> map_unary ctx' (args.[0], (fun i -> if i = 0 then 1 else 0))
+                | Operator.Not -> map_unary ctx' (args.[0], (fun i -> if i = 1 then 0 else 1))
+                | Operator.LessThan -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x < y then 1 else 0))
+                | Operator.Equals -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x = y then 1 else 0))
                 | Operator.Add w ->
                     let m = int (2.0 ** w)
-                    map_binary ctx' (args.[0], args.[1], fun (x, y) -> (x + y) % m)
+                    map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x + y) % m))
                 | Operator.Multiply w ->
                     let m = int (2.0 ** w)
-                    map_binary ctx' (args.[0], args.[1], fun (x, y) -> (x * y) % m)
-                | In _
-                | If _ ->
-                    failwith "Not implemented" 
+                    map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x * y) % m))
+
+                | _ -> failwith "Not implemented"
 
     and map_unary ctx (ket, lambda: int -> int) =
-        let arg = ctx.allocations.[ket] 
+        let arg = ctx.allocations.[ket.Id]
         let new_column = ctx.state.Head.Length
 
         let new_state =
@@ -170,8 +179,8 @@ type Processor() =
         ({ ctx with state = new_state }, new_column) |> Ok
 
     and map_binary ctx (left, right, lambda: int * int -> int) =
-        let x = ctx.allocations.[left] 
-        let y = ctx.allocations.[right]
+        let x = ctx.allocations.[left.Id]
+        let y = ctx.allocations.[right.Id]
         let new_column = ctx.state.Head.Length
 
         let new_state =
@@ -215,22 +224,6 @@ type Processor() =
     //         ({ ctx with state = new_state }, ColumnIndex.One new_column) |> Ok
     //     | error -> $"Invalid ket for if expression: {ketId} points to columns {error}." |> Error
 
-    and init_filter ctx (op, clause, args) =
-       failwith "Not implemented."
-
-    and add_values (current: QuantumState) (right : int list) : QuantumState  =
-        if current.IsEmpty then
-            seq {
-                for j in right do
-                    [ j ]
-            }  
-        else
-            seq {
-                for i in current do
-                    for j in right do
-                        i @ [ j ]
-            }  
-        |> Seq.toList
 
     (*
         Implements the QPU interface used by the classical eval to interact with quantum
@@ -247,13 +240,10 @@ type Processor() =
         (*
             Prepares a Quantum Universe from the given universe expression
          *)
-        member this.Prepare(kets: Expression list) =
-            let ctx =
-                { allocations = Map.empty
-                  filters = []
-                  state = [] }
+        member this.Prepare(kets: Ket list) =
+            let ctx = { allocations = Map.empty; state = [] }
 
             init_many ctx kets
-            ==> fun ctx' -> 
-                let outputs = kets |> List.map (fun i -> ctx'.allocations.Item i)
-                Universe(ctx'.state, ctx'.filters, outputs) :> IUniverse |> Ok
+            ==> fun ctx' ->
+                    let outputs = kets |> List.map (fun i -> ctx'.allocations.Item i.Id)
+                    Universe(ctx'.state, Ket.JoinFilters(kets), outputs) :> IUniverse |> Ok
