@@ -114,15 +114,18 @@ type Processor() =
         match ctx.allocations.TryFind k.Id with
         | Some _ -> ctx |> Ok // Already prepared...
         | None ->
-            let v =
+            let init_result =
                 match k.Expression with
                 | Literal width -> init_literal ctx width
                 | Constant value -> init_constant ctx value
                 | Map (op, args) -> init_map ctx (op, args)
-                | Where (target, op, args) -> init_filter ctx (target, op, args)
-
-            v
-            ==> fun (ctx', column) -> { ctx' with allocations = ctx'.allocations.Add(k.Id, column) } |> Ok
+                | Where (target, op, args) ->
+                    init_map ctx (op, target :: args)
+                    ==> fun (ctx, column) ->
+                        let ctx = { ctx with allocations = ctx.allocations.Add(k.FilterId.Value, column) }
+                        (ctx, ctx.allocations.[target.Id] )|> Ok
+            init_result
+            ==> fun (ctx, column) -> { ctx with allocations = ctx.allocations.Add(k.Id, column) } |> Ok
 
     and init_many ctx expressions =
         let init_one previous next = previous ==> fun ctx' -> init ctx' next
@@ -142,18 +145,13 @@ type Processor() =
         let new_column = new_state.Head.Length - 1
         ({ ctx with state = new_state }, new_column) |> Ok
 
-    and init_filter ctx (target, op, args) =
-        init ctx target
-        ==> fun ctx' ->
-                init_map ctx' (op, target :: args)
-                ==> fun (ctx'', _) -> (ctx'', ctx''.allocations.[target.Id]) |> Ok
-
     and init_map ctx (op, args) =
         init_many ctx args
         ==> fun ctx' ->
                 match op with
                 | Operator.IsZero -> map_unary ctx' (args.[0], (fun i -> if i = 0 then 1 else 0))
-                | Operator.Not -> map_unary ctx' (args.[0], (fun i -> if i = 1 then 0 else 1))
+                | Operator.And -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) && (y = 1) then 1 else 0))
+                | Operator.Or -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) || (y = 1) then 1 else 0))
                 | Operator.LessThan -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x < y then 1 else 0))
                 | Operator.Equals -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x = y then 1 else 0))
                 | Operator.Add w ->
@@ -245,5 +243,6 @@ type Processor() =
 
             init_many ctx kets
             ==> fun ctx' ->
-                    let outputs = kets |> List.map (fun i -> ctx'.allocations.Item i.Id)
-                    Universe(ctx'.state, Ket.JoinFilters(kets), outputs) :> IUniverse |> Ok
+                let outputs = kets |> List.map (fun i -> ctx'.allocations.Item i.Id)
+                let filters =  Ket.CollectFilterIds(kets) |> List.map (fun i -> ctx'.allocations.Item i)
+                Universe(ctx'.state, filters, outputs) :> IUniverse |> Ok

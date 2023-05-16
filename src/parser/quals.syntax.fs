@@ -10,7 +10,6 @@ type Expression =
 
 and Operator =
     | IsZero
-    | Not
     | LessThan
     | Equals
     | Add of weight: int
@@ -22,11 +21,16 @@ and Operator =
     | And
     | Or
 
+and KetId = int
+
 and Ket(expression: Expression) =
     static let ket_counter = ref 0
-    let id = System.Threading.Interlocked.Increment(ket_counter)
+    let id : KetId = System.Threading.Interlocked.Increment(ket_counter) * 2
+    let filterId = match expression with | Where _ -> id + 1 |> Some | _ -> None
 
     member this.Expression = expression
+
+    member this.FilterId = filterId
 
     member this.Width =
         match this.Expression with
@@ -34,7 +38,6 @@ and Ket(expression: Expression) =
         | Map (op, _) ->
             match op with
             | IsZero
-            | Not
             | And
             | Or
             | LessThan
@@ -48,18 +51,13 @@ and Ket(expression: Expression) =
 
     member this.Id = id
 
-    member this.Filter =
-        match this.Expression with
-        | Literal _
-        | Constant _ -> []
-        | Map (_, args) -> args |> List.collect (fun k -> k.Filter)
-        | Where (target, _, args) -> this.Id :: Ket.JoinFilters(target :: args)
-
     member this.Where(op: Operator, arg: Ket) = Ket(Where(this, op, [ arg ]))
 
-    member this.IsZero() = Ket(Map(IsZero, [ this ]))
+    member this.Where(op: Operator, c: int) = this.Where(op, Ket(Constant c))
 
-    member this.Not() = Ket(Map(Not, [ this ]))
+    member this.Where(op: Operator, b: bool) = this.Where(op, Ket(Constant (if b then 1 else 0)))
+
+    member this.Not() = Ket(Map(IsZero, [ this ]))
 
     member this.And(k2: Ket) = Ket(Map(And, [ this; k2 ]))
 
@@ -72,6 +70,12 @@ and Ket(expression: Expression) =
     member this.Or(c: bool) =
         let k2 = Ket(Constant(if c then 1 else 0))
         this.Or(k2)
+        
+    member this.LessThan(k2: Ket) = Ket(Map(LessThan, [ this; k2 ]))
+
+    member this.LessThan(c: int) =
+        let k2 = Ket(Constant(c))
+        this.LessThan(k2)
 
     member this.Add(k2: Ket, weight: int) =
         Ket(Map(Add weight, [ this; k2 ]))
@@ -115,5 +119,11 @@ and Ket(expression: Expression) =
         let k2 = Ket(Constant(if c then 1 else 0))
         this.Equals(k2)
 
-    static member JoinFilters(kets: Ket list) =
-        (kets |> List.collect (fun k -> k.Filter)) |> Set.ofList |> Set.toList
+    static member CollectFilterIds(kets: Ket list) : KetId list =
+        let ket_filters (k: Ket) = 
+            match k.Expression with
+            | Map (_, args) -> Ket.CollectFilterIds args
+            | Where (target, _, args) -> k.FilterId.Value :: Ket.CollectFilterIds(target :: args)
+            | _ -> []
+
+        kets |> List.collect (fun k -> ket_filters(k)) |> Set.ofList |> Set.toList

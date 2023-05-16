@@ -79,10 +79,13 @@ type TestQPUClassic() =
 
         [ [ Ket(Map(Add(1), [ a; b ])) ],
           Universe(state = [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ], outputColumns = [ 2 ], filters = [])
+
           [ a.Add(b) ],
           Universe(state = [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ], outputColumns = [ 2 ], filters = [])
+
           [ Ket(Map(Add(2), [ a; b ])) ],
           Universe(state = [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 2 ] ], outputColumns = [ 2 ], filters = [])
+
           [ c ],
           Universe(
               state =
@@ -95,7 +98,8 @@ type TestQPUClassic() =
                     [ 3; 3; 1; 3; 1; 0; 1 ]
                     [ 3; 3; 1; 3; 1; 1; 2 ] ],
               outputColumns = [ 6 ],
-              filters = [ c.Id - 1 ])
+              filters = [ 4 ])
+
           [ d ],
           Universe(
               state =
@@ -108,7 +112,7 @@ type TestQPUClassic() =
                     [ 3; 3; 9; 0; 9; 5; 0 ]
                     [ 3; 3; 9; 1; 10; 5; 0 ] ],
               outputColumns = [ 4 ],
-              filters = [ d.Id ])
+              filters = [ 6 ])
               
           [ e ],
           Universe(
@@ -130,7 +134,51 @@ type TestQPUClassic() =
                     [ 3; 3; 1; 3; 1; 1; 2; 0; 0; 1; 2 ]
                     [ 3; 3; 1; 3; 1; 1; 2; 1; 0; 0; 3 ] ],
               outputColumns = [ 10 ],
-              filters = [ c.Id - 1; e.Id - 1 ])
+              filters = [ 4; 9 ])
+        ]
+        |> List.iter (this.TestExpression)
+
+
+    [<TestMethod>]
+    member this.TestBoolean() =
+        let a = Ket(Literal 1)
+        let b = Ket(Literal 1)
+        let c = a.Add(b, weight=2).Where(LessThan, 2)
+
+        // TODO: The compiler should know that
+        //   d = a.LessThan(b)
+        //   e = a.LessThan(b)
+        // can point to the same ket.
+        let d = a.LessThan(b).And(b.LessThan(1))
+        let e = a.LessThan(b).Or(b.LessThan(1))
+        let f = e.Not().Where(Equals, 1)
+
+        [ [ a.LessThan(b) ],
+          Universe(state = [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 0 ]; [ 1; 1; 0 ] ], outputColumns = [ 2 ], filters = [])
+
+          [ b.LessThan(1) ],
+          Universe(state = [ [ 0; 1; 1 ]; [ 1; 1; 0 ] ], outputColumns = [ 2 ], filters = [])
+
+          [ c ],
+          Universe(state = [ 
+            [ 0; 0; 0; 2; 1 ]
+            [ 0; 1; 1; 2; 1 ]
+            [ 1; 0; 1; 2; 1 ]
+            [ 1; 1; 2; 2; 0 ] ], outputColumns = [ 2 ], filters = [ 4 ])
+
+          [ d; e ],
+          Universe(state = [
+            [ 0; 0; 0; 1; 1; 0; 0; 1; 1; 1 ]
+            [ 0; 1; 1; 1; 0; 0; 1; 1; 0; 1 ]
+            [ 1; 0; 0; 1; 1; 0; 0; 1; 1; 1 ]
+            [ 1; 1; 0; 1; 0; 0; 0; 1; 0; 0 ] ], outputColumns = [ 5; 9 ], filters = [])
+
+          [ f ],
+          Universe(state = [
+            [ 0; 0; 0; 1; 1; 1; 0; 1; 0 ]
+            [ 0; 1; 1; 1; 0; 1; 0; 1; 0 ]
+            [ 1; 0; 0; 1; 1; 1; 0; 1; 0 ]
+            [ 1; 1; 0; 1; 0; 0; 1; 1; 1 ] ], outputColumns = [ 6 ], filters = [ 8 ])
         ]
         |> List.iter (this.TestExpression)
 
