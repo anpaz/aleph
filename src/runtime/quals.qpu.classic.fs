@@ -150,6 +150,7 @@ type Processor() =
         ==> fun ctx' ->
                 match op with
                 | Operator.IsZero -> map_unary ctx' (args.[0], (fun i -> if i = 0 then 1 else 0))
+                | Operator.In items -> map_unary ctx' (args.[0], (fun i -> if items |> List.contains i then 1 else 0))
                 | Operator.And -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) && (y = 1) then 1 else 0))
                 | Operator.Or -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) || (y = 1) then 1 else 0))
                 | Operator.LessThan -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x < y then 1 else 0))
@@ -160,10 +161,11 @@ type Processor() =
                 | Operator.Multiply w ->
                     let m = int (2.0 ** w)
                     map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x * y) % m))
+                | Operator.If w ->
+                    let m = int (2.0 ** w)
+                    map_ternary ctx' (args.[0], args.[1], args.[2], (fun (x, y, z) -> if x = 0 then z % m else y % m))
 
-                | _ -> failwith "Not implemented"
-
-    and map_unary ctx (ket, lambda: int -> int) =
+    and map_unary ctx (ket : Ket, lambda: int -> int) =
         let arg = ctx.allocations.[ket.Id]
         let new_column = ctx.state.Head.Length
 
@@ -176,7 +178,7 @@ type Processor() =
 
         ({ ctx with state = new_state }, new_column) |> Ok
 
-    and map_binary ctx (left, right, lambda: int * int -> int) =
+    and map_binary ctx (left : Ket, right : Ket, lambda: int * int -> int) =
         let x = ctx.allocations.[left.Id]
         let y = ctx.allocations.[right.Id]
         let new_column = ctx.state.Head.Length
@@ -190,37 +192,20 @@ type Processor() =
 
         ({ ctx with state = new_state }, new_column) |> Ok
 
+    and map_ternary ctx (a: Ket, b: Ket, c: Ket, lambda: int * int * int -> int) =
+        let x = ctx.allocations.[a.Id]
+        let y = ctx.allocations.[b.Id]
+        let z = ctx.allocations.[c.Id]
+        let new_column = ctx.state.Head.Length
 
-    // and map_in ctx (ketId, values) =
-    //     match v with
-    //     | Value.Set s ->
-    //         let columns = ctx.allocations.[ketId]
-    //         let new_column = ctx.state.Head.Length
+        let new_state =
+            seq {
+                for row in ctx.state do
+                    row @ [ lambda (row.[x], row.[y], row.[z]) ]
+            }
+            |> Seq.toList
 
-    //         let new_state =
-    //             seq {
-    //                 for row in ctx.state do
-    //                     row @ [ Value.Bool(s.Contains(Universe.project columns row)) ]
-    //             }
-    //             |> Seq.toList
-
-    //         ({ ctx with state = new_state }, ColumnIndex.One new_column) |> Ok
-    //     | _ -> $"In map for preparation expects a set." |> Error
-
-    // and map_if ctx ketId =
-    //     match ctx.allocations.[ketId] with
-    //     | ColumnIndex.Many [ c; t; e ] ->
-    //         let new_column = ctx.state.Head.Length
-
-    //         let new_state =
-    //             seq {
-    //                 for row in ctx.state do
-    //                     row @ [ if row.[c] = (Bool true) then row.[t] else row.[e] ]
-    //             }
-    //             |> Seq.toList
-
-    //         ({ ctx with state = new_state }, ColumnIndex.One new_column) |> Ok
-    //     | error -> $"Invalid ket for if expression: {ketId} points to columns {error}." |> Error
+        ({ ctx with state = new_state }, new_column) |> Ok
 
 
     (*

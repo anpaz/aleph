@@ -68,14 +68,14 @@ type TestQPUClassic() =
         let c = Ket(Literal 2)
                     .Multiply(3)
                     .Where(LessThan, Ket(Constant 3))
-                    .Add(b, weight=4)
+                    .Add(b, width=4)
 
         let d = Ket(Literal 2)
-                    .Multiply(3, weight=4)
+                    .Multiply(3, width=4)
                     .Add(b)
                     .Where(LessThan, Ket(Constant 5))
 
-        let e = c.Add(a.Where(Equals, Ket(Constant 0)))
+        let e = c.Add(a.Where(IsZero))
 
         [ [ Ket(Map(Add(1), [ a; b ])) ],
           Universe(state = [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ], outputColumns = [ 2 ], filters = [])
@@ -117,24 +117,24 @@ type TestQPUClassic() =
           [ e ],
           Universe(
               state =
-                  [ [ 0; 3; 0; 3; 1; 0; 0; 0; 0; 1; 0 ]
-                    [ 0; 3; 0; 3; 1; 0; 0; 1; 0; 0; 1 ]
-                    [ 0; 3; 0; 3; 1; 1; 1; 0; 0; 1; 1 ]
-                    [ 0; 3; 0; 3; 1; 1; 1; 1; 0; 0; 2 ]
-                    [ 1; 3; 3; 3; 0; 0; 3; 0; 0; 1; 3 ]
-                    [ 1; 3; 3; 3; 0; 0; 3; 1; 0; 0; 4 ]
-                    [ 1; 3; 3; 3; 0; 1; 4; 0; 0; 1; 4 ]
-                    [ 1; 3; 3; 3; 0; 1; 4; 1; 0; 0; 5 ]
-                    [ 2; 3; 2; 3; 1; 0; 2; 0; 0; 1; 2 ]
-                    [ 2; 3; 2; 3; 1; 0; 2; 1; 0; 0; 3 ]
-                    [ 2; 3; 2; 3; 1; 1; 3; 0; 0; 1; 3 ]
-                    [ 2; 3; 2; 3; 1; 1; 3; 1; 0; 0; 4 ]
-                    [ 3; 3; 1; 3; 1; 0; 1; 0; 0; 1; 1 ]
-                    [ 3; 3; 1; 3; 1; 0; 1; 1; 0; 0; 2 ]
-                    [ 3; 3; 1; 3; 1; 1; 2; 0; 0; 1; 2 ]
-                    [ 3; 3; 1; 3; 1; 1; 2; 1; 0; 0; 3 ] ],
-              outputColumns = [ 10 ],
-              filters = [ 4; 9 ])
+                  [ [ 0; 3; 0; 3; 1; 0; 0; 0; 1; 0 ]
+                    [ 0; 3; 0; 3; 1; 0; 0; 1; 0; 1 ]
+                    [ 0; 3; 0; 3; 1; 1; 1; 0; 1; 1 ]
+                    [ 0; 3; 0; 3; 1; 1; 1; 1; 0; 2 ]
+                    [ 1; 3; 3; 3; 0; 0; 3; 0; 1; 3 ]
+                    [ 1; 3; 3; 3; 0; 0; 3; 1; 0; 4 ]
+                    [ 1; 3; 3; 3; 0; 1; 4; 0; 1; 4 ]
+                    [ 1; 3; 3; 3; 0; 1; 4; 1; 0; 5 ]
+                    [ 2; 3; 2; 3; 1; 0; 2; 0; 1; 2 ]
+                    [ 2; 3; 2; 3; 1; 0; 2; 1; 0; 3 ]
+                    [ 2; 3; 2; 3; 1; 1; 3; 0; 1; 3 ]
+                    [ 2; 3; 2; 3; 1; 1; 3; 1; 0; 4 ]
+                    [ 3; 3; 1; 3; 1; 0; 1; 0; 1; 1 ]
+                    [ 3; 3; 1; 3; 1; 0; 1; 1; 0; 2 ]
+                    [ 3; 3; 1; 3; 1; 1; 2; 0; 1; 2 ]
+                    [ 3; 3; 1; 3; 1; 1; 2; 1; 0; 3 ] ],
+              outputColumns = [ 9 ],
+              filters = [ 4; 8 ])
         ]
         |> List.iter (this.TestExpression)
 
@@ -143,7 +143,7 @@ type TestQPUClassic() =
     member this.TestBoolean() =
         let a = Ket(Literal 1)
         let b = Ket(Literal 1)
-        let c = a.Add(b, weight=2).Where(LessThan, 2)
+        let c = a.Add(b, width=2).Where(LessThan, 2)
 
         // TODO: The compiler should know that
         //   d = a.LessThan(b)
@@ -182,508 +182,53 @@ type TestQPUClassic() =
         ]
         |> List.iter (this.TestExpression)
 
+    [<TestMethod>]
+    member this.TestIn() =
+        let a = Ket(Literal 2)
 
-    // [<TestMethod>]
-    // member this.TestAddMultiply() =
-    //   let a = Ket(2)
-    //   let b = Ket(3)
+        [ [ a.In [0; 2] ],
+            Universe(state = [
+                [ 0; 1 ]
+                [ 1; 0 ]
+                [ 2; 1 ]
+                [ 3; 0 ]
+            ], outputColumns = [ 1 ], filters = [])
+            [ a.Where(In [0; 2]) ],
+            Universe(state = [
+                [ 0; 1 ]
+                [ 1; 0 ]
+                [ 2; 1 ]
+                [ 3; 0 ]
+            ], outputColumns = [ 0 ], filters = [ 1 ])
+            
+            [ a; a.Where(In []); a.In [1;2;3;4] ],
+            Universe(state = [
+                [ 0; 0; 0 ]
+                [ 1; 0; 1 ]
+                [ 2; 0; 1 ]
+                [ 3; 0; 1 ]
+            ], outputColumns = [ 0; 0; 2 ], filters = [ 1 ])
+        ]
+        |> List.iter (this.TestExpression)
 
-    //     let prelude =
-    //         this.Prelude
-    //         @ [ s.Let(
-    //                 "k1",
-    //                 e.Ket(
-    //                     e.Set
-    //                         [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 0; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 1 ] ]
-    //                 )
-    //             ) ]
+        
+    [<TestMethod>]
+    member this.TestIf() =
+        let a = Ket(Literal 2)
+        let b = a.Add(4, width=3)
 
-    //     [
-    //       // k1.0 + k1.1
-    //       e.Add(e.Project(e.Var "k1", e.Int 0), e.Project(e.Var "k1", e.Int 1)),
-    //       [ [ Int 0; Int 0; Bool true; Int 0 ]; [ Int 0; Int 1; Bool true; Int 1 ]; [ Int 1; Int 1; Bool true; Int 2 ] ],
-    //       [ 3 ]
-    //       // k1.0 + 1
-    //       e.Add(e.Project(e.Var "k1", e.Int 0), e.Int 1),
-    //       [ [ Int 0; Int 0; Bool true; Int 1; Int 1 ]
-    //         [ Int 0; Int 1; Bool true; Int 1; Int 1 ]
-    //         [ Int 1; Int 1; Bool true; Int 1; Int 2 ] ],
-    //       [ 4 ]
-    //       // k1.0 * 5
-    //       e.Multiply(e.Project(e.Var "k1", e.Int 0), e.Int 5),
-    //       [ [ Int 0; Int 0; Bool true; Int 5; Int 0 ]
-    //         [ Int 0; Int 1; Bool true; Int 5; Int 0 ]
-    //         [ Int 1; Int 1; Bool true; Int 5; Int 5 ] ],
-    //       [ 4 ]
-    //       // k1.0 + | 1, 2, 3 >
-    //       e.Add(e.Project(e.Var "k1", e.Int 1), e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ])),
-    //       [ [ Int 0; Int 0; Bool true; Int 1; Bool true; Int 1 ]
-    //         [ Int 0; Int 0; Bool true; Int 2; Bool true; Int 2 ]
-    //         [ Int 0; Int 0; Bool true; Int 3; Bool true; Int 3 ]
-    //         [ Int 0; Int 1; Bool true; Int 1; Bool true; Int 2 ]
-    //         [ Int 0; Int 1; Bool true; Int 2; Bool true; Int 3 ]
-    //         [ Int 0; Int 1; Bool true; Int 3; Bool true; Int 4 ]
-    //         [ Int 1; Int 1; Bool true; Int 1; Bool true; Int 2 ]
-    //         [ Int 1; Int 1; Bool true; Int 2; Bool true; Int 3 ]
-    //         [ Int 1; Int 1; Bool true; Int 3; Bool true; Int 4 ] ],
-    //       [ 5 ]
-    //       // Join (k1.0, k1.1 + | 1, 2, 3 >)
-    //       e.Join(
-    //           e.Project(e.Var "k1", e.Int 0),
-    //           e.Add(e.Project(e.Var "k1", e.Int 1), e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ]))
-    //       ),
-    //       [ [ Int 0; Int 0; Bool true; Int 1; Bool true; Int 1 ]
-    //         [ Int 0; Int 0; Bool true; Int 2; Bool true; Int 2 ]
-    //         [ Int 0; Int 0; Bool true; Int 3; Bool true; Int 3 ]
-    //         [ Int 0; Int 1; Bool true; Int 1; Bool true; Int 2 ]
-    //         [ Int 0; Int 1; Bool true; Int 2; Bool true; Int 3 ]
-    //         [ Int 0; Int 1; Bool true; Int 3; Bool true; Int 4 ]
-    //         [ Int 1; Int 1; Bool true; Int 1; Bool true; Int 2 ]
-    //         [ Int 1; Int 1; Bool true; Int 2; Bool true; Int 3 ]
-    //         [ Int 1; Int 1; Bool true; Int 3; Bool true; Int 4 ] ],
-    //       [ 0; 5 ]
-    //       // Join (k1.0, k1.1 * | 1, 2, 3 >)
-    //       e.Join(
-    //           e.Project(e.Var "k1", e.Int 0),
-    //           e.Multiply(e.Project(e.Var "k1", e.Int 1), e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ]))
-    //       ),
-    //       [ [ Int 0; Int 0; Bool true; Int 1; Bool true; Int 0 ]
-    //         [ Int 0; Int 0; Bool true; Int 2; Bool true; Int 0 ]
-    //         [ Int 0; Int 0; Bool true; Int 3; Bool true; Int 0 ]
-    //         [ Int 0; Int 1; Bool true; Int 1; Bool true; Int 1 ]
-    //         [ Int 0; Int 1; Bool true; Int 2; Bool true; Int 2 ]
-    //         [ Int 0; Int 1; Bool true; Int 3; Bool true; Int 3 ]
-    //         [ Int 1; Int 1; Bool true; Int 1; Bool true; Int 1 ]
-    //         [ Int 1; Int 1; Bool true; Int 2; Bool true; Int 2 ]
-    //         [ Int 1; Int 1; Bool true; Int 3; Bool true; Int 3 ] ],
-    //       [ 0; 5 ] ]
-    //     |> List.iter (this.TestExpression prelude)
+        let c = a.In([1;2]).Choose(a, b)
 
-    // [<TestMethod>]
-    // member this.TestCompareOps() =
-    //     let prelude =
-    //         this.Prelude
-    //         @ [ s.Let("k1", e.KetAll(e.Int 2)); s.Let("k2", e.KetAll(e.Int 2)) ]
+        [ [ c ],
+            Universe(state = [
+                [ 0; 0; 4; 4; 4 ]
+                [ 1; 1; 4; 5; 1 ]
+                [ 2; 1; 4; 6; 2 ]
+                [ 3; 0; 4; 7; 7 ]
+            ], outputColumns = [ 4 ], filters = [])
+        ]
+        |> List.iter (this.TestExpression)
 
-    //     [
-    //       // k1 <= k2
-    //       e.LessThanEquals(e.Var "k1", e.Var "k2"),
-    //       [ [ Int 0; Int 0; Bool true ]
-    //         [ Int 0; Int 1; Bool true ]
-    //         [ Int 0; Int 2; Bool true ]
-    //         [ Int 0; Int 3; Bool true ]
-    //         [ Int 1; Int 0; Bool false ]
-    //         [ Int 1; Int 1; Bool true ]
-    //         [ Int 1; Int 2; Bool true ]
-    //         [ Int 1; Int 3; Bool true ]
-    //         [ Int 2; Int 0; Bool false ]
-    //         [ Int 2; Int 1; Bool false ]
-    //         [ Int 2; Int 2; Bool true ]
-    //         [ Int 2; Int 3; Bool true ]
-    //         [ Int 3; Int 0; Bool false ]
-    //         [ Int 3; Int 1; Bool false ]
-    //         [ Int 3; Int 2; Bool false ]
-    //         [ Int 3; Int 3; Bool true ] ],
-    //       [ 2 ]
-
-    //       // k1 > k2
-    //       e.GreaterThan(e.Var "k1", e.Var "k2"),
-    //       [ [ Int 0; Int 0; Bool false ]
-    //         [ Int 0; Int 1; Bool false ]
-    //         [ Int 0; Int 2; Bool false ]
-    //         [ Int 0; Int 3; Bool false ]
-    //         [ Int 1; Int 0; Bool true ]
-    //         [ Int 1; Int 1; Bool false ]
-    //         [ Int 1; Int 2; Bool false ]
-    //         [ Int 1; Int 3; Bool false ]
-    //         [ Int 2; Int 0; Bool true ]
-    //         [ Int 2; Int 1; Bool true ]
-    //         [ Int 2; Int 2; Bool false ]
-    //         [ Int 2; Int 3; Bool false ]
-    //         [ Int 3; Int 0; Bool true ]
-    //         [ Int 3; Int 1; Bool true ]
-    //         [ Int 3; Int 2; Bool true ]
-    //         [ Int 3; Int 3; Bool false ] ],
-    //       [ 2 ] ]
-    //     |> List.iter (this.TestExpression prelude)
-
-
-    // [<TestMethod>]
-    // member this.TestJoin() =
-    //     let prelude =
-    //         this.Prelude
-    //         @ [ s.Let(
-    //                 "k1",
-    //                 e.Ket(
-    //                     e.Set
-    //                         [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 0; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 1 ] ]
-    //                 )
-    //             )
-    //             s.Let("k2", e.Ket(e.Set [ e.Tuple [ e.Int 1 ]; e.Tuple [ e.Int 3 ] ])) ]
-
-    //     [
-    //       // let x = 10
-    //       // let y = x
-    //       // let x = false
-    //       // (x, y)
-    //       e.Block(
-    //           [ s.Let("x", e.Ket(e.Int 10)); s.Let("y", e.Var "x"); s.Let("x", e.Ket(e.Bool false)) ],
-    //           e.Join(e.Var "x", e.Var "y")
-    //       ),
-    //       [ [ Bool false; Int 10 ] ],
-    //       [ 0; 1 ]
-
-    //       // Join (k1, k1)
-    //       e.Join(e.Var "k1", e.Var "k1"),
-    //       [ [ Int 0; Int 0; Bool true ]; [ Int 0; Int 1; Bool true ]; [ Int 1; Int 1; Bool true ] ],
-    //       [ 0; 1; 0; 1 ]
-
-    //       // Join (k1, k2)
-    //       e.Join(e.Var "k1", e.Var "k2"),
-    //       [ [ Int 0; Int 0; Bool true; Int 1; Bool true ]
-    //         [ Int 0; Int 0; Bool true; Int 3; Bool true ]
-    //         [ Int 0; Int 1; Bool true; Int 1; Bool true ]
-    //         [ Int 0; Int 1; Bool true; Int 3; Bool true ]
-    //         [ Int 1; Int 1; Bool true; Int 1; Bool true ]
-    //         [ Int 1; Int 1; Bool true; Int 3; Bool true ] ],
-    //       [ 0; 1; 3 ]
-
-    //       // (Join k1, |true, false>)
-    //       e.Join(e.Var "k1", e.Ket(e.Set [ e.Bool true; e.Bool false ])),
-    //       [ [ Int 0; Int 0; Bool true; Bool false; Bool true ]
-    //         [ Int 0; Int 0; Bool true; Bool true; Bool true ]
-    //         [ Int 0; Int 1; Bool true; Bool false; Bool true ]
-    //         [ Int 0; Int 1; Bool true; Bool true; Bool true ]
-    //         [ Int 1; Int 1; Bool true; Bool false; Bool true ]
-    //         [ Int 1; Int 1; Bool true; Bool true; Bool true ] ],
-    //       [ 0; 1; 3 ]
-
-    //       // let e1 = k1.1 + 10
-    //       // let e2 = k2 + 10
-    //       // (Join k1, e2 == e1 )
-    //       e.Block(
-    //           [ Let("e1", e.Add(e.Project(e.Var "k1", e.Int 1), e.Int 10)); Let("e2", e.Add(e.Var "k2", e.Int 10)) ],
-    //           e.Join(e.Var "k1", e.Equals(e.Var "e2", e.Var "e1"))
-    //       ),
-    //       [ [ Int 0; Int 0; Bool true; Int 1; Bool true; Int 10; Int 11; Int 10; Int 10; Bool false ]
-    //         [ Int 0; Int 0; Bool true; Int 3; Bool true; Int 10; Int 13; Int 10; Int 10; Bool false ]
-    //         [ Int 0; Int 1; Bool true; Int 1; Bool true; Int 10; Int 11; Int 10; Int 11; Bool true ]
-    //         [ Int 0; Int 1; Bool true; Int 3; Bool true; Int 10; Int 13; Int 10; Int 11; Bool false ]
-    //         [ Int 1; Int 1; Bool true; Int 1; Bool true; Int 10; Int 11; Int 10; Int 11; Bool true ]
-    //         [ Int 1; Int 1; Bool true; Int 3; Bool true; Int 10; Int 13; Int 10; Int 11; Bool false ] ],
-    //       [ 0; 1; 9 ]
-
-
-    //       // let alpha = |3,5>
-    //       // let x =
-    //       //    let alpha = alpha * 10
-    //       //    let x =
-    //       //      let alpha = alpha * 20
-    //       //      alpha
-    //       //    (alpha, x)
-    //       // (alpha, x)
-    //       e.Block(
-    //           [ s.Let("alpha", e.Ket(e.Set [ e.Int 3; e.Int 5 ]))
-    //             s.Let(
-    //                 "x",
-    //                 e.Block(
-    //                     [ s.Let("alpha", e.Multiply(e.Var "alpha", e.Int 10))
-    //                       s.Let("x", e.Block([ s.Let("alpha", e.Multiply(e.Var "alpha", e.Int 20)) ], e.Var "alpha")) ],
-    //                     e.Join(e.Var "alpha", e.Var "x")
-    //                 )
-    //             ) ],
-    //           e.Join(e.Var "alpha", e.Var "x")
-    //       ),
-    //       [ [ Int 3; Bool true; Int 10; Int 30; Int 20; Int 600 ]
-    //         [ Int 5; Bool true; Int 10; Int 50; Int 20; Int 1000 ] ],
-    //       [ 0; 3; 5 ]
-
-    //       ]
-    //     |> List.iter (this.TestExpression prelude)
-
-
-    // [<TestMethod>]
-    // member this.TestIndex() =
-    //     let prelude =
-    //         this.Prelude
-    //         @ [ s.Let(
-    //                 "k1",
-    //                 e.Ket(
-    //                     e.Set
-    //                         [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 0; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 1 ] ]
-    //                 )
-    //             ) ]
-
-    //     [
-    //       // k1.0 + k1.[0 + 1]
-    //       e.Add(e.Project(e.Var "k1", e.Int 0), e.Project(e.Var "k1", e.Add(e.Int 0, e.Int 1))),
-    //       [ [ Int 0; Int 0; Bool true; Int 0 ]; [ Int 0; Int 1; Bool true; Int 1 ]; [ Int 1; Int 1; Bool true; Int 2 ] ],
-    //       [ 3 ]
-    //       // k1.0 + k1.[0 + 3]        // Index is modular, so 3 == 1
-    //       e.Add(e.Project(e.Var "k1", e.Int 0), e.Project(e.Var "k1", e.Add(e.Int 0, e.Int 3))),
-    //       [ [ Int 0; Int 0; Bool true; Int 0 ]; [ Int 0; Int 1; Bool true; Int 1 ]; [ Int 1; Int 1; Bool true; Int 2 ] ],
-    //       [ 3 ] ]
-    //     |> List.iter (this.TestExpression prelude)
-
-    // [<TestMethod>]
-    // member this.TestIfQ() =
-    //     let prelude =
-    //         this.Prelude
-    //         @ [ s.Let(
-    //                 "k1",
-    //                 e.Ket(
-    //                     e.Set
-    //                         [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 0; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 1 ] ]
-    //                 )
-    //             )
-    //             s.Let("k2", e.Ket(e.Set [ e.Tuple [ e.Int 2 ]; e.Tuple [ e.Int 3 ] ])) ]
-
-    //     [
-    //       // if k1.1 == k1.0 then k1.1 else 42
-    //       e.If(
-    //           e.Equals(e.Project(e.Var "k1", e.Int 1), e.Project(e.Var "k1", e.Int 0)),
-    //           e.Project(e.Var "k1", e.Int 1),
-    //           e.Int 42
-    //       ),
-    //       [ [ Int 0; Int 0; Bool true; Bool true; Int 42; Int 0 ]
-    //         [ Int 0; Int 1; Bool true; Bool false; Int 42; Int 42 ]
-    //         [ Int 1; Int 1; Bool true; Bool true; Int 42; Int 1 ] ],
-    //       [ 5 ] ]
-    //     |> List.iter (this.TestExpression prelude)
-
-    // [<TestMethod>]
-    // member this.TestIfClassic() =
-    //     let prelude =
-    //         this.Prelude
-    //         @ [ s.Let(
-    //                 "k1",
-    //                 e.Ket(
-    //                     e.Set
-    //                         [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 0; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 1 ] ]
-    //                 )
-    //             )
-    //             s.Let("k2", e.Ket(e.Set [ e.Tuple [ e.Int 2 ]; e.Tuple [ e.Int 3 ] ])) ]
-
-    //     [
-    //       // if true then k1.1 else 42
-    //       e.If(e.Bool true, e.Project(e.Var "k1", e.Int 1), e.Int 42),
-    //       [ [ Int 0; Int 0; Bool true ]; [ Int 0; Int 1; Bool true ]; [ Int 1; Int 1; Bool true ] ],
-    //       [ 1 ]
-    //       // if false then k1.1 else 42
-    //       e.If(e.Bool false, e.Project(e.Var "k1", e.Int 1), e.Int 42), [ [ Int 42 ] ], [ 0 ] ]
-    //     |> List.iter (this.TestExpression prelude)
-
-
-    // [<TestMethod>]
-    // member this.TestFilterEquals() =
-    //     let prelude =
-    //         this.Prelude
-    //         @ [ s.Let(
-    //                 "k1",
-    //                 e.Ket(
-    //                     e.Set
-    //                         [ e.Tuple [ e.Int 0; e.Int 0 ]; e.Tuple [ e.Int 0; e.Int 1 ]; e.Tuple [ e.Int 1; e.Int 1 ] ]
-    //                 )
-    //             )
-    //             s.Let("k2", e.Ket(e.Set [ e.Tuple [ e.Int 2 ]; e.Tuple [ e.Int 3 ] ])) ]
-
-    //     [
-    //       // k1.1 == 1
-    //       e.Equals(e.Project(e.Var "k1", e.Int 1), e.Int 1),
-    //       [ [ Int 0; Int 0; Bool true; Int 1; Bool false ]
-    //         [ Int 0; Int 1; Bool true; Int 1; Bool true ]
-    //         [ Int 1; Int 1; Bool true; Int 1; Bool true ] ],
-    //       [ 4 ]
-    //       // (Filter k1, k1.1 == 1, 2)
-    //       e.Filter(e.Var "k1", e.Equals(e.Project(e.Var "k1", e.Int 1), e.Int 1)),
-    //       [ [ Int 0; Int 1; Bool true; Int 1; Bool true ]; [ Int 1; Int 1; Bool true; Int 1; Bool true ] ],
-    //       [ 0; 1 ]
-    //       // (Filter k1, k1.0 + k1.1 == 1)
-    //       e.Filter(e.Var "k1", e.Equals(e.Add(e.Project(e.Var "k1", e.Int 0), e.Project(e.Var "k1", e.Int 1)), e.Int 1)),
-    //       [ [ Int 0; Int 1; Bool true; Int 1; Int 1; Bool true ] ],
-    //       [ 0; 1 ]
-    //       // (Filter k1.0, k1.1 + | 1, 2, 3 > == |2, 4> )
-    //       e.Filter(
-    //           e.Project(e.Var "k1", e.Int 1),
-    //           e.Equals(
-    //               e.Add(e.Project(e.Var "k1", e.Int 1), e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ])),
-    //               e.Ket(e.Set [ e.Int 2; e.Int 4 ])
-    //           )
-    //       ),
-    //       [ [ Int 0; Int 0; Bool true; Int 2; Bool true; Int 2; Int 2; Bool true; Bool true ]
-    //         [ Int 0; Int 1; Bool true; Int 1; Bool true; Int 2; Int 2; Bool true; Bool true ]
-    //         [ Int 0; Int 1; Bool true; Int 3; Bool true; Int 4; Int 4; Bool true; Bool true ]
-    //         [ Int 1; Int 1; Bool true; Int 1; Bool true; Int 2; Int 2; Bool true; Bool true ]
-    //         [ Int 1; Int 1; Bool true; Int 3; Bool true; Int 4; Int 4; Bool true; Bool true ] ],
-    //       [ 1 ] ]
-    //     |> List.iter (this.TestExpression prelude)
-
-
-    // [<TestMethod>]
-    // member this.TestBoolOps() =
-    //     let prelude =
-    //         this.Prelude
-    //         @ [ s.Let(
-    //                 "k",
-    //                 e.Ket(
-    //                     e.Set
-    //                         [ e.Tuple [ e.Int 0; e.Bool true ]
-    //                           e.Tuple [ e.Int 0; e.Bool false ]
-    //                           e.Tuple [ e.Int 1; e.Bool true ] ]
-    //                 )
-    //             ) ]
-
-    //     [ e.Var "k",
-    //       [
-    //         // Looks like because they are set, they are ordered differently from inputs:
-    //         // this might be problematic for tests...
-    //         [ Int 0; Bool false; Bool true ]
-    //         [ Int 0; Bool true; Bool true ]
-    //         [ Int 1; Bool true; Bool true ] ],
-    //       [ 0; 1 ]
-
-    //       // not k.1
-    //       e.Not(e.Project(e.Var "k", e.Int 1)),
-    //       [ [ Int 0; Bool false; Bool true; Bool true ]
-    //         [ Int 0; Bool true; Bool true; Bool false ]
-    //         [ Int 1; Bool true; Bool true; Bool false ] ],
-    //       [ 3 ]
-
-    //       // (false or k.1)
-    //       e.Or(e.Bool false, e.Project(e.Var "k", e.Int 1)),
-    //       [ [ Bool false; Int 0; Bool false; Bool true; Bool false ]
-    //         [ Bool false; Int 0; Bool true; Bool true; Bool true ]
-    //         [ Bool false; Int 1; Bool true; Bool true; Bool true ] ],
-    //       [ 4 ]
-
-    //       // not (k.0 == 0 and k.1)
-    //       e.Not(e.And(e.Equals(e.Project(e.Var "k", e.Int 0), e.Int 0), e.Project(e.Var "k", e.Int 1))),
-    //       [ [ Int 0; Bool false; Bool true; Int 0; Bool true; Bool false; Bool true ]
-    //         [ Int 0; Bool true; Bool true; Int 0; Bool true; Bool true; Bool false ]
-    //         [ Int 1; Bool true; Bool true; Int 0; Bool false; Bool false; Bool true ] ],
-    //       [ 6 ] ]
-    //     |> List.iter (this.TestExpression prelude)
-
-
-    // [<TestMethod>]
-    // member this.TestCallMethod() =
-    //     let prelude = this.Prelude
-
-    //     [
-    //       // // let colors() = |1,2,3>
-    //       // // colors()
-    //       e.Block(
-    //           [ Let(
-    //                 "colors",
-    //                 e.Method(
-    //                     arguments = [],
-    //                     returns = Type.Ket [ Type.Int ],
-    //                     body = e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ])
-    //                 )
-    //             ) ],
-    //           e.CallMethod(e.Var "colors", [])
-    //       ),
-    //       [ [ Int 1; Bool true ]; [ Int 2; Bool true ]; [ Int 3; Bool true ] ],
-    //       [ 0 ]
-    //       // let colors() = |1,2,3>
-    //       // ( colors(), colors() )
-    //       e.Block(
-    //           [ Let(
-    //                 "colors",
-    //                 e.Method(
-    //                     arguments = [],
-    //                     returns = Type.Ket [ Type.Int ],
-    //                     body = e.Ket(e.Set [ e.Int 1; e.Int 2; e.Int 3 ])
-    //                 )
-    //             ) ],
-    //           e.Join(e.CallMethod(e.Var "colors", []), e.CallMethod(e.Var "colors", []))
-    //       ),
-    //       [ [ Int 1; Bool true; Int 1; Bool true ]
-    //         [ Int 1; Bool true; Int 2; Bool true ]
-    //         [ Int 1; Bool true; Int 3; Bool true ]
-    //         [ Int 2; Bool true; Int 1; Bool true ]
-    //         [ Int 2; Bool true; Int 2; Bool true ]
-    //         [ Int 2; Bool true; Int 3; Bool true ]
-    //         [ Int 3; Bool true; Int 1; Bool true ]
-    //         [ Int 3; Bool true; Int 2; Bool true ]
-    //         [ Int 3; Bool true; Int 3; Bool true ] ],
-    //       [ 0; 2 ]
-    //       // let k1 = |0,1>
-    //       // let add_one(k: Ket<Int>) = k + 1
-    //       // add_one(k1)
-    //       e.Block(
-    //           [ Let("k1", e.Ket(e.Set [ e.Int 0; e.Int 1 ]))
-    //             Let(
-    //                 "add_one",
-    //                 e.Method(
-    //                     arguments = [ "k", (Type.Ket [ Type.Int ]) ],
-    //                     returns = Type.Ket [ Type.Int ],
-    //                     body = e.Add(e.Var "k", e.Int 1)
-    //                 )
-    //             ) ],
-    //           e.CallMethod(e.Var "add_one", [ e.Var "k1" ])
-    //       ),
-    //       [ [ Int 0; Bool true; Int 1; Int 1 ]; [ Int 1; Bool true; Int 1; Int 2 ] ],
-    //       [ 3 ]
-    //       // let k = |0,1>
-    //       // let add_one(k: Ket<Int>) = k + 1
-    //       // let k = add_one(k)
-    //       // k
-    //       e.Block(
-    //           [ Let("k", e.Ket(e.Set [ e.Int 0; e.Int 1 ]))
-    //             Let(
-    //                 "add_one",
-    //                 e.Method(
-    //                     arguments = [ "k", (Type.Ket [ Type.Int ]) ],
-    //                     returns = Type.Ket [ Type.Int ],
-    //                     body = e.Add(e.Var "k", e.Int 1)
-    //                 )
-    //             )
-    //             Let("k", e.CallMethod(e.Var "add_one", [ e.Var "k" ])) ],
-    //           e.Var "k"
-    //       ),
-    //       [ [ Int 0; Bool true; Int 1; Int 1 ]; [ Int 1; Bool true; Int 1; Int 2 ] ],
-    //       [ 3 ]
-    //       // let k1 = |0,1>
-    //       // let add_one(k: Ket<Int>) = k + 1
-    //       // let k2 = add_one(k1)
-    //       // let k1 = | 2,3 >
-    //       // k2
-    //       e.Block(
-    //           [ Let("k1", e.Ket(e.Set [ e.Int 0; e.Int 1 ]))
-    //             Let(
-    //                 "add_one",
-    //                 e.Method(
-    //                     arguments = [ "k", (Type.Ket [ Type.Int ]) ],
-    //                     returns = Type.Ket [ Type.Int ],
-    //                     body = e.Add(e.Var "k", e.Int 1)
-    //                 )
-    //             )
-    //             Let("k2", e.CallMethod(e.Var "add_one", [ e.Var "k1" ]))
-    //             Let("k1", e.Ket(e.Set [ e.Int 2; e.Int 3 ])) ],
-    //           e.Var "k2"
-    //       ),
-    //       [ [ Int 0; Bool true; Int 1; Int 1 ]; [ Int 1; Bool true; Int 1; Int 2 ] ],
-    //       [ 3 ]
-    //       // let prepare_bell(a: int, b: int) = Prepare( |(a,a), (b,b)> )
-    //       // prepare_bell(2, i1)
-    //       e.Block(
-    //           [ Let(
-    //                 "prepare_bell",
-    //                 e.Method(
-    //                     arguments = [ "a", Type.Int; "b", Type.Int ],
-    //                     returns = Type.Universe [ Type.Int; Type.Int ],
-    //                     body =
-    //                         e.Prepare(
-    //                             e.Ket(e.Set [ e.Tuple [ e.Var "a"; e.Var "a" ]; e.Tuple [ e.Var "b"; e.Var "b" ] ])
-    //                         )
-    //                 )
-    //             ) ],
-    //           e.CallMethod(e.Var "prepare_bell", [ e.Int 2; e.Var "i1" ])
-    //       ),
-    //       [ [ Int 1; Int 1; Bool true ]; [ Int 2; Int 2; Bool true ] ],
-    //       [ 0; 1 ] ]
-    //     |> List.iter (this.TestExpression prelude)
 
     // [<TestMethod>]
     // member this.TestMeasure() =
