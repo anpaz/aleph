@@ -18,6 +18,7 @@ and Operator =
 
     // These were not in the paper
     | In of values: int list
+    | GreaterThan
     | And
     | Or
 
@@ -44,6 +45,7 @@ and Ket(expression: Expression) =
             | And
             | Or
             | LessThanEquals
+            | GreaterThan
             | Equals
             | In _ -> 1
         | Constant v -> Math.Ceiling(Math.Log(float v) / Math.Log(2.0)) |> int
@@ -81,6 +83,12 @@ and Ket(expression: Expression) =
     member this.LessThanEquals(c: int) =
         let k2 = Ket(Constant(c))
         this.LessThanEquals(k2)
+
+    member this.GreaterThan(k2: Ket) = Ket(Map(GreaterThan, [ this; k2 ]))
+
+    member this.GreaterThan(c: int) =
+        let k2 = Ket(Constant(c))
+        this.GreaterThan(k2)
 
     member this.Add(k2: Ket, width: int) =
         Ket(Map(Add width, [ this; k2 ]))
