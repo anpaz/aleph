@@ -69,7 +69,7 @@ type Universe(state: QuantumState, filters: ColumnIndex list, outputColumns: Col
 
                 match filtered_state.Length with
                 // Universe collapsed:
-                | 1 -> state.[0]
+                | 1 -> filtered_state.[0]
                 // Empty universe, collapse to a row with random values
                 | 0 -> random_values ()
                 // Select a random row, and collapse to this value:
@@ -162,13 +162,13 @@ type Processor() =
         init_many ctx args
         ==> fun ctx' ->
                 match op with
-                | Operator.IsZero -> map_unary ctx' (args.[0], (fun i -> if i = 0 then 1 else 0))
+                | Operator.Not -> map_unary ctx' (args.[0], (fun i -> if i = 0 then 1 else 0))
                 | Operator.In items -> map_unary ctx' (args.[0], (fun i -> if items |> List.contains i then 1 else 0))
                 | Operator.And ->
                     map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) && (y = 1) then 1 else 0))
                 | Operator.Or ->
                     map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) || (y = 1) then 1 else 0))
-                | Operator.LessThan -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x < y then 1 else 0))
+                | Operator.LessThanEquals -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x <= y then 1 else 0))
                 | Operator.Equals -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x = y then 1 else 0))
                 | Operator.Add w ->
                     let m = int (2.0 ** w)

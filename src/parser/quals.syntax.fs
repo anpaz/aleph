@@ -9,8 +9,8 @@ type Expression =
     | Where of target: Ket * clause: Operator * args: Ket list
 
 and Operator =
-    | IsZero
-    | LessThan
+    | Not
+    | LessThanEquals
     | Equals
     | Add of width: int
     | Multiply of width: int
@@ -40,10 +40,10 @@ and Ket(expression: Expression) =
             | Add w
             | Multiply w
             | If w -> w
-            | IsZero
+            | Not
             | And
             | Or
-            | LessThan
+            | LessThanEquals
             | Equals
             | In _ -> 1
         | Constant v -> Math.Ceiling(Math.Log(float v) / Math.Log(2.0)) |> int
@@ -59,7 +59,7 @@ and Ket(expression: Expression) =
 
     member this.Where(op: Operator, b: bool) = this.Where(op, Ket(Constant (if b then 1 else 0)))
 
-    member this.Not() = Ket(Map(IsZero, [ this ]))
+    member this.Not() = Ket(Map(Not, [ this ]))
 
     member this.In(items: int list) =
         Ket(Map(In items, [ this ]))
@@ -76,11 +76,11 @@ and Ket(expression: Expression) =
         let k2 = Ket(Constant(if c then 1 else 0))
         this.Or(k2)
         
-    member this.LessThan(k2: Ket) = Ket(Map(LessThan, [ this; k2 ]))
+    member this.LessThanEquals(k2: Ket) = Ket(Map(LessThanEquals, [ this; k2 ]))
 
-    member this.LessThan(c: int) =
+    member this.LessThanEquals(c: int) =
         let k2 = Ket(Constant(c))
-        this.LessThan(k2)
+        this.LessThanEquals(k2)
 
     member this.Add(k2: Ket, width: int) =
         Ket(Map(Add width, [ this; k2 ]))

@@ -21,15 +21,15 @@ type TestSyntax() =
         Assert.AreNotSame(a, b)
         Assert.AreNotEqual(a, b)
 
-        let iszero = Ket(Map(IsZero, [ a ]))
+        let iszero = Ket(Map(Not, [ a ]))
         let equals = Ket(Map(Equals, [ a; iszero ]))
         let add = Ket(Map(plus, [ a; b ]))
         let addi = Ket(Map(times, [ a; Ket(Constant 3) ]))
-        let color = Ket(Where(a, LessThan, [ Ket(Constant 3) ]))
+        let color = Ket(Where(a, LessThanEquals, [ Ket(Constant 3) ]))
         let eq = Ket(Where(b, Equals, [ a ]))
         let q = Ket(Map(If 3, [ color; add; addi ]))
         let values = Ket(Where(Ket(Literal 3), In [ 0; 2; 4; 6 ], []))
-        let zero = Ket(Where(values, IsZero, []))
+        let zero = Ket(Where(values, Not, []))
 
         Assert.AreSame(a, a)
 
@@ -66,7 +66,7 @@ type TestSyntax() =
         let b = Ket(Literal 3).Where(Equals, a)
         Assert.IsTrue(b.FilterId.IsSome)
 
-        let c = a.Where(LessThan, Ket(Constant 3))
+        let c = a.Where(LessThanEquals, Ket(Constant 3))
         Assert.IsTrue(c.FilterId.IsSome)
         Assert.AreNotEqual(b.FilterId.Value, c.FilterId.Value)
         Assert.AreEqual([c.FilterId.Value], Ket.CollectFilterIds [a; c])
@@ -82,7 +82,7 @@ type TestSyntax() =
         Assert.AreEqual([ b.FilterId.Value; c.FilterId.Value ], Ket.CollectFilterIds [f])
 
         // Make sure the filter ids appear only once:
-        let e = a.Add(c).Where(LessThan, b).Where(Equals, c).Where(Or, b.Equals(c))
+        let e = a.Add(c).Where(LessThanEquals, b).Where(Equals, c).Where(Or, b.Equals(c))
         let ids = Ket.CollectFilterIds [ e ]
         printf "%A" ids
         Assert.AreEqual(5, ids.Length)

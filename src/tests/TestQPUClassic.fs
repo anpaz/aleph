@@ -56,24 +56,24 @@ type TestQPUClassic() =
           )
 
 
-          [ a; b.Where(LessThan, 2) ],
+          [ a; b.Where(LessThanEquals, 2) ],
           Universe(
               state =
                   [ [ 0; 0; 2; 1 ]
                     [ 0; 1; 2; 1 ]
-                    [ 0; 2; 2; 0 ]
+                    [ 0; 2; 2; 1 ]
                     [ 0; 3; 2; 0 ]
                     [ 1; 0; 2; 1 ]
                     [ 1; 1; 2; 1 ]
-                    [ 1; 2; 2; 0 ]
+                    [ 1; 2; 2; 1 ]
                     [ 1; 3; 2; 0 ]
                     [ 2; 0; 2; 1 ]
                     [ 2; 1; 2; 1 ]
-                    [ 2; 2; 2; 0 ]
+                    [ 2; 2; 2; 1 ]
                     [ 2; 3; 2; 0 ]
                     [ 3; 0; 2; 1 ]
                     [ 3; 1; 2; 1 ]
-                    [ 3; 2; 2; 0 ]
+                    [ 3; 2; 2; 1 ]
                     [ 3; 3; 2; 0 ] ],
               filters = [ 3 ],
               outputColumns = [ 0; 1 ]
@@ -96,12 +96,18 @@ type TestQPUClassic() =
         let b = Ket(Literal 1)
 
         let c =
-            Ket(Literal 2).Multiply(3).Where(LessThan, Ket(Constant 3)).Add(b, width = 4)
+            Ket(Literal 2)
+                .Multiply(3)
+                .Where(LessThanEquals, Ket(Constant 3))
+                .Add(b, width = 4)
 
         let d =
-            Ket(Literal 2).Multiply(3, width = 4).Add(b).Where(LessThan, Ket(Constant 5))
+            Ket(Literal 2)
+                .Multiply(3, width = 4)
+                .Add(b)
+                .Where(LessThanEquals, Ket(Constant 5))
 
-        let e = c.Add(a.Where(IsZero))
+        let e = c.Add(a.Where(Not))
 
         [ [ Ket(Map(Add(1), [ a; b ])) ],
           Universe(state = [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ], outputColumns = [ 2 ], filters = [])
@@ -117,8 +123,8 @@ type TestQPUClassic() =
               state =
                   [ [ 0; 3; 0; 3; 1; 0; 0 ]
                     [ 0; 3; 0; 3; 1; 1; 1 ]
-                    [ 1; 3; 3; 3; 0; 0; 3 ]
-                    [ 1; 3; 3; 3; 0; 1; 4 ]
+                    [ 1; 3; 3; 3; 1; 0; 3 ]
+                    [ 1; 3; 3; 3; 1; 1; 4 ]
                     [ 2; 3; 2; 3; 1; 0; 2 ]
                     [ 2; 3; 2; 3; 1; 1; 3 ]
                     [ 3; 3; 1; 3; 1; 0; 1 ]
@@ -149,10 +155,10 @@ type TestQPUClassic() =
                     [ 0; 3; 0; 3; 1; 0; 0; 1; 0; 1 ]
                     [ 0; 3; 0; 3; 1; 1; 1; 0; 1; 1 ]
                     [ 0; 3; 0; 3; 1; 1; 1; 1; 0; 2 ]
-                    [ 1; 3; 3; 3; 0; 0; 3; 0; 1; 3 ]
-                    [ 1; 3; 3; 3; 0; 0; 3; 1; 0; 4 ]
-                    [ 1; 3; 3; 3; 0; 1; 4; 0; 1; 4 ]
-                    [ 1; 3; 3; 3; 0; 1; 4; 1; 0; 5 ]
+                    [ 1; 3; 3; 3; 1; 0; 3; 0; 1; 3 ]
+                    [ 1; 3; 3; 3; 1; 0; 3; 1; 0; 4 ]
+                    [ 1; 3; 3; 3; 1; 1; 4; 0; 1; 4 ]
+                    [ 1; 3; 3; 3; 1; 1; 4; 1; 0; 5 ]
                     [ 2; 3; 2; 3; 1; 0; 2; 0; 1; 2 ]
                     [ 2; 3; 2; 3; 1; 0; 2; 1; 0; 3 ]
                     [ 2; 3; 2; 3; 1; 1; 3; 0; 1; 3 ]
@@ -171,24 +177,24 @@ type TestQPUClassic() =
     member this.TestBoolean() =
         let a = Ket(Literal 1)
         let b = Ket(Literal 1)
-        let c = a.Add(b, width = 2).Where(LessThan, 2)
+        let c = a.Add(b, width = 2).Where(LessThanEquals, 1)
 
         // TODO: The compiler should know that
         //   d = a.LessThan(b)
         //   e = a.LessThan(b)
         // can point to the same ket.
-        let d = a.LessThan(b).And(b.LessThan(1))
-        let e = a.LessThan(b).Or(b.LessThan(1))
+        let d = a.LessThanEquals(b).And(b.LessThanEquals(1))
+        let e = a.LessThanEquals(b).Or(b.LessThanEquals(1))
         let f = e.Not().Where(Equals, 1)
 
-        [ [ a.LessThan(b) ],
-          Universe(state = [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 0 ]; [ 1; 1; 0 ] ], outputColumns = [ 2 ], filters = [])
+        [ [ a.LessThanEquals(b) ],
+          Universe(state = [ [ 0; 0; 1 ]; [ 0; 1; 1 ]; [ 1; 0; 0 ]; [ 1; 1; 1 ] ], outputColumns = [ 2 ], filters = [])
 
-          [ b.LessThan(1) ], Universe(state = [ [ 0; 1; 1 ]; [ 1; 1; 0 ] ], outputColumns = [ 2 ], filters = [])
+          [ b.LessThanEquals(0) ], Universe(state = [ [ 0; 0; 1 ]; [ 1; 0; 0 ] ], outputColumns = [ 2 ], filters = [])
 
           [ c ],
           Universe(
-              state = [ [ 0; 0; 0; 2; 1 ]; [ 0; 1; 1; 2; 1 ]; [ 1; 0; 1; 2; 1 ]; [ 1; 1; 2; 2; 0 ] ],
+              state = [ [ 0; 0; 0; 1; 1 ]; [ 0; 1; 1; 1; 1 ]; [ 1; 0; 1; 1; 1 ]; [ 1; 1; 2; 1; 0 ] ],
               outputColumns = [ 2 ],
               filters = [ 4 ]
           )
@@ -196,10 +202,10 @@ type TestQPUClassic() =
           [ d; e ],
           Universe(
               state =
-                  [ [ 0; 0; 0; 1; 1; 0; 0; 1; 1; 1 ]
-                    [ 0; 1; 1; 1; 0; 0; 1; 1; 0; 1 ]
+                  [ [ 0; 0; 1; 1; 1; 1; 1; 1; 1; 1 ]
+                    [ 0; 1; 1; 1; 1; 1; 1; 1; 1; 1 ]
                     [ 1; 0; 0; 1; 1; 0; 0; 1; 1; 1 ]
-                    [ 1; 1; 0; 1; 0; 0; 0; 1; 0; 0 ] ],
+                    [ 1; 1; 1; 1; 1; 1; 1; 1; 1; 1 ] ],
               outputColumns = [ 5; 9 ],
               filters = []
           )
@@ -207,10 +213,10 @@ type TestQPUClassic() =
           [ f ],
           Universe(
               state =
-                  [ [ 0; 0; 0; 1; 1; 1; 0; 1; 0 ]
-                    [ 0; 1; 1; 1; 0; 1; 0; 1; 0 ]
+                  [ [ 0; 0; 1; 1; 1; 1; 0; 1; 0 ]
+                    [ 0; 1; 1; 1; 1; 1; 0; 1; 0 ]
                     [ 1; 0; 0; 1; 1; 1; 0; 1; 0 ]
-                    [ 1; 1; 0; 1; 0; 0; 1; 1; 1 ] ],
+                    [ 1; 1; 1; 1; 1; 1; 0; 1; 0 ] ],
               outputColumns = [ 6 ],
               filters = [ 8 ]
           ) ]
@@ -250,6 +256,10 @@ type TestQPUClassic() =
         |> List.iter (this.TestExpression)
 
 
+    (*
+        These test check that filter_rows collectly
+        removes the rows that satisfy the filter columns.
+    *)
     [<TestMethod>]
     member this.TestFilter() =
         let state =
@@ -315,74 +325,85 @@ type TestQPUClassic() =
     member this.TestSample() =
         let a = Ket(Literal 2)
         let b = Ket(Literal 2)
-        let c = a.Add(b).Where(LessThan, 2)
+        let c = a.Add(b).Where(LessThanEquals, 1)
 
         // TODO: The compiler should know that
         //   d = a.LessThan(b)
         //   e = a.LessThan(b)
         // can point to the same ket.
-        let d = a.LessThan(b).And(b.LessThan(1))
-        let e = a.LessThan(b).Or(b.LessThan(1))
+        let d = a.LessThanEquals(b).And(b.LessThanEquals(1))
+        let e = a.LessThanEquals(b).Or(b.LessThanEquals(1))
         let f = e.Not().Where(Equals, 1)
+
+        let u = (prepare { qpu = this.QPU } [ f ]) :?> Universe
+        printf "%A" (u.State)
 
         [ [ a ], [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ]
 
-          [ b.Where(LessThan, 3) ], [ [ 0 ]; [ 1 ]; [ 2 ] ]
+          [ b.Where(LessThanEquals, 2) ], [ [ 0 ]; [ 1 ]; [ 2 ] ]
 
-          [ a; b.Where(LessThan, 2) ],
+          [ a; b.Where(LessThanEquals, 1) ],
           [ [ 0; 0 ]; [ 0; 1 ]; [ 1; 0 ]; [ 1; 1 ]; [ 2; 0 ]; [ 2; 1 ]; [ 3; 0 ]; [ 3; 1 ] ]
 
-          [ a; b; a.LessThan(b) ],
-          [ [ 0; 0; 0 ]
+          [ a; b; a.LessThanEquals(b) ],
+          [ [ 0; 0; 1 ]
             [ 0; 1; 1 ]
             [ 0; 2; 1 ]
             [ 0; 3; 1 ]
             [ 1; 0; 0 ]
-            [ 1; 1; 0 ]
+            [ 1; 1; 1 ]
             [ 1; 2; 1 ]
             [ 1; 3; 1 ]
             [ 2; 0; 0 ]
             [ 2; 1; 0 ]
-            [ 2; 2; 0 ]
+            [ 2; 2; 1 ]
             [ 2; 3; 1 ]
             [ 3; 0; 0 ]
             [ 3; 1; 0 ]
             [ 3; 2; 0 ]
-            [ 3; 3; 0 ] ]
+            [ 3; 3; 1 ] ]
 
-          [ a.Where(LessThan, b); b ], [ [ 0; 1 ]; [ 0; 2 ]; [ 0; 3 ]; [ 1; 2 ]; [ 1; 3 ]; [ 2; 3 ] ]
+          [ a.Where(LessThanEquals, b); b ],
+          [ [ 0; 0 ]; [ 0; 1 ]; [ 0; 2 ]; [ 0; 3 ]; [ 1; 1 ]; [ 1; 2 ]; [ 1; 3 ]; [ 2; 2 ]; [ 2; 3 ]; [ 3; 3 ] ]
 
           [ a; b; c ],
           [ [ 0; 0; 0 ]
             [ 0; 1; 1 ]
+            //[ 0; 2; 2 ]
+            //[ 0; 3; 3 ]
             [ 1; 0; 1 ]
             [ 1; 1; 2 ]
+            //[ 1; 2; 3 ]
             [ 1; 3; 0 ]
-            [ 2; 0; 2 ]
+            // [ 2; 0; 2 ]
+            // [ 2; 1; 3 ]
             [ 2; 2; 0 ]
             [ 2; 3; 1 ]
+            //[ 3; 0; 3 ]
             [ 3; 1; 0 ]
-            [ 3; 2; 1 ] ]
+            [ 3; 2; 1 ]
+            //[ 3; 3; 2 ]
+            ]
 
           [ a; b; d; e ],
-          [ [ 0; 0; 0; 1 ]
-            [ 0; 1; 0; 1 ]
+          [ [ 0; 0; 1; 1 ]
+            [ 0; 1; 1; 1 ]
             [ 0; 2; 0; 1 ]
             [ 0; 3; 0; 1 ]
             [ 1; 0; 0; 1 ]
-            [ 1; 1; 0; 0 ]
+            [ 1; 1; 1; 1 ]
             [ 1; 2; 0; 1 ]
             [ 1; 3; 0; 1 ]
             [ 2; 0; 0; 1 ]
-            [ 2; 1; 0; 0 ]
-            [ 2; 2; 0; 0 ]
+            [ 2; 1; 0; 1 ]
+            [ 2; 2; 0; 1 ]
             [ 2; 3; 0; 1 ]
             [ 3; 0; 0; 1 ]
-            [ 3; 1; 0; 0 ]
+            [ 3; 1; 0; 1 ]
             [ 3; 2; 0; 0 ]
-            [ 3; 3; 0; 0 ] ]
+            [ 3; 3; 0; 1 ] ]
 
-          [ a; f ], [ [ 1; 1 ]; [ 2; 1 ]; [ 3; 1 ] ] ]
+          [ a; f ], [ [ 3; 1 ] ] ]
         |> List.iter (AssertSample this.QPU)
 
 
