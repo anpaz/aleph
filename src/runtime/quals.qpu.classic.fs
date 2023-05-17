@@ -24,14 +24,11 @@ in which each can take values [0; 1] creates the table [0; 1] * [0; 1], i.e.:
     [ 1; 1 ]
 ]
 
-The state is prepared from one or more quantum expressions (Q). Each expression
+The state is prepared from one or more quantum expressions. Each expression
 is assigned to a ket, which receives a unique id.
 Each ket is prepared only once, as such the simulator memory keeps 
 track of which kets have already been allocated by mapping the ket's id
 to a list of columns.
-
-For details about how each type of expression updates the state, see comments
-of each prepare method below...
 
 *)
 
