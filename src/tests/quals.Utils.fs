@@ -14,9 +14,9 @@ module Utils =
             Assert.AreEqual($"Expecting valid kets.", $"Got Error msg: {msg}")
             failwith msg
 
-    let measure (u, ctx) =
+    let measure ctx (u, kets) =
         let qpu = ctx.qpu
-        let m = qpu.Measure u
+        let m = qpu.Measure (u, kets)
 
         match m with
         | Ok t -> t
@@ -37,12 +37,12 @@ module Utils =
 
         let checkRepeatMeasurement (u, v) =
             for i in 1..5 do
-                let v' = measure (u, ctx)
+                let v' = measure ctx (u, kets)
                 Assert.AreEqual(v, v')
         // samples the universe exactly once, doesn't check the answer
         let one () =
             let u = prepare ctx kets
-            let v = measure (u, ctx)
+            let v = measure ctx (u, kets)
             checkRepeatMeasurement (u, v)
             v
         // tries to get a valid sample by verifying the measurement.

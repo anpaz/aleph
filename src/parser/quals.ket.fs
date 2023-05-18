@@ -19,6 +19,7 @@ module kets =
         | If of width: int
 
         // These were not in the paper
+        | Id
         | In of values: int list
         | GreaterThan
         | And
@@ -39,7 +40,7 @@ module kets =
 
     type QPU =
         abstract Prepare: Ket list -> Result<IUniverse, string>
-        abstract Measure: IUniverse -> Result<int list, string>
+        abstract Measure: IUniverse * Ket list-> Result<int list, string>
 
     type PrepareContext = { qpu : QPU }
 
@@ -51,23 +52,25 @@ module kets =
         prepare ctx kets
         ==> fun u ->
             let qpu = ctx.qpu
-            qpu.Measure u
+            qpu.Measure (u, kets)
 
-    let sample_when ctx (kets: Ket list, clause: Ket) : Result<int list, string> =
-        prepare ctx (clause :: kets)
+    let sample_when ctx (kets: Ket list, filter: Ket) : Result<int list, string> =
+        let f = Ket(Where (filter, Id, []))
+        prepare ctx (f :: kets)
         ==> fun u ->
             let qpu = ctx.qpu
-            qpu.Measure u
+            qpu.Measure (u, kets)
 
     type Ket with
         member this.Width =
             match this.Expression with
             | Literal w -> w
-            | Map (op, _) ->
+            | Map (op, args) ->
                 match op with
                 | Add w
                 | Multiply w
                 | If w -> w
+                | Id -> args.[0].Width
                 | Not
                 | And
                 | Or

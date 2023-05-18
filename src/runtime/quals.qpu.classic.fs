@@ -36,22 +36,55 @@ type ColumnIndex = int
 
 type ColumnsMap = Map<int, ColumnIndex>
 
-type QuantumState = int list list
+type QuantumState(rows: int list list) =
+    member val Rows = rows
 
-type Universe(state: QuantumState, filters: ColumnIndex list, outputColumns: ColumnIndex list) =
+    member this.AddColumn(values: int list) =
+        if rows.IsEmpty then
+            seq {
+                for j in values do
+                    [ j ]
+            }
+        else
+            seq {
+                for i in rows do
+                    for j in values do
+                        i @ [ j ]
+            }
+        |> Seq.toList 
+        |> QuantumState
+
+    member this.FilterRows(filter: ColumnIndex) =
+        if rows.IsEmpty then 
+            this
+        else
+            let check_empty (values: int list list) =
+                if values.IsEmpty then
+                    [ List.replicate rows.Head.Length (-1) ]
+                else
+                    values
+            rows
+            |> List.filter (fun r -> r.[filter] <> 0)
+            |> check_empty
+            |> QuantumState
+
+    static member empty = [] |> QuantumState
+
+type Universe(state: QuantumState, allocations: ColumnsMap) =
     let random = System.Random()
     let mutable value = None
 
     // Creates a row for this Universe with random values:
-    let random_values () =
+    let random_values columns =
         // Pick the max number of columns based on the columns of the output register of this universe.
-        let max_column = outputColumns |> List.max
+        let max_column = columns |> List.max
 
         seq { for i in 0..max_column -> (random.Next()) } |> Seq.toList
 
+    let project columns (row: int list) =
+        columns |> List.fold (fun result i -> result @ [ row.[i] ]) []
+
     member val State = state
-    member val Outputs = outputColumns
-    member val Filters = filters
 
     (*
         Sample works by randomly picking a row from the universe with the same probability
@@ -60,59 +93,29 @@ type Universe(state: QuantumState, filters: ColumnIndex list, outputColumns: Col
         Once measured, the universe is collapsed to this value, and next time it is measured
         it will return the same value.
     *)
-    member this.Sample() =
+    member this.Sample(kets: Ket list) =
+        let columns = kets |> List.map (fun k -> allocations.[k.Id])
         match value with
         | Some v -> v
         | None ->
             let pick_world () =
-                let filtered_state: QuantumState = Universe.filter_rows (state, filters)
-
-                match filtered_state.Length with
+                match state.Rows.Length with
                 // Universe collapsed:
-                | 1 -> filtered_state.[0]
+                | 1 -> state.Rows.[0]
                 // Empty universe, collapse to a row with random values
-                | 0 -> random_values ()
+                | 0 -> random_values columns
                 // Select a random row, and collapse to this value:
                 | n ->
                     let i = int (random.NextDouble() * (double (n)))
-                    filtered_state.Item i
+                    state.Rows.Item i
 
             let world = pick_world ()
-            let sample = world |> (Universe.project outputColumns)
-            value <- Some sample
-            sample
+            value <- Some world
+            world
+        |> project columns
 
     override this.ToString() =
-        sprintf "%A" (seq { for i in state -> i |> (Universe.project outputColumns) } |> Seq.toList)
-
-    static member add_column(state: QuantumState, values: int list) =
-        if state.IsEmpty then
-            seq {
-                for j in values do
-                    [ j ]
-            }
-        else
-            seq {
-                for i in state do
-                    for j in values do
-                        i @ [ j ]
-            }
-        |> Seq.toList
-
-    static member filter_rows(state: QuantumState, filters: ColumnIndex list) =
-        if filters.IsEmpty then
-            state
-        else
-            let rec is_valid columns (row: ColumnIndex list) =
-                match columns with
-                | [] -> true
-                | [ i ] -> row.[i] = 1
-                | head :: tail -> if row.[head] = 0 then false else is_valid tail row
-
-            state |> List.filter (is_valid filters)
-
-    static member project columns (row: int list) =
-        columns |> List.fold (fun result i -> result @ [ row.[i] ]) []
+        sprintf "%A" state.Rows
 
     interface IUniverse
 
@@ -134,8 +137,8 @@ type Processor() =
                 | Where (target, op, args) ->
                     init_map ctx (op, target :: args)
                     ==> fun (ctx, column) ->
-                            let ctx = { ctx with allocations = ctx.allocations.Add(k.FilterId.Value, column) }
-                            (ctx, ctx.allocations.[target.Id]) |> Ok
+                        let ctx = { ctx with state = ctx.state.FilterRows column }
+                        (ctx, ctx.allocations.[target.Id]) |> Ok
 
             init_result
             ==> fun (ctx, column) -> { ctx with allocations = ctx.allocations.Add(k.Id, column) } |> Ok
@@ -149,79 +152,80 @@ type Processor() =
         | 0 -> "All literals must have a size." |> Error
         | n ->
             let values = seq { 0 .. (int (2.0 ** n)) - 1 } |> Seq.toList
-            let new_state = Universe.add_column (ctx.state, values)
-            let new_column = new_state.Head.Length - 1
+            let new_state =  ctx.state.AddColumn values
+            let new_column = new_state.Rows.Head.Length - 1
             ({ ctx with state = new_state }, new_column) |> Ok
 
     and init_constant ctx value =
-        let new_state = Universe.add_column (ctx.state, [ value ])
-        let new_column = new_state.Head.Length - 1
+        let new_state = ctx.state.AddColumn [ value ]
+        let new_column = new_state.Rows.Head.Length - 1
         ({ ctx with state = new_state }, new_column) |> Ok
 
     and init_map ctx (op, args) =
         init_many ctx args
         ==> fun ctx' ->
-                match op with
-                | Operator.Not -> map_unary ctx' (args.[0], (fun i -> if i = 0 then 1 else 0))
-                | Operator.In items -> map_unary ctx' (args.[0], (fun i -> if items |> List.contains i then 1 else 0))
-                | Operator.And ->
-                    map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) && (y = 1) then 1 else 0))
-                | Operator.Or ->
-                    map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) || (y = 1) then 1 else 0))
-                | Operator.LessThanEquals -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x <= y then 1 else 0))
-                | Operator.GreaterThan -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x > y then 1 else 0))
-                | Operator.Equals -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x = y then 1 else 0))
-                | Operator.Add w ->
-                    let m = int (2.0 ** w)
-                    map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x + y) % m))
-                | Operator.Multiply w ->
-                    let m = int (2.0 ** w)
-                    map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x * y) % m))
-                | Operator.If w ->
-                    let m = int (2.0 ** w)
-                    map_ternary ctx' (args.[0], args.[1], args.[2], (fun (x, y, z) -> if x = 0 then z % m else y % m))
+            match op with
+            | Operator.Id -> (ctx', ctx'.allocations.[args.[0].Id]) |> Ok
+            | Operator.Not -> map_unary ctx' (args.[0], (fun i -> if i = 0 then 1 else 0))
+            | Operator.In items -> map_unary ctx' (args.[0], (fun i -> if items |> List.contains i then 1 else 0))
+            | Operator.And ->
+                map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) && (y = 1) then 1 else 0))
+            | Operator.Or ->
+                map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) || (y = 1) then 1 else 0))
+            | Operator.LessThanEquals -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x <= y then 1 else 0))
+            | Operator.GreaterThan -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x > y then 1 else 0))
+            | Operator.Equals -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x = y then 1 else 0))
+            | Operator.Add w ->
+                let m = int (2.0 ** w)
+                map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x + y) % m))
+            | Operator.Multiply w ->
+                let m = int (2.0 ** w)
+                map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x * y) % m))
+            | Operator.If w ->
+                let m = int (2.0 ** w)
+                map_ternary ctx' (args.[0], args.[1], args.[2], (fun (x, y, z) -> if x = 0 then z % m else y % m))
 
     and map_unary ctx (ket: Ket, lambda: int -> int) =
         let arg = ctx.allocations.[ket.Id]
-        let new_column = ctx.state.Head.Length
+        let new_column = ctx.state.Rows.Head.Length
 
         let new_state =
             seq {
-                for row in ctx.state do
+                for row in ctx.state.Rows do
                     row @ [ lambda (row.[arg]) ]
             }
             |> Seq.toList
 
-        ({ ctx with state = new_state }, new_column) |> Ok
+        ({ ctx with state = new_state |> QuantumState }, new_column) |> Ok
 
     and map_binary ctx (left: Ket, right: Ket, lambda: int * int -> int) =
         let x = ctx.allocations.[left.Id]
         let y = ctx.allocations.[right.Id]
-        let new_column = ctx.state.Head.Length
+        let new_column = ctx.state.Rows.Head.Length
 
         let new_state =
             seq {
-                for row in ctx.state do
+                for row in ctx.state.Rows do
                     row @ [ lambda (row.[x], row.[y]) ]
             }
             |> Seq.toList
 
-        ({ ctx with state = new_state }, new_column) |> Ok
+        ({ ctx with state = new_state |> QuantumState }, new_column) |> Ok
 
     and map_ternary ctx (a: Ket, b: Ket, c: Ket, lambda: int * int * int -> int) =
         let x = ctx.allocations.[a.Id]
         let y = ctx.allocations.[b.Id]
         let z = ctx.allocations.[c.Id]
-        let new_column = ctx.state.Head.Length
+        let new_column = ctx.state.Rows.Head.Length
 
         let new_state =
             seq {
-                for row in ctx.state do
+                for row in ctx.state.Rows do
                     row @ [ lambda (row.[x], row.[y], row.[z]) ]
             }
             |> Seq.toList
 
-        ({ ctx with state = new_state }, new_column) |> Ok
+        ({ ctx with state = new_state |> QuantumState }, new_column) |> Ok
 
 
     (*
@@ -232,24 +236,19 @@ type Processor() =
         (*
             Measure works by sampling the universe:
         *)
-        member this.Measure(universe: IUniverse) =
+        member this.Measure(universe: IUniverse, kets: Ket list) =
             let u = universe :?> Universe
-            u.Sample() |> Ok
+            u.Sample(kets) |> Ok
 
         (*
             Prepares a Quantum Universe from the given universe expression
          *)
         member this.Prepare(kets: Ket list) =
-            let ctx = { allocations = Map.empty; state = [] }
+            let ctx = { allocations = Map.empty; state = QuantumState.empty }
 
             init_many ctx kets
             ==> fun ctx' ->
-                    let outputs = kets |> List.map (fun i -> ctx'.allocations.Item i.Id)
-
-                    let filters =
-                        Ket.CollectFilterIds(kets) |> List.map (fun i -> ctx'.allocations.Item i)
-
-                    Universe(ctx'.state, filters, outputs) :> IUniverse |> Ok
+                Universe(ctx'.state, ctx'.allocations) :> IUniverse |> Ok
 
 
 module context =

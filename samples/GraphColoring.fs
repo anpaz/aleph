@@ -5,10 +5,10 @@ open System
 open aleph.kets
 open aleph.qpu.classic.context
 
-let graph_coloring max_colors nodes_count (edges: (int * int) list)  =
+let graph_coloring (max_colors: int) (nodes_count: int) (edges: (int * int) list)  =
     let create_node _ = 
         let w = Math.Ceiling(Math.Log(max_colors, 2)) |> int
-        Ket(Literal (width=w))
+        Ket(Literal (width=w)).Where(LessThanEquals, max_colors - 1)
 
     let rec compare_all_edges (edges: (Ket * Ket) list) =
         match edges with

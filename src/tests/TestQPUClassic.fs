@@ -23,70 +23,53 @@ type TestQPUClassic() =
         let a = Ket(Literal 2)
         let b = Ket(Literal 2)
 
-        [ [ Ket(Literal 1) ], Universe(state = [ [ 0 ]; [ 1 ] ], outputColumns = [ 0 ], filters = [])
+        [ [ Ket(Literal 1) ], [ [ 0 ]; [ 1 ] ]
 
-          [ a ], Universe(state = [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ], outputColumns = [ 0 ], filters = [])
+          [ a ], [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ]
 
-          [ b ], Universe(state = [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ], outputColumns = [ 0 ], filters = [])
+          [ b ], [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ]
 
-          [ a; a ], Universe(state = [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ], outputColumns = [ 0; 0 ], filters = [])
+          [ a; a ], [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ]
 
           [ a; b ],
-          Universe(
-              state =
-                  [ [ 0; 0 ]
-                    [ 0; 1 ]
-                    [ 0; 2 ]
-                    [ 0; 3 ]
-                    [ 1; 0 ]
-                    [ 1; 1 ]
-                    [ 1; 2 ]
-                    [ 1; 3 ]
-                    [ 2; 0 ]
-                    [ 2; 1 ]
-                    [ 2; 2 ]
-                    [ 2; 3 ]
-                    [ 3; 0 ]
-                    [ 3; 1 ]
-                    [ 3; 2 ]
-                    [ 3; 3 ] ],
-              filters = [],
-              outputColumns = [ 0; 1 ]
-          )
+          [ [ 0; 0 ]
+            [ 0; 1 ]
+            [ 0; 2 ]
+            [ 0; 3 ]
+            [ 1; 0 ]
+            [ 1; 1 ]
+            [ 1; 2 ]
+            [ 1; 3 ]
+            [ 2; 0 ]
+            [ 2; 1 ]
+            [ 2; 2 ]
+            [ 2; 3 ]
+            [ 3; 0 ]
+            [ 3; 1 ]
+            [ 3; 2 ]
+            [ 3; 3 ] ]
 
 
           [ a; b.Where(LessThanEquals, 2) ],
-          Universe(
-              state =
-                  [ [ 0; 0; 2; 1 ]
-                    [ 0; 1; 2; 1 ]
-                    [ 0; 2; 2; 1 ]
-                    [ 0; 3; 2; 0 ]
-                    [ 1; 0; 2; 1 ]
-                    [ 1; 1; 2; 1 ]
-                    [ 1; 2; 2; 1 ]
-                    [ 1; 3; 2; 0 ]
-                    [ 2; 0; 2; 1 ]
-                    [ 2; 1; 2; 1 ]
-                    [ 2; 2; 2; 1 ]
-                    [ 2; 3; 2; 0 ]
-                    [ 3; 0; 2; 1 ]
-                    [ 3; 1; 2; 1 ]
-                    [ 3; 2; 2; 1 ]
-                    [ 3; 3; 2; 0 ] ],
-              filters = [ 3 ],
-              outputColumns = [ 0; 1 ]
-          )
+          [ [ 0; 0; 2; 1 ]
+            [ 0; 1; 2; 1 ]
+            [ 0; 2; 2; 1 ]
+            [ 1; 0; 2; 1 ]
+            [ 1; 1; 2; 1 ]
+            [ 1; 2; 2; 1 ]
+            [ 2; 0; 2; 1 ]
+            [ 2; 1; 2; 1 ]
+            [ 2; 2; 2; 1 ]
+            [ 3; 0; 2; 1 ]
+            [ 3; 1; 2; 1 ]
+            [ 3; 2; 2; 1 ] ]
 
           [ a; Ket(Literal 1) ],
-          Universe(
-              state = [ [ 0; 0 ]; [ 0; 1 ]; [ 1; 0 ]; [ 1; 1 ]; [ 2; 0 ]; [ 2; 1 ]; [ 3; 0 ]; [ 3; 1 ] ],
-              filters = [],
-              outputColumns = [ 0; 1 ]
-          )
+          [ [ 0; 0 ]; [ 0; 1 ]; [ 1; 0 ]; [ 1; 1 ]; [ 2; 0 ]; [ 2; 1 ]; [ 3; 0 ]; [ 3; 1 ] ]
 
           [ Ket(Literal 1); Ket(Constant 4) ],
-          Universe(state = [ [ 0; 4 ]; [ 1; 4 ] ], outputColumns = [ 0; 1 ], filters = []) ]
+          [ [ 0; 4 ]; [ 1; 4 ] ]
+        ]
         |> List.iter (this.TestExpression)
 
     [<TestMethod>]
@@ -109,66 +92,40 @@ type TestQPUClassic() =
         let e = c.Add(a.Where(Not))
 
         [ [ Ket(Map(Add(1), [ a; b ])) ],
-          Universe(state = [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ], outputColumns = [ 2 ], filters = [])
+          [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ]
 
           [ a.Add(b) ],
-          Universe(state = [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ], outputColumns = [ 2 ], filters = [])
+          [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ]
 
           [ Ket(Map(Add(2), [ a; b ])) ],
-          Universe(state = [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 2 ] ], outputColumns = [ 2 ], filters = [])
+          [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 2 ] ]
 
           [ c ],
-          Universe(
-              state =
-                  [ [ 0; 3; 0; 3; 1; 0; 0 ]
-                    [ 0; 3; 0; 3; 1; 1; 1 ]
-                    [ 1; 3; 3; 3; 1; 0; 3 ]
-                    [ 1; 3; 3; 3; 1; 1; 4 ]
-                    [ 2; 3; 2; 3; 1; 0; 2 ]
-                    [ 2; 3; 2; 3; 1; 1; 3 ]
-                    [ 3; 3; 1; 3; 1; 0; 1 ]
-                    [ 3; 3; 1; 3; 1; 1; 2 ] ],
-              outputColumns = [ 6 ],
-              filters = [ 4 ]
-          )
+          [ [ 0; 3; 0; 3; 1; 0; 0 ]
+            [ 0; 3; 0; 3; 1; 1; 1 ]
+            [ 1; 3; 3; 3; 1; 0; 3 ]
+            [ 1; 3; 3; 3; 1; 1; 4 ]
+            [ 2; 3; 2; 3; 1; 0; 2 ]
+            [ 2; 3; 2; 3; 1; 1; 3 ]
+            [ 3; 3; 1; 3; 1; 0; 1 ]
+            [ 3; 3; 1; 3; 1; 1; 2 ] ]
 
           [ d ],
-          Universe(
-              state =
-                  [ [ 0; 3; 0; 0; 0; 5; 1 ]
-                    [ 0; 3; 0; 1; 1; 5; 1 ]
-                    [ 1; 3; 3; 0; 3; 5; 1 ]
-                    [ 1; 3; 3; 1; 4; 5; 1 ]
-                    [ 2; 3; 6; 0; 6; 5; 0 ]
-                    [ 2; 3; 6; 1; 7; 5; 0 ]
-                    [ 3; 3; 9; 0; 9; 5; 0 ]
-                    [ 3; 3; 9; 1; 10; 5; 0 ] ],
-              outputColumns = [ 4 ],
-              filters = [ 6 ]
-          )
+          [ [ 0; 3; 0; 0; 0; 5; 1 ]
+            [ 0; 3; 0; 1; 1; 5; 1 ]
+            [ 1; 3; 3; 0; 3; 5; 1 ]
+            [ 1; 3; 3; 1; 4; 5; 1 ] ]
 
           [ e ],
-          Universe(
-              state =
-                  [ [ 0; 3; 0; 3; 1; 0; 0; 0; 1; 0 ]
-                    [ 0; 3; 0; 3; 1; 0; 0; 1; 0; 1 ]
-                    [ 0; 3; 0; 3; 1; 1; 1; 0; 1; 1 ]
-                    [ 0; 3; 0; 3; 1; 1; 1; 1; 0; 2 ]
-                    [ 1; 3; 3; 3; 1; 0; 3; 0; 1; 3 ]
-                    [ 1; 3; 3; 3; 1; 0; 3; 1; 0; 4 ]
-                    [ 1; 3; 3; 3; 1; 1; 4; 0; 1; 4 ]
-                    [ 1; 3; 3; 3; 1; 1; 4; 1; 0; 5 ]
-                    [ 2; 3; 2; 3; 1; 0; 2; 0; 1; 2 ]
-                    [ 2; 3; 2; 3; 1; 0; 2; 1; 0; 3 ]
-                    [ 2; 3; 2; 3; 1; 1; 3; 0; 1; 3 ]
-                    [ 2; 3; 2; 3; 1; 1; 3; 1; 0; 4 ]
-                    [ 3; 3; 1; 3; 1; 0; 1; 0; 1; 1 ]
-                    [ 3; 3; 1; 3; 1; 0; 1; 1; 0; 2 ]
-                    [ 3; 3; 1; 3; 1; 1; 2; 0; 1; 2 ]
-                    [ 3; 3; 1; 3; 1; 1; 2; 1; 0; 3 ] ],
-              outputColumns = [ 9 ],
-              filters = [ 4; 8 ]
-          ) ]
+          [ [ 0; 3; 0; 3; 1; 0; 0; 0; 1; 0 ]
+            [ 0; 3; 0; 3; 1; 1; 1; 0; 1; 1 ]
+            [ 1; 3; 3; 3; 1; 0; 3; 0; 1; 3 ]
+            [ 1; 3; 3; 3; 1; 1; 4; 0; 1; 4 ]
+            [ 2; 3; 2; 3; 1; 0; 2; 0; 1; 2 ]
+            [ 2; 3; 2; 3; 1; 1; 3; 0; 1; 3 ]
+            [ 3; 3; 1; 3; 1; 0; 1; 0; 1; 1 ]
+            [ 3; 3; 1; 3; 1; 1; 2; 0; 1; 2 ] ]
+        ]
         |> List.iter (this.TestExpression)
 
 
@@ -187,38 +144,22 @@ type TestQPUClassic() =
         let f = e.Not().Where(Equals, 1)
 
         [ [ a.LessThanEquals(b) ],
-          Universe(state = [ [ 0; 0; 1 ]; [ 0; 1; 1 ]; [ 1; 0; 0 ]; [ 1; 1; 1 ] ], outputColumns = [ 2 ], filters = [])
+          [ [ 0; 0; 1 ]; [ 0; 1; 1 ]; [ 1; 0; 0 ]; [ 1; 1; 1 ] ]
 
-          [ b.LessThanEquals(0) ], Universe(state = [ [ 0; 0; 1 ]; [ 1; 0; 0 ] ], outputColumns = [ 2 ], filters = [])
+          [ b.LessThanEquals(0) ], [ [ 0; 0; 1 ]; [ 1; 0; 0 ] ]
 
           [ c ],
-          Universe(
-              state = [ [ 0; 0; 0; 1; 1 ]; [ 0; 1; 1; 1; 1 ]; [ 1; 0; 1; 1; 1 ]; [ 1; 1; 2; 1; 0 ] ],
-              outputColumns = [ 2 ],
-              filters = [ 4 ]
-          )
+          [ [ 0; 0; 0; 1; 1 ]; [ 0; 1; 1; 1; 1 ]; [ 1; 0; 1; 1; 1 ] ]
 
           [ d; e ],
-          Universe(
-              state =
-                  [ [ 0; 0; 1; 1; 1; 1; 1; 1; 1; 1 ]
-                    [ 0; 1; 1; 1; 1; 1; 1; 1; 1; 1 ]
-                    [ 1; 0; 0; 1; 1; 0; 0; 1; 1; 1 ]
-                    [ 1; 1; 1; 1; 1; 1; 1; 1; 1; 1 ] ],
-              outputColumns = [ 5; 9 ],
-              filters = []
-          )
+          [ [ 0; 0; 1; 1; 1; 1; 1; 1; 1; 1 ]
+            [ 0; 1; 1; 1; 1; 1; 1; 1; 1; 1 ]
+            [ 1; 0; 0; 1; 1; 0; 0; 1; 1; 1 ]
+            [ 1; 1; 1; 1; 1; 1; 1; 1; 1; 1 ] ]
 
           [ f ],
-          Universe(
-              state =
-                  [ [ 0; 0; 1; 1; 1; 1; 0; 1; 0 ]
-                    [ 0; 1; 1; 1; 1; 1; 0; 1; 0 ]
-                    [ 1; 0; 0; 1; 1; 1; 0; 1; 0 ]
-                    [ 1; 1; 1; 1; 1; 1; 0; 1; 0 ] ],
-              outputColumns = [ 6 ],
-              filters = [ 8 ]
-          ) ]
+          [ [ -1; -1; -1; -1; -1; -1; -1; -1; -1 ] ]
+        ]
         |> List.iter (this.TestExpression)
 
     [<TestMethod>]
@@ -226,16 +167,33 @@ type TestQPUClassic() =
         let a = Ket(Literal 2)
 
         [ [ a.In [ 0; 2 ] ],
-          Universe(state = [ [ 0; 1 ]; [ 1; 0 ]; [ 2; 1 ]; [ 3; 0 ] ], outputColumns = [ 1 ], filters = [])
+          [ [ 0; 1 ]; [ 1; 0 ]; [ 2; 1 ]; [ 3; 0 ] ]
+
           [ a.Where(In [ 0; 2 ]) ],
-          Universe(state = [ [ 0; 1 ]; [ 1; 0 ]; [ 2; 1 ]; [ 3; 0 ] ], outputColumns = [ 0 ], filters = [ 1 ])
+          [ [ 0; 1 ]; [ 2; 1 ] ]
 
           [ a; a.Where(In []); a.In [ 1; 2; 3; 4 ] ],
-          Universe(
-              state = [ [ 0; 0; 0 ]; [ 1; 0; 1 ]; [ 2; 0; 1 ]; [ 3; 0; 1 ] ],
-              outputColumns = [ 0; 0; 2 ],
-              filters = [ 1 ]
-          ) ]
+          [ [ -1; -1; 0 ] ]
+
+          [ a; a.Where(In []); Ket(Literal 2).In [ 1; 3 ] ],
+          [ [ -1; -1; 0; 0 ]
+            [ -1; -1; 1; 1 ]
+            [ -1; -1; 2; 0 ]
+            [ -1; -1; 3; 1 ] ]
+        ]
+        |> List.iter (this.TestExpression)
+
+        
+    [<TestMethod>]
+    member this.TestId() =
+        let a = Ket(Literal 2)
+
+        [ [ a.Where(Id) ],
+          [ [ 1 ]; [ 2 ]; [ 3 ] ]
+
+          [ a; a.GreaterThan(2).Where(Id) ],
+          [ [ 3; 2; 1 ] ]
+        ]
         |> List.iter (this.TestExpression)
 
 
@@ -247,11 +205,8 @@ type TestQPUClassic() =
         let c = a.In([ 1; 2 ]).Choose(a, b)
 
         [ [ c ],
-          Universe(
-              state = [ [ 0; 0; 4; 4; 4 ]; [ 1; 1; 4; 5; 1 ]; [ 2; 1; 4; 6; 2 ]; [ 3; 0; 4; 7; 7 ] ],
-              outputColumns = [ 4 ],
-              filters = []
-          ) ]
+          [ [ 0; 0; 4; 4; 4 ]; [ 1; 1; 4; 5; 1 ]; [ 2; 1; 4; 6; 2 ]; [ 3; 0; 4; 7; 7 ] ]
+        ]
         |> List.iter (this.TestExpression)
 
 
@@ -277,10 +232,7 @@ type TestQPUClassic() =
               [ 3; 0; 2; 1; 0 ]
               [ 3; 1; 2; 1; 0 ]
               [ 3; 2; 2; 0; 0 ]
-              [ 3; 3; 2; 0; 0 ] ]
-
-        let actual = Universe.filter_rows (state, [])
-        Assert.AreEqual(state, actual)
+              [ 3; 3; 2; 0; 0 ] ] |> QuantumState
 
         let expected =
             [ [ 0; 0; 2; 1; 0 ]
@@ -290,34 +242,34 @@ type TestQPUClassic() =
               [ 2; 0; 2; 1; 0 ]
               [ 2; 1; 2; 1; 0 ]
               [ 3; 0; 2; 1; 0 ]
-              [ 3; 1; 2; 1; 0 ] ]
+              [ 3; 1; 2; 1; 0 ] ] |> QuantumState
 
-        let actual = Universe.filter_rows (state, [ 3 ])
-        Assert.AreEqual(expected, actual)
+        let actual = state.FilterRows 3
+        Assert.AreEqual(expected.Rows, actual.Rows)
 
         let expected =
-            [ [ 0; 1; 2; 1; 0 ]; [ 1; 1; 2; 1; 0 ]; [ 2; 1; 2; 1; 0 ]; [ 3; 1; 2; 1; 0 ] ]
+            [ [ 0; 1; 2; 1; 0 ]; [ 1; 1; 2; 1; 0 ]; [ 2; 1; 2; 1; 0 ]; [ 3; 1; 2; 1; 0 ] ] |> QuantumState
 
-        let actual = Universe.filter_rows (state, [ 3; 1 ])
-        Assert.AreEqual(expected, actual)
+        let actual = (state.FilterRows 3).FilterRows 1
+        Assert.AreEqual(expected.Rows, actual.Rows)
 
-        let actual = Universe.filter_rows (state, [ 1; 3 ])
-        Assert.AreEqual(expected, actual)
+        let actual = (state.FilterRows 1).FilterRows 3
+        Assert.AreEqual(expected.Rows, actual.Rows)
 
-        let actual = Universe.filter_rows (expected, [ 3; 1 ])
-        Assert.AreEqual(expected, actual)
+        let actual = (expected.FilterRows 3).FilterRows 1
+        Assert.AreEqual(expected.Rows, actual.Rows)
 
-        let expected = [ [ 1; 1; 2; 1; 0 ]; [ 2; 1; 2; 1; 0 ]; [ 3; 1; 2; 1; 0 ] ]
+        let expected = [ [ 1; 1; 2; 1; 0 ]; [ 2; 1; 2; 1; 0 ]; [ 3; 1; 2; 1; 0 ] ] |> QuantumState
 
-        let actual = Universe.filter_rows (state, [ 0; 3; 1 ])
-        Assert.AreEqual(expected, actual)
+        let actual = ((state.FilterRows 0).FilterRows 3).FilterRows 1
+        Assert.AreEqual(expected.Rows, actual.Rows)
 
-        let expected: QuantumState = []
-        let actual = Universe.filter_rows (state, [ 0; 3; 1; 2; 4 ])
-        Assert.AreEqual(expected, actual)
+        let expected = [ [ -1; -1; -1; -1; -1 ] ] |> QuantumState
+        let actual = ((((state.FilterRows 0).FilterRows 3).FilterRows 1).FilterRows 2).FilterRows 4
+        Assert.AreEqual(expected.Rows, actual.Rows)
 
-        let actual = Universe.filter_rows (state, [ 4 ])
-        Assert.AreEqual(expected, actual)
+        let actual = (state.FilterRows 4)
+        Assert.AreEqual(expected.Rows, actual.Rows)
 
 
     [<TestMethod>]
@@ -424,7 +376,5 @@ type TestQPUClassic() =
         let ctx = { qpu = this.QPU }
         let actual = prepare ctx exprs :?> Universe
 
-        printfn "outputs: %A\nfilters: %A\nmemory: %A\n" actual.Outputs actual.Filters actual.State
-        Assert.AreEqual(expected.State, actual.State)
-        Assert.AreEqual(expected.Outputs, actual.Outputs)
-        Assert.AreEqual(expected.Filters, actual.Filters)
+        printfn "state: %A\n" actual.State.Rows
+        Assert.AreEqual(expected, actual.State.Rows)
