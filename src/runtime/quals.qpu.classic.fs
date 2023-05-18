@@ -125,29 +125,29 @@ type QuantumContext =
 
 type Processor() =
 
-    let rec init (ctx: QuantumContext) (k: Ket) =
-        match ctx.allocations.TryFind k.Id with
+    let rec prepare ctx (ket: Ket) =
+        match ctx.allocations.TryFind ket.Id with
         | Some _ -> ctx |> Ok // Already prepared...
         | None ->
             let init_result =
-                match k.Expression with
-                | Literal width -> init_literal ctx width
-                | Constant value -> init_constant ctx value
-                | Map (op, args) -> init_map ctx (op, args)
+                match ket.Expression with
+                | Literal width -> prepare_literal ctx width
+                | Constant value -> prepare_constant ctx value
+                | Map (op, args) -> prepare_map ctx (op, args)
                 | Where (target, op, args) ->
-                    init_map ctx (op, target :: args)
+                    prepare_map ctx (op, target :: args)
                     ==> fun (ctx, column) ->
                         let ctx = { ctx with state = ctx.state.FilterRows column }
                         (ctx, ctx.allocations.[target.Id]) |> Ok
 
             init_result
-            ==> fun (ctx, column) -> { ctx with allocations = ctx.allocations.Add(k.Id, column) } |> Ok
+            ==> fun (ctx, column) -> { ctx with allocations = ctx.allocations.Add(ket.Id, column) } |> Ok
 
-    and init_many ctx expressions =
-        let init_one previous next = previous ==> fun ctx' -> init ctx' next
-        expressions |> List.fold init_one (Ok ctx)
+    and prepare_many ctx kets =
+        let init_one previous next = previous ==> fun ctx' -> prepare ctx' next
+        kets |> List.fold init_one (Ok ctx)
 
-    and init_literal ctx width =
+    and prepare_literal ctx width =
         match width with
         | 0 -> "All literals must have a size." |> Error
         | n ->
@@ -156,13 +156,13 @@ type Processor() =
             let new_column = new_state.Rows.Head.Length - 1
             ({ ctx with state = new_state }, new_column) |> Ok
 
-    and init_constant ctx value =
+    and prepare_constant ctx value =
         let new_state = ctx.state.AddColumn [ value ]
         let new_column = new_state.Rows.Head.Length - 1
         ({ ctx with state = new_state }, new_column) |> Ok
 
-    and init_map ctx (op, args) =
-        init_many ctx args
+    and prepare_map ctx (op, args) =
+        prepare_many ctx args
         ==> fun ctx' ->
             match op with
             | Operator.Id -> (ctx', ctx'.allocations.[args.[0].Id]) |> Ok
@@ -246,7 +246,7 @@ type Processor() =
         member this.Prepare(kets: Ket list) =
             let ctx = { allocations = Map.empty; state = QuantumState.empty }
 
-            init_many ctx kets
+            prepare_many ctx kets
             ==> fun ctx' ->
                 Universe(ctx'.state, ctx'.allocations) :> IUniverse |> Ok
 
