@@ -4,8 +4,7 @@ open aleph.kets
 open aleph.qpu.classic.context
 
 
-let program =
-    // Return the list of all available colors (only 2):
+let program() =
     let create_node _ = Ket(Literal (width=1))
 
     let rec compare (edges: (Ket * Ket) list) =
@@ -20,7 +19,6 @@ let program =
             let b = compare tail
             a.And(b)
 
-
     let nodes =  [1..4] |> List.map create_node
     let edges = [
         (nodes.[0], nodes.[1])
@@ -30,4 +28,4 @@ let program =
 
     let filter = compare edges
 
-    nodes, filter |> Some
+    sample_when (nodes, filter)

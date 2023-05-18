@@ -1,7 +1,8 @@
 module CoinFlip
 
 open aleph.kets
+open aleph.qpu.classic.context
 
-let program : Ket list * Option<Ket> =
-  let coin = Ket(Literal (width=1))
-  [coin], None
+let program() =
+    let coin = Ket(Literal (width=1))
+    sample [coin]

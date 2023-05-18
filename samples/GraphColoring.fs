@@ -26,9 +26,9 @@ let graph_coloring (max_colors: int) (nodes_count: int) (edges: (int * int) list
     let edges = edges |> List.map (fun (x, y) -> (nodes.[x], nodes.[y]))
     let filter = edges |> compare_all_edges
 
-    nodes, filter |> Some
+    sample_when (nodes, filter)
 
-let program =
+let program() =
     let max_colors = 3
     let total_nodes = 4
     let edges = [

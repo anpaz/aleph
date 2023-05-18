@@ -1,23 +1,7 @@
 module Utils
 
 open aleph.kets
-// open Microsoft.Quantum.Simulation.Simulators
-// open Microsoft.Quantum.IQSharp.ExecutionPathTracer
 
-let run qpu program =
-    let ctx = { qpu = qpu }
-    let result = 
-        match program with
-        | kets, None -> sample ctx kets
-        | kets, Some filter -> sample_when ctx (kets, filter)
-
-    match result with
-    | Ok v ->
-        printfn "result: %A" v
-        0
-    | Error msg ->
-        printfn $"\n!! Failed: {msg} !!"
-        1
 
 let wrapup code =
     printfn ""
@@ -25,7 +9,8 @@ let wrapup code =
     code
 
 let simulate program =
-    program |> run (aleph.qpu.classic.Processor())
+    let result = program()
+    printfn "result: %A" result
 
 // let estimate program =
 //     let res = new ResourcesEstimator()
