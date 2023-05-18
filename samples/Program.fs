@@ -3,6 +3,7 @@ let main argv =
 
     let programs =
         [ CoinFlip.program
+          RandomNumber.program
           DiceRoll.program
           SolveEquation.program
           TinyGraphColoring.program

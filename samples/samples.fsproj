@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="CoinFlip.fs" />
+    <Compile Include="RandomNumber.fs" />
     <Compile Include="DiceRoll.fs" />
     <Compile Include="SolveEquation.fs" />
     <Compile Include="GraphColoring.fs" />
