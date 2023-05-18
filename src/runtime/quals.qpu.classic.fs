@@ -1,7 +1,7 @@
-namespace aleph.quals.runtime.qpu.classic
+namespace aleph.qpu.classic
 
-open aleph.quals.parser.ast
-open aleph.quals.runtime.Eval
+open aleph.utils
+open aleph.kets
 
 (*
 
@@ -250,3 +250,14 @@ type Processor() =
                         Ket.CollectFilterIds(kets) |> List.map (fun i -> ctx'.allocations.Item i)
 
                     Universe(ctx'.state, filters, outputs) :> IUniverse |> Ok
+
+
+module context =
+
+    let sample (kets: Ket list) =
+        let ctx = { qpu = Processor()}
+        sample ctx kets
+
+    let sample_when (kets: Ket list, filter: Ket) =
+        let ctx = { qpu = Processor()}
+        sample_when ctx (kets, filter)

@@ -10,4 +10,4 @@ let main argv =
 
     // let programs = [ Sandbox.program ]
 
-    programs |> List.map Utils.qsharp |> List.sum |> Utils.wrapup
+    programs |> List.map Utils.simulate |> List.sum |> Utils.wrapup

@@ -1,12 +1,7 @@
 module CoinFlip
 
-open aleph.parser.ast
+open aleph.kets
 
-let program =
-    Block(
-        [
-          // let coin = | 1, 0 >
-          Let("coin", Ket(Set [ Int 1; Int 0 ])) ],
-        // | coin |
-        Sample(Var "coin")
-    )
+let program : Ket list * Option<Ket> =
+  let coin = Ket(Literal (width=1))
+  [coin], None

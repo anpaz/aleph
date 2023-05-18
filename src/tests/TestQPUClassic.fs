@@ -2,9 +2,8 @@ namespace aleph.tests
 
 open Microsoft.VisualStudio.TestTools.UnitTesting
 
-open aleph.quals.parser.ast
-open aleph.quals.runtime.Eval
-open aleph.quals.runtime.qpu.classic
+open aleph.kets
+open aleph.qpu.classic
 
 open aleph.quals.tests.Utils
 

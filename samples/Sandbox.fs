@@ -1,16 +1,11 @@
 module Sandbox
 
-open aleph.parser.ast
+open aleph.kets
+open aleph.qpu.classic.context
 
-let program =
-    Block(
-        [ // Let ("a", KetAll (Int 2))
-          Let("a", Ket(Set [ Bool false; Bool true ]))
-          // Let ("b", KetAll (Int 2))
-          Let("b", Ket(Set [ Bool false; Bool true ]))
-          // Let ("result", Equals(Var "a", Var "b"))
-          Let("result", Or(And(Var "a", Var "b"), And(Not(Var "a"), Not(Var "b")))) ],
+let program : Ket list * Option<Ket> =
+  let a = Ket(Literal (width=2))
+  let b = Ket(Literal (width=2))
+  let results = a.Equals(b)
 
-        // | coin |
-        Sample(Join(Join(Var "a", Var "b"), Var "result"))
-    )
+  [a; b; results], None

@@ -2,7 +2,7 @@ namespace aleph.tests
 
 open Microsoft.VisualStudio.TestTools.UnitTesting
 
-open aleph.quals.parser.ast
+open aleph.kets
 
 [<TestClass>]
 type TestSyntax() =

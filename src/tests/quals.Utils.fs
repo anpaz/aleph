@@ -1,10 +1,8 @@
 namespace aleph.quals.tests
 
-open System.Collections
 open Microsoft.VisualStudio.TestTools.UnitTesting
 
-open aleph.quals.parser.ast
-open aleph.quals.runtime.Eval
+open aleph.kets
 
 module Utils =
 
