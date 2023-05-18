@@ -44,6 +44,9 @@ module kets =
 
     type PrepareContext = { qpu : QPU }
 
+    let ket (width: int) =
+        Ket(Literal (width=width))
+
     let prepare ctx (kets: Ket list) : Result<IUniverse, string> =
         let qpu = ctx.qpu
         qpu.Prepare kets
@@ -165,12 +168,3 @@ module kets =
         member this.Choose(onTrue: Ket, onFalse: Ket) =
             let w = Math.Max(onTrue.Width, onFalse.Width)
             this.Choose(onTrue, onFalse, w)
-
-        static member CollectFilterIds(kets: Ket list) : KetId list =
-            let ket_filters (k: Ket) = 
-                match k.Expression with
-                | Map (_, args) -> Ket.CollectFilterIds args
-                | Where (target, _, args) -> k.FilterId.Value :: Ket.CollectFilterIds(target :: args)
-                | _ -> []
-
-            kets |> List.collect (fun k -> ket_filters(k)) |> Set.ofList |> Set.toList

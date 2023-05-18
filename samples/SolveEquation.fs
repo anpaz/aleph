@@ -4,7 +4,7 @@ open aleph.kets
 open aleph.qpu.classic.context
 
 let program() =
-    let x = Ket(Literal (width=3))
+    let x = ket 3
     let eq1 = x.Add(3)
     let eq2 = x.Multiply(2)
     

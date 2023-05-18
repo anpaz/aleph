@@ -20,8 +20,8 @@ type TestQPUClassic() =
 
     [<TestMethod>]
     member this.TestBasicExpressions() =
-        let a = Ket(Literal 2)
-        let b = Ket(Literal 2)
+        let a = ket 2
+        let b = ket 2
 
         [ [ Ket(Literal 1) ], [ [ 0 ]; [ 1 ] ]
 
@@ -64,10 +64,10 @@ type TestQPUClassic() =
             [ 3; 1; 2; 1 ]
             [ 3; 2; 2; 1 ] ]
 
-          [ a; Ket(Literal 1) ],
+          [ a; ket 1 ],
           [ [ 0; 0 ]; [ 0; 1 ]; [ 1; 0 ]; [ 1; 1 ]; [ 2; 0 ]; [ 2; 1 ]; [ 3; 0 ]; [ 3; 1 ] ]
 
-          [ Ket(Literal 1); Ket(Constant 4) ],
+          [ ket 1; Ket(Constant 4) ],
           [ [ 0; 4 ]; [ 1; 4 ] ]
         ]
         |> List.iter (this.TestExpression)

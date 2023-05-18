@@ -5,7 +5,7 @@ open aleph.qpu.classic.context
 
 
 let program() =
-    let create_node _ = Ket(Literal (width=1))
+    let create_node _ = ket 1
 
     let rec compare (edges: (Ket * Ket) list) =
         match edges with

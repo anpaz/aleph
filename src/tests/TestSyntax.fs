@@ -58,36 +58,3 @@ type TestSyntax() =
         Assert.AreEqual(1, f.Or(g).Width)
         Assert.AreEqual(1, f.Equals(g).Equals(false).Not().Width)
 
-    [<TestMethod>]
-    member this.TestCollectFilterIds() =
-        let a = Ket(Literal 2)
-        Assert.IsTrue(a.FilterId.IsNone)
-
-        let b = Ket(Literal 3).Where(Equals, a)
-        Assert.IsTrue(b.FilterId.IsSome)
-
-        let c = a.Where(LessThanEquals, Ket(Constant 3))
-        Assert.IsTrue(c.FilterId.IsSome)
-        Assert.AreNotEqual(b.FilterId.Value, c.FilterId.Value)
-        Assert.AreEqual([c.FilterId.Value], Ket.CollectFilterIds [a; c])
-        Assert.AreEqual([ b.FilterId.Value; c.FilterId.Value ], Ket.CollectFilterIds [a; b; c])
-
-        let d = b.Equals(c)
-        Assert.AreEqual([ b.FilterId.Value; c.FilterId.Value ], Ket.CollectFilterIds [d])
-
-        let e = a.Add(c)
-        Assert.AreEqual([ c.FilterId.Value ], Ket.CollectFilterIds [e])
-
-        let f = b.Add(c)
-        Assert.AreEqual([ b.FilterId.Value; c.FilterId.Value ], Ket.CollectFilterIds [f])
-
-        // Make sure the filter ids appear only once:
-        let e = a.Add(c).Where(LessThanEquals, b).Where(Equals, c).Where(Or, b.Equals(c))
-        let ids = Ket.CollectFilterIds [ e ]
-        printf "%A" ids
-        Assert.AreEqual(5, ids.Length)
-        Assert.AreEqual(1, ids |> List.filter ((=) c.FilterId.Value) |> List.length)
-        Assert.AreEqual(1, ids |> List.filter ((=) b.FilterId.Value) |> List.length)
-
-        Assert.AreNotEqual(a, c)
-        Assert.AreNotEqual(a, b)
