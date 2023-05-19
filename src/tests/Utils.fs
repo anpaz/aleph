@@ -6,7 +6,6 @@ open aleph.kets
 
 module Utils =
 
-
     let is_valid_answer (answers: int list list) (value: int list) =
         if answers.IsEmpty then
             true

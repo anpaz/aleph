@@ -56,8 +56,7 @@ module kets =
             qpu.Measure (u, kets)
 
     let sample_when ctx (kets: KetValue list, filter: KetValue) : Result<int list, string> =
-        let f = KetValue(Where (filter, Id, []))
-        prepare ctx (f :: kets)
+        prepare ctx (KetValue(Where (filter, Id, [])) :: kets)
         ==> fun u ->
             let qpu = ctx.qpu
             qpu.Measure (u, kets)
