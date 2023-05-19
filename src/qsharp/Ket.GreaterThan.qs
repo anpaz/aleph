@@ -30,6 +30,10 @@ namespace aleph.qsharp.ket {
         let right = all[r.GetRange(r)];
         let output = all[r.GetRange(o)];
 
-        a.GreaterThan(a.LittleEndian(left), a.LittleEndian(right), output[0]);
+        let (lpadsize, rpadsize) = _padding(left, right);
+        use lpad = Qubit[lpadsize];
+        use rpad = Qubit[rpadsize];
+
+        a.GreaterThan(a.LittleEndian(left + lpad), a.LittleEndian(right + rpad), output[0]);
     }
 }

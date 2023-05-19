@@ -43,7 +43,7 @@ type QsharpContext =
 type Processor(sim: IOperationFactory) =
 
     let toQValue (i: int) = 
-        let w = Math.Ceiling(Math.Log(i, 2)) |> int64
+        let w = int_width i |> int64
         new QuantumValue((i |> int64, w))
 
     let rec prepare ctx (ket: Ket) =
@@ -72,7 +72,7 @@ type Processor(sim: IOperationFactory) =
         prepare_map ctx (op, target :: args)
         ==> fun (ctx, f) ->
             let u = aleph.qsharp.ket.Filter.Run(sim, f, ctx.state).Result
-            (ctx, ctx.allocations.[target.Id]) |> Ok
+            ({ ctx with state = u }, ctx.allocations.[target.Id]) |> Ok
 
     and prepare_map ctx (op, args) =
         prepare_many ctx args
@@ -86,9 +86,12 @@ type Processor(sim: IOperationFactory) =
                 | Operator.LessThanEquals -> map_binary ctx' (args.[0], args.[1], aleph.qsharp.ket.LessThanEqual.Run)
                 | Operator.GreaterThan -> map_binary ctx' (args.[0], args.[1], aleph.qsharp.ket.GreaterThan.Run)
                 | Operator.Equals -> map_binary ctx' (args.[0], args.[1], aleph.qsharp.ket.Equals.Run)
-                | Operator.Add w -> map_binary ctx' (args.[0], args.[1], aleph.qsharp.ket.Add.Run)
-                | Operator.Multiply w -> map_binary ctx' (args.[0], args.[1], aleph.qsharp.ket.Multiply.Run)
-                | Operator.If w -> map_if ctx' (args.[0], args.[1], args.[2])
+                | Operator.Add w -> map_binary ctx' (args.[0], args.[1], op_width w aleph.qsharp.ket.Add.Run)
+                | Operator.Multiply w -> map_binary ctx' (args.[0], args.[1], op_width w aleph.qsharp.ket.Multiply.Run)
+                | Operator.If-> map_if ctx' (args.[0], args.[1], args.[2])
+
+    and op_width w lambda (sim, l, r, state) =
+        lambda(sim, l, r, w, state)
 
     and map_unary ctx (ket, lambda) =
         let k = ctx.allocations.[ket.Id]

@@ -27,7 +27,7 @@ type TestSyntax() =
         let addi = Ket(Map(times, [ a; Ket(Constant 3) ]))
         let color = Ket(Where(a, LessThanEquals, [ Ket(Constant 3) ]))
         let eq = Ket(Where(b, Equals, [ a ]))
-        let q = Ket(Map(If 3, [ color; add; addi ]))
+        let q = Ket(Map(If, [ color; add; addi ]))
         let values = Ket(Where(Ket(Literal 3), In [ 0; 2; 4; 6 ], []))
         let zero = Ket(Where(values, Not, []))
 
@@ -43,9 +43,10 @@ type TestSyntax() =
         Assert.AreEqual(3, a.Add(b).Width)
         Assert.AreEqual(4, a.Add(12).Width)
 
-        Assert.AreEqual(3, a.Multiply(b).Width)
-        Assert.AreEqual(4, a.Multiply(12).Width)
-        Assert.AreEqual(2, a.Multiply(1).Width)
+        Assert.AreEqual(5, a.Multiply(b).Width)
+        Assert.AreEqual(6, a.Multiply(12).Width)
+        Assert.AreEqual(3, a.Multiply(1).Width)
+        Assert.AreEqual(3, a.Multiply(0).Width)
 
         let f = a.Equals(b)
         let g = a.Equals(3)
@@ -56,5 +57,6 @@ type TestSyntax() =
 
         Assert.AreEqual(1, f.And(g).Width)
         Assert.AreEqual(1, f.Or(g).Width)
+        Assert.AreEqual(3, g.Choose(a, b).Width)
         Assert.AreEqual(1, f.Equals(g).Equals(false).Not().Width)
 

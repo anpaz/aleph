@@ -1,13 +1,12 @@
 module GraphColoring
 
-open System
-
+open aleph.utils
 open aleph.kets
 open aleph.qpu.classic.context
 
 let graph_coloring (max_colors: int) (nodes_count: int) (edges: (int * int) list)  =
     let create_node _ = 
-        let w = Math.Ceiling(Math.Log(max_colors, 2)) |> int
+        let w = int_width (max_colors - 1)
         Ket(Literal (width=w)).Where(LessThanEquals, max_colors - 1)
 
     let rec compare_all_edges (edges: (Ket * Ket) list) =

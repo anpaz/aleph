@@ -180,9 +180,8 @@ type Processor() =
             | Operator.Multiply w ->
                 let m = int (2.0 ** w)
                 map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x * y) % m))
-            | Operator.If w ->
-                let m = int (2.0 ** w)
-                map_ternary ctx' (args.[0], args.[1], args.[2], (fun (x, y, z) -> if x = 0 then z % m else y % m))
+            | Operator.If ->
+                map_ternary ctx' (args.[0], args.[1], args.[2], (fun (x, y, z) -> if x = 0 then z else y))
 
     and map_unary ctx (ket: Ket, lambda: int -> int) =
         let arg = ctx.allocations.[ket.Id]

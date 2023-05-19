@@ -16,7 +16,7 @@ module kets =
         | Equals
         | Add of width: int
         | Multiply of width: int
-        | If of width: int
+        | If
 
         // These were not in the paper
         | Id
@@ -71,8 +71,8 @@ module kets =
             | Map (op, args) ->
                 match op with
                 | Add w
-                | Multiply w
-                | If w -> w
+                | Multiply w -> w
+                | If -> Math.Max(args.[1].Width, args.[2].Width)
                 | Id -> args.[0].Width
                 | Not
                 | And
@@ -81,7 +81,7 @@ module kets =
                 | GreaterThan
                 | Equals
                 | In _ -> 1
-            | Constant v -> Math.Ceiling(Math.Log(float v) / Math.Log(2.0)) |> int
+            | Constant v -> int_width v
             | Where (target, _, _) -> target.Width
 
         member this.Where(op: Operator) = Ket(Where(this, op, [ ]))
@@ -136,11 +136,11 @@ module kets =
             let k2 = Ket(Constant c)
             this.Add(k2, width)
 
-        member this.Multiply(k2: Ket, weigth: int) =
-            Ket(Map(Multiply weigth, [ this; k2 ]))
+        member this.Multiply(k2: Ket, width: int) =
+            Ket(Map(Multiply width, [ this; k2 ]))
 
         member this.Multiply(k2: Ket) =
-            let w = Math.Max(this.Width, k2.Width)
+            let w = this.Width + k2.Width
             this.Multiply(k2, w)
 
         member this.Multiply(c: int) =
@@ -162,9 +162,5 @@ module kets =
             let k2 = Ket(Constant(if c then 1 else 0))
             this.Equals(k2)
 
-        member this.Choose(onTrue: Ket, onFalse: Ket, width: int) =
-            Ket(Map (If width, [this; onTrue; onFalse]))
-            
         member this.Choose(onTrue: Ket, onFalse: Ket) =
-            let w = Math.Max(onTrue.Width, onFalse.Width)
-            this.Choose(onTrue, onFalse, w)
+            Ket(Map (If, [this; onTrue; onFalse]))

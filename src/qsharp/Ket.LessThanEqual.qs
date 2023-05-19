@@ -1,5 +1,6 @@
 namespace aleph.qsharp.ket {
 
+    open Microsoft.Quantum.Math;
     open Microsoft.Quantum.Arithmetic as a;
     open Microsoft.Quantum.Convert;
     open Microsoft.Quantum.Intrinsic;
@@ -18,6 +19,15 @@ namespace aleph.qsharp.ket {
         return (universe, [output]);
     }
 
+    function _padding(left: Qubit[], right: Qubit[]) : (Int, Int) {
+        let l = Max([Length(right) - Length(left), 0]);
+        let r = Max([Length(left) - Length(right), 0]);
+
+        log.Debug($"Using padding: left:{left} + {l}, right:{right} + {r}");
+
+        return (l, r);
+    }
+
     operation _LessThan_eval(
         l: r.Register,
         r: r.Register,
@@ -30,7 +40,11 @@ namespace aleph.qsharp.ket {
         let right = all[r.GetRange(r)];
         let output = all[r.GetRange(o)];
 
-        a.GreaterThan(a.LittleEndian(left), a.LittleEndian(right), output[0]);
+        let (lpadsize, rpadsize) = _padding(left, right);
+        use lpad = Qubit[lpadsize];
+        use rpad = Qubit[rpadsize];
+
+        a.GreaterThan(a.LittleEndian(left + lpad), a.LittleEndian(right + rpad), output[0]);
         X(output[0]);
     }
 }
