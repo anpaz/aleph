@@ -1,7 +1,7 @@
 module Sandbox
 
 open aleph.kets
-open aleph.qpu.classic.context
+open context
 
 let program() =
   let a = ket 2
