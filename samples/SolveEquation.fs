@@ -1,7 +1,7 @@
 module SolveEquation
 
 open aleph.kets
-open aleph.qpu.classic.context
+open context
 
 let program() =
     let x = ket 3

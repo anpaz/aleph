@@ -1,7 +1,7 @@
 module DiceRoll
 
 open aleph.kets
-open aleph.qpu.classic.context
+open context
 
 let program() =
     let dice1 = (ket 3).Where(In [1..6])

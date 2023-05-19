@@ -1,7 +1,7 @@
 module TinyGraphColoring
 
 open aleph.kets
-open aleph.qpu.classic.context
+open context
 
 
 let program() =

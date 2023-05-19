@@ -1,7 +1,7 @@
 module RandomNumber
 
 open aleph.kets
-open aleph.qpu.classic.context
+open context
 
 let program() =
     let random = ket 10

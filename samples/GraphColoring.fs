@@ -2,7 +2,8 @@ module GraphColoring
 
 open aleph.utils
 open aleph.kets
-open aleph.qpu.classic.context
+
+open context
 
 let graph_coloring (max_colors: int) (nodes_count: int) (edges: (int * int) list)  =
     let create_node _ = 
