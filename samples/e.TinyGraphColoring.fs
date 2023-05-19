@@ -7,9 +7,9 @@ open context
 let program() =
     let create_node _ = ket 1
 
-    let rec compare (edges: (Ket * Ket) list) =
+    let rec compare (edges: (KetValue * KetValue) list) =
         match edges with
-        | [] -> Ket (Constant 1)
+        | [] -> KetValue (Constant 1)
         | [ one ] ->
             let left, right = one
             left.Equals(right).Not()

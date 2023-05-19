@@ -32,7 +32,7 @@ module Utils =
             printfn "Looking for %A in %A" value answers
             answers |> List.contains value
 
-    let AssertSample (qpu: QPU) (kets: Ket list, answers: int list list) =
+    let AssertSample (qpu: QPU) (kets: KetValue list, answers: int list list) =
         let ctx = { qpu = qpu }
 
         let checkRepeatMeasurement (u, v) =

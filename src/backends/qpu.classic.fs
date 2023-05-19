@@ -93,7 +93,7 @@ type Universe(state: QuantumState, allocations: ColumnsMap) =
         Once measured, the universe is collapsed to this value, and next time it is measured
         it will return the same value.
     *)
-    member this.Sample(kets: Ket list) =
+    member this.Sample(kets: KetValue list) =
         let columns = kets |> List.map (fun k -> allocations.[k.Id])
         match value with
         | Some v -> v
@@ -125,7 +125,7 @@ type QuantumContext =
 
 type Processor() =
 
-    let rec prepare ctx (ket: Ket) =
+    let rec prepare ctx (ket: KetValue) =
         match ctx.allocations.TryFind ket.Id with
         | Some _ -> ctx |> Ok // Already prepared...
         | None ->
@@ -183,7 +183,7 @@ type Processor() =
             | Operator.If ->
                 map_ternary ctx' (args.[0], args.[1], args.[2], (fun (x, y, z) -> if x = 0 then z else y))
 
-    and map_unary ctx (ket: Ket, lambda: int -> int) =
+    and map_unary ctx (ket: KetValue, lambda: int -> int) =
         let arg = ctx.allocations.[ket.Id]
         let new_column = ctx.state.Rows.Head.Length
 
@@ -196,7 +196,7 @@ type Processor() =
 
         ({ ctx with state = new_state |> QuantumState }, new_column) |> Ok
 
-    and map_binary ctx (left: Ket, right: Ket, lambda: int * int -> int) =
+    and map_binary ctx (left: KetValue, right: KetValue, lambda: int * int -> int) =
         let x = ctx.allocations.[left.Id]
         let y = ctx.allocations.[right.Id]
         let new_column = ctx.state.Rows.Head.Length
@@ -210,7 +210,7 @@ type Processor() =
 
         ({ ctx with state = new_state |> QuantumState }, new_column) |> Ok
 
-    and map_ternary ctx (a: Ket, b: Ket, c: Ket, lambda: int * int * int -> int) =
+    and map_ternary ctx (a: KetValue, b: KetValue, c: KetValue, lambda: int * int * int -> int) =
         let x = ctx.allocations.[a.Id]
         let y = ctx.allocations.[b.Id]
         let z = ctx.allocations.[c.Id]
@@ -234,14 +234,14 @@ type Processor() =
         (*
             Measure works by sampling the universe:
         *)
-        member this.Measure(universe: IUniverse, kets: Ket list) =
+        member this.Measure(universe: IUniverse, kets: KetValue list) =
             let u = universe :?> Universe
             u.Sample(kets) |> Ok
 
         (*
             Prepares a Quantum Universe from the given universe expression
          *)
-        member this.Prepare(kets: Ket list) =
+        member this.Prepare(kets: KetValue list) =
             let ctx = { allocations = Map.empty; state = QuantumState.empty }
 
             prepare_many ctx kets
@@ -251,10 +251,10 @@ type Processor() =
 
 module context =
 
-    let sample (kets: Ket list) =
+    let sample (kets: KetValue list) =
         let ctx = { qpu = Processor()}
         sample ctx kets
 
-    let sample_when (kets: Ket list, filter: Ket) =
+    let sample_when (kets: KetValue list, filter: KetValue) =
         let ctx = { qpu = Processor()}
         sample_when ctx (kets, filter)

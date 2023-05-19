@@ -6,7 +6,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="quals.Utils.fs" />
+    <Compile Include="Utils.fs" />
     <Compile Include="TestSyntax.fs" />
     <Compile Include="TestQPUClassic.fs" />
     <Compile Include="TestQPUQsharp.fs" />
@@ -19,7 +19,7 @@
     <PackageReference Include="coverlet.collector" Version="3.1.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../parser/aleph.parser.fsproj" />
-    <ProjectReference Include="../runtime/aleph.runtime.fsproj" />
+    <ProjectReference Include="../lang/aleph.lang.fsproj" />
+    <ProjectReference Include="../backends/aleph.backends.fsproj" />
   </ItemGroup>
 </Project>

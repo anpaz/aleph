@@ -19,7 +19,7 @@ type Universe(sim: IOperationFactory, state: QuantumState, allocations: Register
 
     interface IUniverse
 
-    member this.Sample(kets: Ket list) =
+    member this.Sample(kets: KetValue list) =
         let registers = kets |> List.map (fun k -> allocations.[k.Id])
         match value with
         | Some v -> v
@@ -46,7 +46,7 @@ type Processor(sim: IOperationFactory) =
         let w = int_width i |> int64
         new QuantumValue((i |> int64, w))
 
-    let rec prepare ctx (ket: Ket) =
+    let rec prepare ctx (ket: KetValue) =
         match ctx.allocations.TryFind ket.Id with
         | Some _ -> ctx |> Ok // Already prepared...
         | None ->
@@ -123,14 +123,14 @@ type Processor(sim: IOperationFactory) =
         (*
             Measure works by sampling the universe:
         *)
-        member this.Measure(universe: IUniverse, kets: Ket list) =
+        member this.Measure(universe: IUniverse, kets: KetValue list) =
             let u = universe :?> Universe
             u.Sample(kets) |> Ok
 
         (*
             Prepares a Quantum Universe from the given universe expression
          *)
-        member this.Prepare(kets: Ket list) =
+        member this.Prepare(kets: KetValue list) =
             let ctx =
                 { allocations = Map.empty
                   state = universe.BigBang.Run(sim).Result }
@@ -144,10 +144,10 @@ module context =
 
     let simulator = new SparseSimulator()
 
-    let sample (kets: Ket list) =
+    let sample (kets: KetValue list) =
         let ctx = { qpu = Processor(simulator)}
         sample ctx kets
 
-    let sample_when (kets: Ket list, filter: Ket) =
+    let sample_when (kets: KetValue list, filter: KetValue) =
         let ctx = { qpu = Processor(simulator)}
         sample_when ctx (kets, filter)

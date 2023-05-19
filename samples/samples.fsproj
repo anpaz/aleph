@@ -8,19 +8,19 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Context.fs" />
-    <Compile Include="CoinFlip.fs" />
-    <Compile Include="RandomNumber.fs" />
-    <Compile Include="DiceRoll.fs" />
-    <Compile Include="SolveEquation.fs" />
-    <Compile Include="GraphColoring.fs" />
+    <Compile Include="a.CoinFlip.fs" />
+    <Compile Include="b.RandomNumber.fs" />
+    <Compile Include="c.DiceRoll.fs" />
+    <Compile Include="d.SolveEquation.fs" />
+    <Compile Include="e.GraphColoring.fs" />
+    <Compile Include="f.TinyGraphColoring.fs" />
     <Compile Include="Sandbox.fs" />
-    <Compile Include="TinyGraphColoring.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../src/parser/aleph.parser.fsproj" />
-    <ProjectReference Include="../src/runtime/aleph.runtime.fsproj" />
+    <ProjectReference Include="../src/lang/aleph.lang.fsproj" />
+    <ProjectReference Include="../src/backends/aleph.backends.fsproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Quantum.IQSharp.ExecutionPathTracer" Version="0.22.187631" />

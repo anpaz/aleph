@@ -12,8 +12,8 @@ type TestSyntax() =
         let plus = (Add 4)
         let times = (Multiply 8)
 
-        let a = Ket(Literal 3)
-        let b = Ket(Literal 3)
+        let a = KetValue(Literal 3)
+        let b = KetValue(Literal 3)
 
         Assert.AreEqual(a, a)
         Assert.AreSame(a, a)
@@ -21,22 +21,22 @@ type TestSyntax() =
         Assert.AreNotSame(a, b)
         Assert.AreNotEqual(a, b)
 
-        let iszero = Ket(Map(Not, [ a ]))
-        let equals = Ket(Map(Equals, [ a; iszero ]))
-        let add = Ket(Map(plus, [ a; b ]))
-        let addi = Ket(Map(times, [ a; Ket(Constant 3) ]))
-        let color = Ket(Where(a, LessThanEquals, [ Ket(Constant 3) ]))
-        let eq = Ket(Where(b, Equals, [ a ]))
-        let q = Ket(Map(If, [ color; add; addi ]))
-        let values = Ket(Where(Ket(Literal 3), In [ 0; 2; 4; 6 ], []))
-        let zero = Ket(Where(values, Not, []))
+        let iszero = KetValue(Map(Not, [ a ]))
+        let equals = KetValue(Map(Equals, [ a; iszero ]))
+        let add = KetValue(Map(plus, [ a; b ]))
+        let addi = KetValue(Map(times, [ a; KetValue(Constant 3) ]))
+        let color = KetValue(Where(a, LessThanEquals, [ KetValue(Constant 3) ]))
+        let eq = KetValue(Where(b, Equals, [ a ]))
+        let q = KetValue(Map(If, [ color; add; addi ]))
+        let values = KetValue(Where(KetValue(Literal 3), In [ 0; 2; 4; 6 ], []))
+        let zero = KetValue(Where(values, Not, []))
 
         Assert.AreSame(a, a)
 
     [<TestMethod>]
     member this.TestSyntacticSugar() =
-        let a = Ket(Literal 2)
-        let b = Ket(Literal 3)
+        let a = KetValue(Literal 2)
+        let b = KetValue(Literal 3)
 
         Assert.AreEqual(2, a.Add(0).Width)
         Assert.AreEqual(2, a.Add(1).Width)

@@ -8,11 +8,11 @@ open context
 let graph_coloring (max_colors: int) (nodes_count: int) (edges: (int * int) list)  =
     let create_node _ = 
         let w = int_width (max_colors - 1)
-        Ket(Literal (width=w)).Where(LessThanEquals, max_colors - 1)
+        KetValue(Literal (width=w)).Where(LessThanEquals, max_colors - 1)
 
-    let rec compare_all_edges (edges: (Ket * Ket) list) =
+    let rec compare_all_edges (edges: (KetValue * KetValue) list) =
         match edges with
-        | [] -> Ket (Constant 1)
+        | [] -> KetValue (Constant 1)
         | [ one ] ->
             let left, right = one
             left.Equals(right).Not()
