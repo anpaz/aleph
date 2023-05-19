@@ -173,7 +173,7 @@ type Processor() =
                 map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) || (y = 1) then 1 else 0))
             | Operator.LessThanEquals -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x <= y then 1 else 0))
             | Operator.GreaterThan -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x > y then 1 else 0))
-            | Operator.Equals -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x = y then 1 else 0))
+            | Operator.Eq -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x = y then 1 else 0))
             | Operator.Add w ->
                 let m = int (2.0 ** w)
                 map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x + y) % m))

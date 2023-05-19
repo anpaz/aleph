@@ -85,7 +85,7 @@ type Processor(sim: IOperationFactory) =
                 | Operator.Or -> map_binary ctx' (args.[0], args.[1], aleph.qsharp.ket.Or.Run)
                 | Operator.LessThanEquals -> map_binary ctx' (args.[0], args.[1], aleph.qsharp.ket.LessThanEqual.Run)
                 | Operator.GreaterThan -> map_binary ctx' (args.[0], args.[1], aleph.qsharp.ket.GreaterThan.Run)
-                | Operator.Equals -> map_binary ctx' (args.[0], args.[1], aleph.qsharp.ket.Equals.Run)
+                | Operator.Eq -> map_binary ctx' (args.[0], args.[1], aleph.qsharp.ket.Equals.Run)
                 | Operator.Add w -> map_binary ctx' (args.[0], args.[1], op_width w aleph.qsharp.ket.Add.Run)
                 | Operator.Multiply w -> map_binary ctx' (args.[0], args.[1], op_width w aleph.qsharp.ket.Multiply.Run)
                 | Operator.If-> map_if ctx' (args.[0], args.[1], args.[2])

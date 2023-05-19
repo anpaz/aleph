@@ -13,7 +13,7 @@ module kets =
     and Operator =
         | Not
         | LessThanEquals
-        | Equals
+        | Eq
         | Add of width: int
         | Multiply of width: int
         | If
@@ -76,7 +76,7 @@ module kets =
                 | Or
                 | LessThanEquals
                 | GreaterThan
-                | Equals
+                | Eq
                 | In _ -> 1
             | Constant v -> int_width v
             | Where (target, _, _) -> target.Width
@@ -149,7 +149,7 @@ module kets =
             this.Multiply(k2, width)
 
         member this.Equals(k2: KetValue) =
-            KetValue(Map(Equals, [ this; k2 ]))
+            KetValue(Map(Eq, [ this; k2 ]))
 
         member this.Equals(c: int) =
             let k2 = KetValue(Constant c)

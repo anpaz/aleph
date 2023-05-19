@@ -136,7 +136,7 @@ type TestQPUClassic() =
         // can point to the same ket.
         let d = a.LessThanEquals(b).And(b.LessThanEquals(1))
         let e = a.LessThanEquals(b).Or(b.LessThanEquals(1))
-        let f = e.Not().Where(Equals, 1)
+        let f = e.Not().Where(Eq, 1)
 
         [ [ a.LessThanEquals(b) ],
           [ [ 0; 0; 1 ]; [ 0; 1; 1 ]; [ 1; 0; 0 ]; [ 1; 1; 1 ] ]
@@ -279,7 +279,7 @@ type TestQPUClassic() =
         // can point to the same ket.
         let d = a.LessThanEquals(b).And(b.LessThanEquals(1))
         let e = a.LessThanEquals(b).Or(b.LessThanEquals(1))
-        let f = e.Not().Where(Equals, 1)
+        let f = e.Not().Where(Eq, 1)
 
         [ [ a ], [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ]
 

@@ -22,11 +22,11 @@ type TestSyntax() =
         Assert.AreNotEqual(a, b)
 
         let iszero = KetValue(Map(Not, [ a ]))
-        let equals = KetValue(Map(Equals, [ a; iszero ]))
+        let equals = KetValue(Map(Eq, [ a; iszero ]))
         let add = KetValue(Map(plus, [ a; b ]))
         let addi = KetValue(Map(times, [ a; KetValue(Constant 3) ]))
         let color = KetValue(Where(a, LessThanEquals, [ KetValue(Constant 3) ]))
-        let eq = KetValue(Where(b, Equals, [ a ]))
+        let eq = KetValue(Where(b, Eq, [ a ]))
         let q = KetValue(Map(If, [ color; add; addi ]))
         let values = KetValue(Where(KetValue(Literal 3), In [ 0; 2; 4; 6 ], []))
         let zero = KetValue(Where(values, Not, []))

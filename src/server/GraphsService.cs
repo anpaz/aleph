@@ -1,8 +1,25 @@
 
 using Newtonsoft.Json;
-using static aleph.runtime.Eval;
+using static aleph.kets;
 
 namespace aleph.server {
+
+    public class QuantumGraph {
+        private int last = 0;
+        private readonly Dictionary<int, KetValue> nodes = new Dictionary<int, KetValue>();
+
+        public KetValue this[int id] {
+            get {
+                return nodes[id];
+            }
+        }
+
+        public int Add(Expression expression) {
+            this.last++;
+            nodes.Add(last, new KetValue(expression, this.last));
+            return this.last;
+        }
+    }
 
     public interface IGraphsService {
         bool TryFind(string id, out QuantumGraph value);
@@ -29,82 +46,74 @@ namespace aleph.server {
     public class GraphNode {
 
         public GraphNode(int id, QuantumGraph graph) {
-            var exp = graph.Item(id);
+            var ket = graph[id];
 
             this.Id = id;
-            this.Label = CreateLabel(exp);
-            this.Dependencies = CreateDependencies(exp, graph);
+            this.Label = CreateLabel(ket);
+            this.Dependencies = CreateDependencies(ket, graph);
         }
 
-        private GraphNode[] CreateDependencies(KetExpression exp, QuantumGraph graph)
+        private GraphNode[] CreateDependencies(KetValue ket, QuantumGraph graph)
         {
-            if (exp.IsLiteral) {
+            if (ket.Expression.IsLiteral || ket.Expression.IsConstant) {
                 return new GraphNode[0];
-            } else if (exp.IsJoin) {
-                var ket = (KetExpression.Join) exp;
-                return ket.ids.Select(id => new GraphNode(id, graph)).ToArray();
-            } else if (exp.IsProject) {
-                var ket = (KetExpression.Project) exp;
-                return new GraphNode[] { new GraphNode(ket.ket, graph)};
-            } else if (exp.IsMap) {
-                var ket = (KetExpression.Map) exp;
-                return (ket.input < 0)
-                    ? new GraphNode[0]
-                    : new GraphNode[] { new GraphNode(ket.input, graph)};
-            } else if (exp.IsFilter) {
-                var ket = (KetExpression.Filter) exp;
-                return new GraphNode[] { 
-                    new GraphNode(ket.input, graph),
-                    new GraphNode(ket.filter, graph),
-                };
+            } else if (ket.Expression.IsMap) {
+                var map = (Expression.Map) ket.Expression;
+                return map.args
+                    .Select((ket, idx) =>  new GraphNode(ket.Id, graph))
+                    .ToArray();
+            } else if (ket.Expression.IsWhere) {
+                var where = (Expression.Where) ket.Expression;
+                return where.args
+                    .Select((ket, idx) =>  new GraphNode(ket.Id, graph))
+                    .Append(new GraphNode(where.target.Id, graph))
+                    .ToArray();
             }
 
             throw new NotImplementedException();
         }
 
-        private string CreateLabel(KetExpression exp)
+        private string CreateLabel(KetValue ket)
         {
-            if (exp.IsLiteral) {
-                var ket = (KetExpression.Literal) exp;
-                return $"literal (width: {ket.size})";
-            } else if (exp.IsJoin) {
-                var ket = (KetExpression.Join) exp;
-                return $"join";
-            } else if (exp.IsProject) {
-                var ket = (KetExpression.Project) exp;
-                return $"literal (index: {ket.index})";
-            } else if (exp.IsMap) {
-                var ket = (KetExpression.Map) exp;
-                return $"map ({OpLabel(ket.lambda)})";
-            } else if (exp.IsFilter) {
-                var ket = (KetExpression.Filter) exp;
-                return $"filter";
+            if (ket.Expression.IsLiteral) {
+                var literal = (Expression.Literal) ket.Expression;
+                return $"literal (width: {literal.width})";
+            } else if (ket.Expression.IsConstant) {
+                var c = (Expression.Constant) ket.Expression;
+                return $"constant (width: {c.value})";
+            } else if (ket.Expression.IsMap) {
+                var map = (Expression.Map) ket.Expression;
+                return $"map ({OpLabel(map.op)})";
+            } else if (ket.Expression.IsWhere) {
+                var w = (Expression.Where) ket.Expression;
+                return $"where (op: {OpLabel(w.clause)})";
             }
 
+            
             throw new NotImplementedException();
         }
 
-        private string OpLabel(KetMapOperator op) =>
-            op.IsAdd ?
-                "add" :
-            op.IsAnd ?
-                "and" :
-            op.IsConstant ?
-                $"constant (" + ((KetMapOperator.Constant) op).c.ToString() + ")" :
-            op.IsEq ?
-                "eq" :
-            op.IsGreaterThan ?
-                "greater than" :
-            op.IsIf ?
-                "if" :
-            op.IsIn ?
-                "in" :
-            op.IsLessThanEqual ?
-                "less than equal" :
-            op.IsMultiply ?
-                "multiply" :
+        private string OpLabel(Operator op) =>
             op.IsNot ?
                 "not" :
+            op.IsLessThanEquals ?
+                "less than equal" :
+            op.IsEq ?
+                "eq" :
+            op.IsAdd ?
+                $"add, width={((Operator.Add) op).width}" :
+            op.IsMultiply ?
+                "multiply, width={((Operator.Multiply) op).width}" :
+            op.IsIf ?
+                "if" :
+            op.IsId ?
+                "id" :
+            op.IsIn ?
+                "in" :
+            op.IsGreaterThan ?
+                "greater than" :
+            op.IsAnd ?
+                "and" :
             op.IsOr ?
                 "or" :
             throw new NotImplementedException();

@@ -1,6 +1,7 @@
 
 import requests
 import json
+import math
 
 import logging
 logger = logging.getLogger("aleph")
@@ -47,7 +48,8 @@ class KetBool():
             self.id = id
         else:
             self.id = _post(graph_baseurl + f"/{graph_id}/literal?width=1")
-
+        self.width = 1
+        
     def __and__(self, other):
         other = _make_quantum(other)
         return KetBool(id=_get(graph_baseurl + f"/{graph_id}/and?left={self.id}&right={other.id}"))
@@ -61,19 +63,22 @@ class KetBool():
 
 
 class KetInt:
-    def __init__(self, size=3, id=None):
+    def __init__(self, width=3, id=None):
         if id:
             self.id = id
         else:
-            self.id = _post(graph_baseurl + f"/{graph_id}/literal?width={size}")
-
+            self.id = _post(graph_baseurl + f"/{graph_id}/literal?width={width}")
+        self.width = width
+        
     def __add__(self, other):
         other = _make_quantum(other)
-        return KetInt(id=_get(graph_baseurl + f"/{graph_id}/add?left={self.id}&right={other.id}"))
+        w = max(self.width, other.width)
+        return KetInt(id=_get(graph_baseurl + f"/{graph_id}/add?left={self.id}&right={other.id}&width={w}"))
 
     def __mul__(self, other):
         other = _make_quantum(other)
-        return KetInt(id=_get(graph_baseurl + f"/{graph_id}/multiply?left={self.id}&right={other.id}"))
+        w = max(self.width, other.width)
+        return KetInt(id=_get(graph_baseurl + f"/{graph_id}/multiply?left={self.id}&right={other.id}&width={w}"))
 
     def __eq__(self, other):
         other = _make_quantum(other)
@@ -81,30 +86,19 @@ class KetInt:
 
     def __ne__(self, other):
         other = _make_quantum(other)
-        ket=_get(graph_baseurl + f"/{graph_id}/eq?left={self.id}&right={other.id}")
-        return KetBool(id=_get(graph_baseurl + f"/{graph_id}/not?ket={ket}"))
+        ketId=_get(graph_baseurl + f"/{graph_id}/eq?left={self.id}&right={other.id}")
+        return KetBool(id=_get(graph_baseurl + f"/{graph_id}/not?ket={ketId}"))
 
     def __le__(self, other):
         other = _make_quantum(other)
         return KetBool(id=_get(graph_baseurl + f"/{graph_id}/lte?left={self.id}&right={other.id}"))
 
+    def __gt__(self, other):
+        other = _make_quantum(other)
+        return KetBool(id=_get(graph_baseurl + f"/{graph_id}/gt?left={self.id}&right={other.id}"))
+
     def __str__(self) -> str:
         return f"|{self.id}⟩"
-
-
-def join(ids):
-    logger.debug(f"Joining: {ids}")
-    if isinstance(ids, list):
-        if len(ids) == 1:
-            return ids[0].id
-        elif len(ids) == 2:
-            return _get(graph_baseurl + f"/{graph_id}/join?left={ids[0].id}&right={ids[1].id}")
-        else:
-            head, *tail = ids
-            tail = join(tail)
-            return _get(graph_baseurl + f"/{graph_id}/join?left={head.id}&right={tail}")
-    else:
-        return ids.id
 
 def filter(ids, expression: KetBool):
     ketId = join(ids)
@@ -116,9 +110,11 @@ def filter(ids, expression: KetBool):
     else:
         return Ket(id=id)
 
-def sample(ids):
-    ketId = join(ids)
-    result = _post(sample_baseurl + f"/{graph_id}/{ketId}")
+def sample(kets, when=None):
+    filter= f"filterId={when.id}" if when else "filterId=-1"
+
+    ketIds = "&".join(map(lambda ket: f"id={ket.id}", kets))
+    result = _post(sample_baseurl + f"/{graph_id}?{ketIds}&{filter}")
     return json.loads(result)
 
 def print_tree(ket):

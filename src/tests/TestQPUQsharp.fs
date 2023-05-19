@@ -59,7 +59,7 @@ type TestQPUQsharp() =
             [ 3; 1 ]
             [ 3; 2 ] ]
 
-          [ a; b.Where(Equals, 0) ],
+          [ a; b.Where(Eq, 0) ],
           [ [ 0; 0 ]
             [ 1; 0 ]
             [ 2; 0 ]
@@ -119,7 +119,7 @@ type TestQPUQsharp() =
         // can point to the same ket.
         let d = a.LessThanEquals(b).And(b.LessThanEquals(1))
         let e = a.LessThanEquals(b).Or(b.LessThanEquals(1))
-        let f = e.Not().Where(Equals, 1)
+        let f = e.Not().Where(Eq, 1)
 
         [ [ a; b; a.LessThanEquals(b) ], 
           [ 
@@ -196,7 +196,7 @@ type TestQPUQsharp() =
         // can point to the same ket.
         let d = a.LessThanEquals(b).And(b.LessThanEquals(1))
         let e = a.LessThanEquals(b).Or(b.LessThanEquals(1))
-        let f = e.Not().Where(Equals, 1)
+        let f = e.Not().Where(Eq, 1)
 
         [ [ a ], [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ]
 
