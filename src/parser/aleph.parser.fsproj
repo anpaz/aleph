@@ -8,9 +8,6 @@
   <ItemGroup>
     <Compile Include="quals.utils.fs" />
     <Compile Include="quals.ket.fs" />
-    <Compile Include="untyped.fs" />
-    <Compile Include="typed.fs" />
-    <Compile Include="type-checker.fs" />
   </ItemGroup>
 
 </Project>
