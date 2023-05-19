@@ -10,17 +10,15 @@ let graph_coloring (max_colors: int) (nodes_count: int) (edges: (int * int) list
         let w = int_width (max_colors - 1)
         KetValue(Literal (width=w)).Where(LessThanEquals, max_colors - 1)
 
-    let rec compare_all_edges (edges: (KetValue * KetValue) list) =
-        match edges with
-        | [] -> KetValue (Constant 1)
-        | [ one ] ->
-            let left, right = one
+    let compare_all_edges (edges: (KetValue * KetValue) list) =
+        let isValid (edge: KetValue * KetValue) =
+            let left, right = edge
             left.Equals(right).Not()
-        | head::tail ->
-            let left, right = head
-            let a = left.Equals(right).Not()
-            let b = compare_all_edges tail
-            a.And(b)
+
+        let join (before: KetValue) edge =
+            before.And(isValid edge)
+        
+        edges.Tail |> List.fold join (isValid edges.Head)
 
     let nodes =  [1..nodes_count] |> List.map create_node
     let edges = edges |> List.map (fun (x, y) -> (nodes.[x], nodes.[y]))

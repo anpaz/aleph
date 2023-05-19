@@ -12,8 +12,8 @@
     <Compile Include="b.RandomNumber.fs" />
     <Compile Include="c.DiceRoll.fs" />
     <Compile Include="d.SolveEquation.fs" />
-    <Compile Include="e.GraphColoring.fs" />
-    <Compile Include="f.TinyGraphColoring.fs" />
+    <Compile Include="e.TinyGraphColoring.fs" />
+    <Compile Include="f.GraphColoring.fs" />
     <Compile Include="Sandbox.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="Program.fs" />
