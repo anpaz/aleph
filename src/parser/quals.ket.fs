@@ -29,10 +29,8 @@ module kets =
 
     and Ket(expression: Expression, ?id: KetId) =
         let id = match id with Some id -> id | None -> next_id()
-        let filterId = match expression with Where _ -> id + 1 |> Some | _ -> None
 
         member this.Expression = expression
-        member this.FilterId = filterId
         member this.Id = id
 
     type IUniverse =
