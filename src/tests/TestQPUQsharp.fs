@@ -198,8 +198,6 @@ type TestQPUQsharp() =
         let e = a.LessThanEquals(b).Or(b.LessThanEquals(1))
         let f = e.Not().Where(Equals, 1)
 
-        let u = (prepare { qpu = this.QPU } [ f ]) :?> Universe
-
         [ [ a ], [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ]
 
           [ b.Where(LessThanEquals, 2) ], [ [ 0 ]; [ 1 ]; [ 2 ] ]
@@ -279,3 +277,45 @@ type TestQPUQsharp() =
 
           [ a; f ], [ [ 3; 1 ] ] ]
         |> List.iter (AssertSample this.QPU)
+
+    [<TestMethod>]
+    member this.TestSampleWhen() =
+        let a = KetValue(Literal 2)
+        let b = KetValue(Literal 2)
+
+        [ [ a ], None, [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ]
+
+          [ b ], b.LessThanEquals(2) |> Some, [ [ 0 ]; [ 1 ]; [ 2 ] ]
+
+          [ a; b ], b.LessThanEquals(1) |> Some,
+          [ [ 0; 0 ]; [ 0; 1 ]; [ 1; 0 ]; [ 1; 1 ]; [ 2; 0 ]; [ 2; 1 ]; [ 3; 0 ]; [ 3; 1 ] ]
+
+          [ a; b ], a.LessThanEquals(b) |> Some,
+          [ [ 0; 0 ]
+            [ 0; 1 ]
+            [ 0; 2 ]
+            [ 0; 3 ]
+            [ 1; 1 ]
+            [ 1; 2 ]
+            [ 1; 3 ]
+            [ 2; 2 ]
+            [ 2; 3 ]
+            [ 3; 3 ] ]
+
+          [ a; b ], a.LessThanEquals(b) |> Some,
+          [ [ 0; 0 ]; [ 0; 1 ]; [ 0; 2 ]; [ 0; 3 ]; [ 1; 1 ]; [ 1; 2 ]; [ 1; 3 ]; [ 2; 2 ]; [ 2; 3 ]; [ 3; 3 ] ]
+
+          [ a; b ], a.GreaterThan(1) |> Some,
+          [ [ 2; 0 ]
+            [ 2; 1 ]
+            [ 2; 2 ]
+            [ 2; 3 ]
+            [ 3; 0 ]
+            [ 3; 1 ]
+            [ 3; 2 ]
+            [ 3; 3 ] ]
+
+          [ a; b ], a.GreaterThan(1).And(b.GreaterThan(a)) |> Some,
+          [ [ 2; 3 ] ]
+        ]
+        |> List.iter (AssertSampleWithFilter this.QPU)

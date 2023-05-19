@@ -2,7 +2,7 @@
 
 ## Setup
 
-1. Install dependencies. If using codespaces you may simply run ./bootstrap.sh. Otherwise this should suffice:
+1. Install dependencies. If using codespaces you may simply run **./bootstrap.sh**. Otherwise this should suffice:
    - [.NET Core 6](https://dotnet.microsoft.com/en-us/download): for parser & Q#
    - [.NET Core 7](https://dotnet.microsoft.com/en-us/download): for server.
    - [Python 3.10](https://www.python.org/downloads/), for Python package
