@@ -7,8 +7,9 @@
   <ItemGroup>
     <Compile Include="eval.fs" />
     <Compile Include="quals.qpu.classic.fs" />
+    <Compile Include="quals.qpu.qsharp.fs" />
     <Compile Include="qpu.classic.fs" />
-    <Compile Include="qpu.qsharp.fs" />
+    <!-- <Compile Include="qpu.qsharp.fs" /> -->
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />

@@ -34,7 +34,7 @@ to a list of columns.
 
 type ColumnIndex = int
 
-type ColumnsMap = Map<int, ColumnIndex>
+type ColumnsMap = Map<KetId, ColumnIndex>
 
 type QuantumState(rows: int list list) =
     member val Rows = rows
@@ -129,18 +129,11 @@ type Processor() =
         match ctx.allocations.TryFind ket.Id with
         | Some _ -> ctx |> Ok // Already prepared...
         | None ->
-            let init_result =
-                match ket.Expression with
-                | Literal width -> prepare_literal ctx width
-                | Constant value -> prepare_constant ctx value
-                | Map (op, args) -> prepare_map ctx (op, args)
-                | Where (target, op, args) ->
-                    prepare_map ctx (op, target :: args)
-                    ==> fun (ctx, column) ->
-                        let ctx = { ctx with state = ctx.state.FilterRows column }
-                        (ctx, ctx.allocations.[target.Id]) |> Ok
-
-            init_result
+            match ket.Expression with
+            | Literal width -> prepare_literal ctx width
+            | Constant value -> prepare_constant ctx value
+            | Map (op, args) -> prepare_map ctx (op, args)
+            | Where (target, op, args) -> prepare_where ctx (target, op, args)
             ==> fun (ctx, column) -> { ctx with allocations = ctx.allocations.Add(ket.Id, column) } |> Ok
 
     and prepare_many ctx kets =
@@ -160,6 +153,12 @@ type Processor() =
         let new_state = ctx.state.AddColumn [ value ]
         let new_column = new_state.Rows.Head.Length - 1
         ({ ctx with state = new_state }, new_column) |> Ok
+
+    and prepare_where ctx (target, op, args) =
+        prepare_map ctx (op, target :: args)
+        ==> fun (ctx, column) ->
+            let ctx = { ctx with state = ctx.state.FilterRows column }
+            (ctx, ctx.allocations.[target.Id]) |> Ok
 
     and prepare_map ctx (op, args) =
         prepare_many ctx args
