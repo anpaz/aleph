@@ -96,7 +96,7 @@ namespace aleph.server {
         private string OpLabel(Operator op) =>
             op.IsNot ?
                 "not" :
-            op.IsLessThanEquals ?
+            op.IsLessThanEquals ?   
                 "less than equal" :
             op.IsEq ?
                 "eq" :

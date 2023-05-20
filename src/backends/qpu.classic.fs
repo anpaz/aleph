@@ -86,6 +86,8 @@ type Universe(state: QuantumState, allocations: ColumnsMap) =
 
     member val State = state
 
+    member val Allocations = allocations
+
     (*
         Sample works by randomly picking a row from the universe with the same probability
         from the universe, and then projecting (selecting) only the columns

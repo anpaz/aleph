@@ -8,6 +8,7 @@ logger = logging.getLogger("aleph")
 
 graph_baseurl = "http://localhost:5011/graph"
 sample_baseurl = "http://localhost:5011/sample/classic"
+universe_baseurl = "http://localhost:5011/universe"
 
 def _get(url):
     logger.debug("Sending: " + url)
@@ -29,9 +30,9 @@ def _post(url):
 
 def _make_quantum(other):
     if isinstance(other, int):
-        return Ket(_get(graph_baseurl + f"/{graph_id}/int?value={other}"))
+        return KetInt(id=_get(graph_baseurl + f"/{graph_id}/int?value={other}"))
     elif isinstance(other, bool):
-        return Ket(_get(graph_baseurl + f"/{graph_id}/bool?value={other}"))
+        return KetBool(id=_get(graph_baseurl + f"/{graph_id}/bool?value={other}"))
     else:
         return other
 
@@ -111,11 +112,18 @@ def filter(ids, expression: KetBool):
         return Ket(id=id)
 
 def sample(kets, when=None):
-    filter= f"filterId={when.id}" if when else "filterId=-1"
+    filter= f"filter={when.id}" if when else "filter=-1"
 
-    ketIds = "&".join(map(lambda ket: f"id={ket.id}", kets))
-    result = _post(sample_baseurl + f"/{graph_id}?{ketIds}&{filter}")
+    ketIds = ",".join(map(lambda ket: ket.id, kets))
+    result = _post(sample_baseurl + f"/{graph_id}?ids={ketIds}&{filter}")
     return json.loads(result)
+
+def universe(kets, when=None):
+    filter= f"filter={when.id}" if when else "filter=-1"
+
+    ketIds = ",".join(map(lambda ket: ket.id, kets))
+    result = _get(universe_baseurl + f"/{graph_id}?ids={ketIds}&{filter}")
+    return result
 
 def print_tree(ket):
     def label (node):
