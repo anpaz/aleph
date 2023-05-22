@@ -1,6 +1,7 @@
 
 import requests
 import json
+import math
 
 import logging
 logger = logging.getLogger("aleph")
@@ -26,10 +27,11 @@ def _post(url):
         raise Exception(f"aleph server returned error: {r.reason}. {r}")
 
 def _make_quantum(other):
-    if isinstance(other, int):
-        return KetInt(id=_get(aleph_baseurl + f"/{graph_id}/int?value={other}"))
-    elif isinstance(other, bool):
+    if isinstance(other, bool):
         return KetBool(id=_get(aleph_baseurl + f"/{graph_id}/bool?value={other}"))
+    elif isinstance(other, int):
+        width = int(math.ceil(math.log(other + 1, 2))) if other > 0 else 1
+        return KetInt(id=_get(aleph_baseurl + f"/{graph_id}/int?value={other}"), width=width)
     else:
         return other
 
@@ -48,13 +50,27 @@ class KetBool():
             self.id = _post(aleph_baseurl + f"/{graph_id}/literal?width=1")
         self.width = 1
         
-    def __and__(self, other):
+    def And(self, other):
         other = _make_quantum(other)
-        return KetBool(id=_get(aleph_baseurl + f"/{graph_id}/and?left={self.id}&right={other.id}"))
+        return KetBool(id=_get(aleph_baseurl + f"/{graph_id}/map/and?left={self.id}&right={other.id}"))
+
+    def __and__(self, other):
+        return self.And(other)
+
+    def __rand__(self, other):
+        other = _make_quantum(other)
+        return other.And(self)
+
+    def Or(self, other):
+        other = _make_quantum(other)
+        return KetBool(id=_get(aleph_baseurl + f"/{graph_id}/map/or?left={self.id}&right={other.id}"))
 
     def __or__(self, other):
+        return self.Or(other)
+
+    def __ror__(self, other):
         other = _make_quantum(other)
-        return KetBool(id=_get(aleph_baseurl + f"/{graph_id}/or?left={self.id}&right={other.id}"))
+        return other.Or(self)
 
     def __str__(self) -> str:
         return f"|{self.id}⟩"
@@ -80,10 +96,10 @@ class KetInt:
         other = _make_quantum(value)
         return KetInt(id=_get(aleph_baseurl + f"/{graph_id}/where?id={self.id}&op=gt&arg={other.id}"))
         
-    def add(self, other):
+    def add(self, other, width=None):
         other = _make_quantum(other)
-        w = max(self.width, other.width)
-        return KetInt(id=_get(aleph_baseurl + f"/{graph_id}/map/add?left={self.id}&right={other.id}&width={w}"))
+        w = width if width else max(self.width, other.width)
+        return KetInt(id=_get(aleph_baseurl + f"/{graph_id}/map/add?left={self.id}&right={other.id}&width={w}"),width=w)
 
     def __add__(self, other):
         return self.add(other)
@@ -92,27 +108,62 @@ class KetInt:
         other = _make_quantum(other)
         return other.add(self)
 
-    def __mul__(self, other):
+    def multiply(self, other, width=None):
         other = _make_quantum(other)
-        w = max(self.width, other.width)
-        return KetInt(id=_get(aleph_baseurl + f"/{graph_id}/map/multiply?left={self.id}&right={other.id}&width={w}"))
+        w = width if width else self.width + other.width
+        return KetInt(id=_get(aleph_baseurl + f"/{graph_id}/map/multiply?left={self.id}&right={other.id}&width={w}"),width=w)
 
-    def __eq__(self, other):
+    def __mul__(self, other):
+        return self.multiply(other)
+
+    def __rmul__(self, other):
+        other = _make_quantum(other)
+        return other.multiply(self)
+
+    def equals(self, other):
         other = _make_quantum(other)
         return KetBool(id=_get(aleph_baseurl + f"/{graph_id}/map/eq?left={self.id}&right={other.id}"))
 
-    def __ne__(self, other):
+    def __eq__(self, other):
+        return self.equals(other)
+
+    def __req__(self, other):
+        other = _make_quantum(other)
+        return other.equals(self)
+
+    def not_equals(self, other):
         other = _make_quantum(other)
         ketId=_get(aleph_baseurl + f"/{graph_id}/map/eq?left={self.id}&right={other.id}")
-        return KetBool(id=_get(aleph_baseurl + f"/{graph_id}/not?ket={ketId}"))
+        return KetBool(id=_get(aleph_baseurl + f"/{graph_id}/map/not?id={ketId}"))
 
-    def __le__(self, other):
+    def __ne__(self, other):
+        return self.not_equals(other)
+
+    def __rne__(self, other):
+        other = _make_quantum(other)
+        return other.not_equals(self)
+
+    def less_than_equals(self, other):
         other = _make_quantum(other)
         return KetBool(id=_get(aleph_baseurl + f"/{graph_id}/map/lte?left={self.id}&right={other.id}"))
 
-    def __gt__(self, other):
+    def __le__(self, other):
+        return self.less_than_equals(other)
+
+    def __ge__(self, other):
+        other = _make_quantum(other)
+        return other.less_than_equals(self)
+
+    def greater_than(self, other):
         other = _make_quantum(other)
         return KetBool(id=_get(aleph_baseurl + f"/{graph_id}/map/gt?left={self.id}&right={other.id}"))
+
+    def __gt__(self, other):
+        return self.greater_than(other)
+
+    def __lt__(self, other):
+        other = _make_quantum(other)
+        return other.greater_than(self)
 
     def __str__(self) -> str:
         return f"|{self.id}⟩"
