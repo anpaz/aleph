@@ -1,5 +1,5 @@
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 import aleph
 
@@ -28,10 +28,12 @@ print(f"{a1} + {a2} = {a3}")
 print(f"({a2} <= {a1}) == {a4}")
 
 
-print(aleph.universe([k1, k2, k3], when=(k2 <= k1)))
+print(aleph.prepare([k1, k2, k3], when=(k2 <= k1)))
 print(aleph.sample([k1, k2, k3], when=(k2 <= k1)))
 
-k5 = k3.Where(k3 <= k2)
+k5 = k3.where_less_than_equals(k2)
+u = aleph.prepare([k2, k3, k5])
+print(u['state']['rows'])
 
 
 # f1 = aleph.filter(k3, k3 <= 2)

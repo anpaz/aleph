@@ -83,17 +83,26 @@ namespace aleph.server {
                 return $"constant (width: {c.value})";
             } else if (ket.Expression.IsMap) {
                 var map = (Expression.Map) ket.Expression;
-                return $"map ({OpLabel(map.op)})";
+                return $"map ({map.op.Label()})";
             } else if (ket.Expression.IsWhere) {
                 var w = (Expression.Where) ket.Expression;
-                return $"where (op: {OpLabel(w.clause)})";
+                return $"where (op: {w.clause.Label()})";
             }
-
             
             throw new NotImplementedException();
         }
 
-        private string OpLabel(Operator op) =>
+        public int Id {get;}
+
+        public string Label { get; }
+
+        public GraphNode[] Dependencies { get; }
+    }
+}
+
+public static class OperatorExtensions
+{
+    public static string Label(this Operator op)=>
             op.IsNot ?
                 "not" :
             op.IsLessThanEquals ?   
@@ -118,10 +127,26 @@ namespace aleph.server {
                 "or" :
             throw new NotImplementedException();
 
-        public int Id {get;}
+        public static Operator Parse(string label) =>
+            "eq" == label ?
+                Operator.Eq :
+            "not" == label ?
+                Operator.Not :
+            "lte" == label ?
+                Operator.LessThanEquals :
+            "if" == label ?
+                Operator.If :
+            "id" == label ?
+                Operator.Id :
+            "gt" == label ?
+                Operator.GreaterThan :
+            "and" == label ?
+                Operator.And :
+            "or" == label ?
+                Operator.Or :
+            "add" == label || "multiply" == label || "in" == label ?
+                throw new ArgumentException("Invalid operator: " + label)
+            :
+                throw new NotImplementedException();
 
-        public string Label { get; }
-
-        public GraphNode[] Dependencies { get; }
-    }
 }

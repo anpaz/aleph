@@ -7,8 +7,6 @@ import logging
 logger = logging.getLogger("aleph")
 
 graph_baseurl = "http://localhost:5011/graph"
-sample_baseurl = "http://localhost:5011/sample/classic"
-universe_baseurl = "http://localhost:5011/universe"
 
 def _get(url):
     logger.debug("Sending: " + url)
@@ -26,7 +24,7 @@ def _post(url):
     if r.ok:
         return r.text
     else:
-        raise f"aleph server returned error: {r.reason}. {r}"
+        raise Exception(f"aleph server returned error: {r.reason}. {r}")
 
 def _make_quantum(other):
     if isinstance(other, int):
@@ -70,60 +68,70 @@ class KetInt:
         else:
             self.id = _post(graph_baseurl + f"/{graph_id}/literal?width={width}")
         self.width = width
+
+    def where_equals(self, value):
+        other = _make_quantum(value)
+        return KetInt(id=_get(graph_baseurl + f"/{graph_id}/where?id={self.id}&op=eq&arg={other.id}"))
+
+    def where_less_than_equals(self, value):
+        other = _make_quantum(value)
+        return KetInt(id=_get(graph_baseurl + f"/{graph_id}/where?id={self.id}&op=lte&arg={other.id}"))
+
+    def where_greater_than(self, value):
+        other = _make_quantum(value)
+        return KetInt(id=_get(graph_baseurl + f"/{graph_id}/where?id={self.id}&op=gt&arg={other.id}"))
         
-    def __add__(self, other):
+    def add(self, other):
         other = _make_quantum(other)
         w = max(self.width, other.width)
-        return KetInt(id=_get(graph_baseurl + f"/{graph_id}/add?left={self.id}&right={other.id}&width={w}"))
+        return KetInt(id=_get(graph_baseurl + f"/{graph_id}/map/add?left={self.id}&right={other.id}&width={w}"))
+
+    def __add__(self, other):
+        return self.add(other)
+
+    def __radd__(self, other):
+        other = _make_quantum(other)
+        return other.add(self)
 
     def __mul__(self, other):
         other = _make_quantum(other)
         w = max(self.width, other.width)
-        return KetInt(id=_get(graph_baseurl + f"/{graph_id}/multiply?left={self.id}&right={other.id}&width={w}"))
+        return KetInt(id=_get(graph_baseurl + f"/{graph_id}/map/multiply?left={self.id}&right={other.id}&width={w}"))
 
     def __eq__(self, other):
         other = _make_quantum(other)
-        return KetBool(id=_get(graph_baseurl + f"/{graph_id}/eq?left={self.id}&right={other.id}"))
+        return KetBool(id=_get(graph_baseurl + f"/{graph_id}/map/eq?left={self.id}&right={other.id}"))
 
     def __ne__(self, other):
         other = _make_quantum(other)
-        ketId=_get(graph_baseurl + f"/{graph_id}/eq?left={self.id}&right={other.id}")
+        ketId=_get(graph_baseurl + f"/{graph_id}/map/eq?left={self.id}&right={other.id}")
         return KetBool(id=_get(graph_baseurl + f"/{graph_id}/not?ket={ketId}"))
 
     def __le__(self, other):
         other = _make_quantum(other)
-        return KetBool(id=_get(graph_baseurl + f"/{graph_id}/lte?left={self.id}&right={other.id}"))
+        return KetBool(id=_get(graph_baseurl + f"/{graph_id}/map/lte?left={self.id}&right={other.id}"))
 
     def __gt__(self, other):
         other = _make_quantum(other)
-        return KetBool(id=_get(graph_baseurl + f"/{graph_id}/gt?left={self.id}&right={other.id}"))
+        return KetBool(id=_get(graph_baseurl + f"/{graph_id}/map/gt?left={self.id}&right={other.id}"))
 
     def __str__(self) -> str:
         return f"|{self.id}⟩"
 
-def filter(ids, expression: KetBool):
-    ketId = join(ids)
-    id = _get(graph_baseurl + f"/{graph_id}/filter?ket={ketId}&filter={expression.id}")
-    if isinstance(ids, KetInt):
-        return KetInt(id=id)
-    elif isinstance(ids, KetBool):
-        return KetBool(id=id)
-    else:
-        return Ket(id=id)
 
 def sample(kets, when=None):
     filter= f"filter={when.id}" if when else "filter=-1"
 
     ketIds = ",".join(map(lambda ket: ket.id, kets))
-    result = _post(sample_baseurl + f"/{graph_id}?ids={ketIds}&{filter}")
+    result = _post(graph_baseurl + f"/{graph_id}/~sample/?ids={ketIds}&{filter}")
     return json.loads(result)
 
-def universe(kets, when=None):
+def prepare(kets, when=None):
     filter= f"filter={when.id}" if when else "filter=-1"
 
     ketIds = ",".join(map(lambda ket: ket.id, kets))
-    result = _get(universe_baseurl + f"/{graph_id}?ids={ketIds}&{filter}")
-    return result
+    result = _get(graph_baseurl + f"/{graph_id}/~prepare/?ids={ketIds}&{filter}")
+    return json.loads(result)
 
 def print_tree(ket):
     def label (node):
