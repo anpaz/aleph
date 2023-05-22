@@ -1,17 +1,17 @@
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
-import aleph
+from aleph_lang import KetInt, sample, prepare
 
 
-k1 = aleph.KetInt()
-k2 = aleph.KetInt(width=5)
+k1 = KetInt()
+k2 = KetInt(width=5)
 k3 = k1 + k2
 k4 = k2 <= k1
 
-s1 = aleph.sample([k1, k2, k3, k4])
-s2 = aleph.sample([k2, k2])
-s3 = aleph.sample([k2])
+s1 = sample([k1, k2, k3, k4])
+s2 = sample([k2, k2])
+s3 = sample([k2])
 
 (t1, t2) = s2
 t3 = s3[0]
@@ -28,11 +28,11 @@ print(f"{a1} + {a2} = {a3}")
 print(f"({a2} <= {a1}) == {a4}")
 
 
-print(aleph.prepare([k1, k2, k3], when=(k2 <= k1)))
-print(aleph.sample([k1, k2, k3], when=(k2 <= k1)))
+print(prepare([k1, k2, k3], when=(k2 <= k1)))
+print(sample([k1, k2, k3], when=(k2 <= k1)))
 
 k5 = k3.where_less_than_equals(k2)
-u = aleph.prepare([k2, k3, k5])
+u = prepare([k2, k3, k5])
 print(u['state']['rows'])
 
 

@@ -359,4 +359,9 @@ MigrationBackup/
 .bloop/
 metals.sbt
 
+
+
 .ipynb_checkpoints/
+*.egg-info/
+dist/
+build/
