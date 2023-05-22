@@ -365,3 +365,4 @@ metals.sbt
 *.egg-info/
 dist/
 build/
+.venv/

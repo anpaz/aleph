@@ -24,7 +24,7 @@ type GraphController (logger : ILogger<GraphController>, graphs: IGraphsService)
 
     [<HttpGet>]
     member this.Get() =
-        Seq.empty |> this.Ok
+        ":ℵ-0.9:" |> this.Ok
 
     [<HttpGet("~create")>]
     [<HttpPost("")>]

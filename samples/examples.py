@@ -32,8 +32,11 @@ print(prepare([k1, k2, k3], when=(k2 <= k1)))
 print(sample([k1, k2, k3], when=(k2 <= k1)))
 
 k5 = k3.where_less_than_equals(k2)
+
 u = prepare([k2, k3, k5])
-print(u['state']['rows'])
+print('k2; k3; k5')
+for r in u['state']['rows']:
+    print(r)
 
 
 # f1 = aleph.filter(k3, k3 <= 2)

@@ -14,6 +14,8 @@ type QuantumGraph() =
         nodes <- nodes.Add(last, KetValue(expression, last))
         last
 
+    member this.Count = last
+
 type IGraphsService =
     abstract member TryFind : id: string -> Option<QuantumGraph>
     abstract member Add : id: string * value: QuantumGraph -> QuantumGraph

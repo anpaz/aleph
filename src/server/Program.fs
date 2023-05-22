@@ -1,6 +1,8 @@
-namespace aleph.server
+﻿namespace aleph.server
 
 #nowarn "20"
+
+open System
 
 open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.DependencyInjection
@@ -14,15 +16,13 @@ module Program =
 
         let builder = WebApplication.CreateBuilder(args)
 
-        builder.Services.AddControllers()
-        builder.Services.AddSingleton<IGraphsService>(new GraphsService())
+        builder.Services
+            .AddSingleton<IGraphsService>(new GraphsService())
+            .AddControllers()
 
         let app = builder.Build()
-
-        app.UseHttpsRedirection()
-
-        app.UseAuthorization()
         app.MapControllers()
+        app.MapGet("/", Func<string>(fun (x) -> ":ℵ-0.9:"));
 
         app.Run()
 
