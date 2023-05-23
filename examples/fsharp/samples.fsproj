@@ -19,8 +19,8 @@
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../src/lang/aleph.lang.fsproj" />
-    <ProjectReference Include="../src/backends/aleph.backends.fsproj" />
+    <ProjectReference Include="../../src/lang/aleph.lang.fsproj" />
+    <ProjectReference Include="../../src/backends/aleph.backends.fsproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Quantum.IQSharp.ExecutionPathTracer" Version="0.22.187631" />

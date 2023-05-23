@@ -172,14 +172,14 @@ class KetInt:
 def sample(kets, when=None):
     filter= f"filter={when.id}" if when else "filter=-1"
 
-    ketIds = ",".join(map(lambda ket: ket.id, kets))
+    ketIds = ",".join(map(lambda ket: ket.id, kets)) if isinstance(kets, list) else kets.id
     result = _post(aleph_baseurl + f"/{graph_id}/~sample/?ids={ketIds}&{filter}")
     return json.loads(result)
 
 def prepare(kets, when=None):
     filter= f"filter={when.id}" if when else "filter=-1"
 
-    ketIds = ",".join(map(lambda ket: ket.id, kets))
+    ketIds = ",".join(map(lambda ket: ket.id, kets)) if isinstance(kets, list) else kets.id
     result = _get(aleph_baseurl + f"/{graph_id}/~prepare/?ids={ketIds}&{filter}")
     return json.loads(result)
 

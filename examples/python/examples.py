@@ -1,42 +1,53 @@
 import logging
 logging.basicConfig(level=logging.INFO)
 
-from aleph_lang import KetInt, sample, prepare
+from aleph_lang import KetInt, KetBool, sample, prepare
+
+def coin_flip():
+    coin = KetBool()
+    return sample(coin)
+
+def random_number():
+    random = KetInt()
+    return sample(random)
 
 
-k1 = KetInt()
-k2 = KetInt(width=5)
-k3 = k1 + k2
-k4 = k2 <= k1
+print(coin_flip())
+print(random_number())
 
-s1 = sample([k1, k2, k3, k4])
-s2 = sample([k2, k2])
-s3 = sample([k2])
+# k1 = KetInt()
+# k2 = KetInt(width=5)
+# k3 = k1 + k2
+# k4 = k2 <= k1
 
-(t1, t2) = s2
-t3 = s3[0]
-(a1, a2, a3, a4) = s1
+# s1 = sample([k1, k2, k3, k4])
+# s2 = sample([k2, k2])
+# s3 = sample([k2])
 
-print(f"{k1}, {k2}, {k3}, {k4}, s1:{s1}, s2:{s2}, s3:{s3}, t1:{t1}")
+# (t1, t2) = s2
+# t3 = s3[0]
+# (a1, a2, a3, a4) = s1
 
-if t3 > 3:
-    print(f"{t3} > 3")
-else:
-    print(f"{t3} <= 3")
+# print(f"{k1}, {k2}, {k3}, {k4}, s1:{s1}, s2:{s2}, s3:{s3}, t1:{t1}")
 
-print(f"{a1} + {a2} = {a3}")
-print(f"({a2} <= {a1}) == {a4}")
+# if t3 > 3:
+#     print(f"{t3} > 3")
+# else:
+#     print(f"{t3} <= 3")
+
+# print(f"{a1} + {a2} = {a3}")
+# print(f"({a2} <= {a1}) == {a4}")
 
 
-print(prepare([k1, k2, k3], when=(k2 <= k1)))
-print(sample([k1, k2, k3], when=(k2 <= k1)))
+# print(prepare([k1, k2, k3], when=(k2 <= k1)))
+# print(sample([k1, k2, k3], when=(k2 <= k1)))
 
-k5 = k3.where_less_than_equals(k2)
+# k5 = k3.where_less_than_equals(k2)
 
-u = prepare([k2, k3, k5])
-print('k2; k3; k5')
-for r in u['state']['rows']:
-    print(r)
+# u = prepare([k2, k3, k5])
+# print('k2; k3; k5')
+# for r in u['state']['rows']:
+#     print(r)
 
 
 # f1 = aleph.filter(k3, k3 <= 2)
