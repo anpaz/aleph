@@ -8,10 +8,6 @@ open aleph.kets
 open aleph.utils
 open Utils
 
-type Backend =
-    | Classic
-    | SparceSimulator
-
 [<ApiController>]
 [<Route("[controller]")>]
 type GraphController (logger : ILogger<GraphController>, graphs: IGraphsService) =
@@ -78,7 +74,6 @@ type GraphController (logger : ILogger<GraphController>, graphs: IGraphsService)
     [<Route("{graphId}/map/eq")>]
     member this.Eq(graphId: string, left: int, right: int) =
         this.AddMapExpression(graphId, Operator.Eq, [ left; right ])
-
 
     [<Route("{graphId}/map/add")>]
     member this.Add(graphId: string, left: int, right: int, width: int) =
@@ -177,10 +172,10 @@ type GraphController (logger : ILogger<GraphController>, graphs: IGraphsService)
                 let universe = okResult.Value :?> IUniverse
                 let kets = getKets graph ids
                 
-                let map_key (key: int list) = key |> List.map string |> String.concat ","
-                let map_values (m: Map<string, int>) key value = m.Add(map_key key, value)
                 match universe.Histogram(kets) with
                 | Result.Ok h -> 
+                    let map_key (key: int list) = key |> List.map string |> String.concat ","
+                    let map_values (m: Map<string, int>) key value = m.Add(map_key key, value)
                     h |> Map.fold map_values Map.empty |> this.Ok :> IActionResult
                 | Result.Error _ -> new StatusCodeResult(500)
             | _ -> prep
