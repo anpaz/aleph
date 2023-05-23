@@ -244,6 +244,9 @@ type Processor() =
 
 
 module context =
+    let prepare (kets: KetValue list) =
+        let ctx = { qpu = Processor()}
+        prepare ctx kets
 
     let sample (kets: KetValue list) =
         let ctx = { qpu = Processor()}

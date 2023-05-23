@@ -3,13 +3,19 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.33530.505
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "aleph.lang", "lang\aleph.lang.fsproj", "{39C410D8-8759-4217-A1FE-D8A948B2C537}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "aleph.qsharp", "qsharp\aleph.qsharp.csproj", "{25CE3C8B-4A84-4ED0-A558-654F978B52A5}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "aleph.backends", "backends\aleph.backends.fsproj", "{6CBDE911-8951-45CF-955D-2380B11F5388}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "aleph.server", "server\aleph.server.fsproj", "{5D3C58F9-D479-442E-9920-AAE04307E4D2}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "aleph.core", "core\aleph.core.fsproj", "{126B8351-F5E5-4EA2-A57E-242B131E2BD8}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "tests", "tests\tests.fsproj", "{5E5B8DDE-AB69-47EA-8B48-A3791809D486}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "sandbox", "qsharp.sandbox\sandbox.csproj", "{D780D27F-D289-4EFF-8FF3-9063C028B7E9}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "samples", "..\examples\fsharp\samples.fsproj", "{DB5B3E54-0FBE-4280-A5C6-8CA87E5C276C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +23,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{39C410D8-8759-4217-A1FE-D8A948B2C537}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{39C410D8-8759-4217-A1FE-D8A948B2C537}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{39C410D8-8759-4217-A1FE-D8A948B2C537}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{39C410D8-8759-4217-A1FE-D8A948B2C537}.Release|Any CPU.Build.0 = Release|Any CPU
 		{25CE3C8B-4A84-4ED0-A558-654F978B52A5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{25CE3C8B-4A84-4ED0-A558-654F978B52A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{25CE3C8B-4A84-4ED0-A558-654F978B52A5}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -33,6 +35,22 @@ Global
 		{5D3C58F9-D479-442E-9920-AAE04307E4D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5D3C58F9-D479-442E-9920-AAE04307E4D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5D3C58F9-D479-442E-9920-AAE04307E4D2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{126B8351-F5E5-4EA2-A57E-242B131E2BD8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{126B8351-F5E5-4EA2-A57E-242B131E2BD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{126B8351-F5E5-4EA2-A57E-242B131E2BD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{126B8351-F5E5-4EA2-A57E-242B131E2BD8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5E5B8DDE-AB69-47EA-8B48-A3791809D486}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E5B8DDE-AB69-47EA-8B48-A3791809D486}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E5B8DDE-AB69-47EA-8B48-A3791809D486}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E5B8DDE-AB69-47EA-8B48-A3791809D486}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D780D27F-D289-4EFF-8FF3-9063C028B7E9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D780D27F-D289-4EFF-8FF3-9063C028B7E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D780D27F-D289-4EFF-8FF3-9063C028B7E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D780D27F-D289-4EFF-8FF3-9063C028B7E9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DB5B3E54-0FBE-4280-A5C6-8CA87E5C276C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB5B3E54-0FBE-4280-A5C6-8CA87E5C276C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB5B3E54-0FBE-4280-A5C6-8CA87E5C276C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB5B3E54-0FBE-4280-A5C6-8CA87E5C276C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

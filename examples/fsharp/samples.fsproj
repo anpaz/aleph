@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net6</TargetFramework>
@@ -7,19 +7,14 @@
     <WarnOn>3390;$(WarnOn)</WarnOn>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Context.fs" />
-    <Compile Include="a.CoinFlip.fs" />
-    <Compile Include="b.RandomNumber.fs" />
-    <Compile Include="c.DiceRoll.fs" />
-    <Compile Include="d.SolveEquation.fs" />
-    <Compile Include="e.TinyGraphColoring.fs" />
-    <Compile Include="f.GraphColoring.fs" />
-    <Compile Include="Sandbox.fs" />
     <Compile Include="Utils.fs" />
+    <Compile Include="Context.fs" />
+    <Compile Include="Examples.fs" />
+    <Compile Include="Sandbox.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/lang/aleph.lang.fsproj" />
+    <ProjectReference Include="../../src/core/aleph.core.fsproj" />
     <ProjectReference Include="../../src/backends/aleph.backends.fsproj" />
   </ItemGroup>
   <ItemGroup>

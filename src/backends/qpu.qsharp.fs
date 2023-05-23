@@ -146,6 +146,10 @@ module context =
 
     let simulator = new SparseSimulator()
 
+    let prepare (kets: KetValue list) =
+        let ctx = { qpu = Processor(simulator)}
+        prepare ctx kets
+
     let sample (kets: KetValue list) =
         let ctx = { qpu = Processor(simulator)}
         sample ctx kets

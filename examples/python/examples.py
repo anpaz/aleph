@@ -1,16 +1,19 @@
 import logging
 logging.basicConfig(level=logging.INFO)
 
-from aleph_lang import KetInt, KetBool, sample, width_for, prepare, tree
+from aleph_lang import KetInt, KetBool, sample, width_for, prepare, tree, histogram
 
+# Randomly get a 0 or 1 value
 def coin_flip():
     coin = KetBool()
     return sample(coin)
 
+# Get a random number
 def random_number():
     random = KetInt()
     return sample(random)
 
+# Roll to dices and return the sum
 def dice_roll():
     dice1 = KetInt().where_in(range(1,7))
     dice2 = KetInt().where_in(range(1,7))
@@ -18,6 +21,15 @@ def dice_roll():
     roll = dice1.add(dice2, width=4)
     return sample([dice1, dice2, roll])
 
+# Roll to dices and return the sum
+def dice_roll_histogram():
+    dice1 = KetInt().where_in(range(1,7))
+    dice2 = KetInt().where_in(range(1,7))
+
+    roll = dice1.add(dice2, width=4)
+    return histogram([roll])
+
+# Solve x + 3 == 2x 
 def solve_equation():
     x = KetInt()
     eq1 = x + 3
@@ -25,19 +37,12 @@ def solve_equation():
 
     return sample([x, eq1, eq2], when=(eq1 == eq2))
 
-
-import math
-
+# Solve a graph coloring problem, for the given number of nodes and list of edges.
 def graph_coloring(max_colors, nodes_count, edges):
-
-    # Each node is encoded as a Ket, we initialize a Ket
-    # with enough width for all colors, but filter
-    # its value accordingly
     def create_node():
         w = width_for(max_colors)
         return KetInt(width=w).where_less_than_equals(max_colors - 1)
 
-    # Recursively compares the nodes in all the edges:
     def compare(edges):
         if len(edges) == 1:
             (left, right) = edges[0] 
@@ -53,6 +58,8 @@ def graph_coloring(max_colors, nodes_count, edges):
     edges = [ (nodes[x], nodes[y]) for (x, y) in edges ]
     filter = compare(edges)
 
+    ## Print to the console a graphviz representation
+    ## of the quantum graph:
     ## tree(filter)
 
     return sample(nodes, when=filter)
@@ -64,10 +71,7 @@ print("solve x + 3 == 2 * x", solve_equation())
 
 max_colors = 3
 total_nodes = 4
-edges = [
-    (0, 1),
-    (1, 2),
-    (0, 2),
-    (1, 3),
-]
+edges = [ (0, 1), (1, 2), (0, 2), (1, 3) ]
 print("graph coloring:", graph_coloring(max_colors, total_nodes, edges))
+
+print("dice roll histogram: ", dice_roll_histogram())
