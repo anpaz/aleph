@@ -17,20 +17,32 @@ type RegistersMap = Map<KetId, QuantumRegister>
 type Universe(sim: IOperationFactory, state: QuantumState, allocations: RegistersMap) =
     let mutable value = None
 
-    interface IUniverse
+    let sample (registers: QuantumRegister list) =
+        universe.Sample.Run(sim, state, registers |> QArray).Result
+        |> Seq.map (fun i -> i.value|> int)
+        |> Seq.toList
 
-    member this.Sample(kets: KetValue list) =
-        let registers = kets |> List.map (fun k -> allocations.[k.Id])
-        match value with
-        | Some v -> v
-        | None ->
-            let sample =
-                universe.Sample.Run(sim, state, registers |> QArray).Result
-                |> Seq.map (fun i -> i.value|> int)
-                |> Seq.toList
+    interface IUniverse with
+        member this.Sample(kets: KetValue list) =
+            let registers = kets |> List.map (fun k -> allocations.[k.Id])
+            match value with
+            | Some v -> v |> Ok
+            | None ->
+                value <- sample registers |> Some
+                value.Value |> Ok
 
-            value <- Some sample
-            sample
+        member this.Histogram(kets: KetValue list) =
+            let registers = kets |> List.map (fun k -> allocations.[k.Id])
+            let add_sample (map: Map<int list, int>) _ =
+                let value = sample registers
+                if map.ContainsKey(value) then
+                    map.Add(value, map.[value] + 1)
+                else
+                    map.Add(value, 1)
+            seq { 1 .. 1000 }
+            |> Seq.fold add_sample Map.empty
+            |> Ok
+
 
     override this.ToString() =
         universe.Print.Run(sim, state).Result |> ignore
@@ -120,16 +132,6 @@ type Processor(sim: IOperationFactory) =
         ({ ctx with state = u }, r) |> Ok
 
     interface QPU with
-        (*
-            Measure works by sampling the universe:
-        *)
-        member this.Measure(universe: IUniverse, kets: KetValue list) =
-            let u = universe :?> Universe
-            u.Sample(kets) |> Ok
-
-        (*
-            Prepares a Quantum Universe from the given universe expression
-         *)
         member this.Prepare(kets: KetValue list) =
             let ctx =
                 { allocations = Map.empty

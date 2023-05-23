@@ -181,20 +181,21 @@ class KetInt:
     def __str__(self) -> str:
         return f"|{self.id}⟩"
 
+def _do_action(action, kets, when=None):
+    filter= "filter=-1" if when is None else  f"filter={when.id}"
+
+    ketIds = ",".join(map(lambda ket: ket.id, kets)) if isinstance(kets, list) else kets.id
+    result = _post(aleph_baseurl + f"/{graph_id}/~{action}/?ids={ketIds}&{filter}")
+    return json.loads(result)
 
 def sample(kets, when=None):
-    filter= "filter=-1" if when is None else  f"filter={when.id}"
-
-    ketIds = ",".join(map(lambda ket: ket.id, kets)) if isinstance(kets, list) else kets.id
-    result = _post(aleph_baseurl + f"/{graph_id}/~sample/?ids={ketIds}&{filter}")
-    return json.loads(result)
+    return _do_action("sample", kets, when)
 
 def prepare(kets, when=None):
-    filter= "filter=-1" if when is None else  f"filter={when.id}"
+    return _do_action("prepare", kets, when)
 
-    ketIds = ",".join(map(lambda ket: ket.id, kets)) if isinstance(kets, list) else kets.id
-    result = _get(aleph_baseurl + f"/{graph_id}/~prepare/?ids={ketIds}&{filter}")
-    return json.loads(result)
+def histogram(kets, when=None):
+    return _do_action("histogram", kets, when)
 
 def tree(ket):
     def label (node):

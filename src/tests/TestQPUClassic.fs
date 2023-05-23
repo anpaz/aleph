@@ -404,6 +404,47 @@ type TestQPUClassic() =
         ]
         |> List.iter (AssertSampleWithFilter this.QPU)
 
+    [<TestMethod>]
+    member this.TestHistogram() =
+
+        let k1 = ket 2
+        let k2 = ket 2
+        let k3 = k1.Add(k2, width=3)
+
+        [ [k3], 
+          [ ([0], 1)
+            ([1], 2)
+            ([2], 3)
+            ([3], 4)
+            ([4], 3)
+            ([5], 2)
+            ([6], 1) ]
+
+          [k1.Where(LessThanEquals, 2); k3.Where(GreaterThan, 2)],
+          [ ([0; 3], 1)
+            ([1; 3], 1)
+            ([1; 4], 1)
+            ([2; 3], 1)
+            ([2; 4], 1)
+            ([2; 5], 1) ] ]
+        |> List.iter this.TestHistogram
+
+    member this.TestHistogram(kets, expected) =
+        let ctx = { qpu = this.QPU }
+
+        let histogram (u: IUniverse) =
+            match u.Histogram(kets) with
+            | Ok value -> value
+            | Error msg -> failwith "Error when getting the histogram"
+        
+        match prepare ctx kets with
+        | Ok actual ->
+            let actual = histogram actual |> Map.toSeq |> Seq.sort |> Seq.toList
+            printfn "expected: %A\n" expected
+            printfn "actual: %A\n" actual
+            Assert.AreEqual(expected, actual)
+        | Error msg ->
+            Assert.Fail msg
 
     member this.TestExpression(exprs, expected) =
         printfn "expr: %A" exprs
@@ -412,8 +453,8 @@ type TestQPUClassic() =
         
         match prepare ctx exprs with
         | Ok actual ->
-          let actual = actual :?> Universe 
-          printfn "state: %A\n" actual.State.Rows
-          Assert.AreEqual(expected, actual.State.Rows)
+            let actual = actual :?> Universe 
+            printfn "state: %A\n" actual.State.Rows
+            Assert.AreEqual(expected, actual.State.Rows)
         | Error msg ->
-          Assert.Fail msg
+            Assert.Fail msg

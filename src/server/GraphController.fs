@@ -5,6 +5,7 @@ open Microsoft.AspNetCore.Mvc
 open Microsoft.Extensions.Logging
 
 open aleph.kets
+open aleph.utils
 open Utils
 
 type Backend =
@@ -164,6 +165,27 @@ type GraphController (logger : ILogger<GraphController>, graphs: IGraphsService)
             | Ok value -> value |> this.Ok :> IActionResult
             | _ -> new StatusCodeResult(500) :> IActionResult
         | _ -> this.NotFound() :> IActionResult
+
+
+    [<Route("{graphId}/~histogram")>]
+    member this.Histogram(graphId: string, ids: string, filter: int) : IActionResult=
+        match graphs.TryFind(graphId) with
+        | Some graph ->
+            let prep = this.Prepare(graphId, ids, filter)
+            match prep with
+            | :? OkObjectResult as okResult ->
+                let universe = okResult.Value :?> IUniverse
+                let kets = getKets graph ids
+                
+                let map_key (key: int list) = key |> List.map string |> String.concat ","
+                let map_values (m: Map<string, int>) key value = m.Add(map_key key, value)
+                match universe.Histogram(kets) with
+                | Result.Ok h -> 
+                    h |> Map.fold map_values Map.empty |> this.Ok :> IActionResult
+                | Result.Error _ -> new StatusCodeResult(500)
+            | _ -> prep
+        | _ -> this.NotFound() :> IActionResult
+
 
     member private this.getQuantumContext() = 
         if this.Request.Query.Keys.Contains("backend") then

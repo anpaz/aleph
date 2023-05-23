@@ -19,7 +19,7 @@
     <PackageReference Include="coverlet.collector" Version="3.1.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../lang/aleph.lang.fsproj" />
+    <ProjectReference Include="../core/aleph.core.fsproj" />
     <ProjectReference Include="../backends/aleph.backends.fsproj" />
   </ItemGroup>
 </Project>

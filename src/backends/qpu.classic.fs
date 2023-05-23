@@ -88,38 +88,44 @@ type Universe(state: QuantumState, allocations: ColumnsMap) =
 
     member val Allocations = allocations
 
-    (*
-        Sample works by randomly picking a row from the universe with the same probability
-        from the universe, and then projecting (selecting) only the columns
-        associated with the ket.
-        Once measured, the universe is collapsed to this value, and next time it is measured
-        it will return the same value.
-    *)
-    member this.Sample(kets: KetValue list) =
-        let columns = kets |> List.map (fun k -> allocations.[k.Id])
-        match value with
-        | Some v -> v
-        | None ->
-            let pick_world () =
-                match state.Rows.Length with
-                // Universe collapsed:
-                | 1 -> state.Rows.[0]
-                // Empty universe, collapse to a row with random values
-                | 0 -> random_values columns
-                // Select a random row, and collapse to this value:
-                | n ->
-                    let i = int (random.NextDouble() * (double (n)))
-                    state.Rows.Item i
-
-            let world = pick_world ()
-            value <- Some world
-            world
-        |> project columns
-
     override this.ToString() =
         sprintf "%A" state.Rows
 
-    interface IUniverse
+
+    interface IUniverse with
+        member this.Sample(kets: KetValue list) =
+            let columns = kets |> List.map (fun k -> allocations.[k.Id])
+            match value with
+            | Some v -> v
+            | None ->
+                let pick_world () =
+                    match state.Rows.Length with
+                    // Universe collapsed:
+                    | 1 -> state.Rows.[0]
+                    // Empty universe, collapse to a row with random values
+                    | 0 -> random_values columns
+                    // Select a random row, and collapse to this value:
+                    | n ->
+                        let i = int (random.NextDouble() * (double (n)))
+                        state.Rows.Item i
+
+                let world = pick_world ()
+                value <- Some world
+                world
+            |> project columns |> Ok
+
+        member this.Histogram(kets: KetValue list) =
+            let columns = kets |> List.map (fun k -> allocations.[k.Id])
+            let add_row (map: Map<int list, int>) (r: int list) =
+                let value = r |> project columns
+                if map.ContainsKey(value) then
+                    map.Add(value, map.[value] + 1)
+                else
+                    map.Add(value, 1)
+            state.Rows
+            |> List.fold add_row Map.empty
+            |> Ok
+
 
 type QuantumContext =
     { state: QuantumState
@@ -228,21 +234,7 @@ type Processor() =
         ({ ctx with state = new_state |> QuantumState }, new_column) |> Ok
 
 
-    (*
-        Implements the QPU interface used by the classical eval to interact with quantum
-        expressions.
-     *)
     interface QPU with
-        (*
-            Measure works by sampling the universe:
-        *)
-        member this.Measure(universe: IUniverse, kets: KetValue list) =
-            let u = universe :?> Universe
-            u.Sample(kets) |> Ok
-
-        (*
-            Prepares a Quantum Universe from the given universe expression
-         *)
         member this.Prepare(kets: KetValue list) =
             let ctx = { allocations = Map.empty; state = QuantumState.empty }
 

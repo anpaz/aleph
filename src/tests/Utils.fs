@@ -25,9 +25,9 @@ module Utils =
                 | Some filter -> KetValue(Where (filter, Id, [])) :: kets
                 | None -> kets
             let u = qpu.Prepare prep_kets |> Result.toList |> Seq.head
-            let v = qpu.Measure(u, kets) |> Result.toList |> Seq.head
+            let v = u.Sample(kets) |> Result.toList |> Seq.head
             for i in 1..5 do
-                let v' = qpu.Measure(u, kets) |> Result.toList |> Seq.head
+                let v' = u.Sample(kets) |> Result.toList |> Seq.head
                 Assert.AreEqual(v, v')
             v
         // calls the qpu using the built-in sample methods

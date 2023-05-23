@@ -10,7 +10,7 @@
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\lang\aleph.lang.fsproj" />
+    <ProjectReference Include="..\core\aleph.core.fsproj" />
     <ProjectReference Include="..\backends\aleph.backends.fsproj" />
   </ItemGroup>
 </Project>

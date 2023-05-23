@@ -34,11 +34,13 @@ module kets =
         member this.Id = id
 
     type IUniverse =
-        interface end
+        interface 
+            abstract Sample: KetValue list-> Result<int list, string>
+            abstract Histogram: KetValue list-> Result<Map<int list, int>, string>
+        end
 
     type QPU =
         abstract Prepare: KetValue list -> Result<IUniverse, string>
-        abstract Measure: IUniverse * KetValue list-> Result<int list, string>
 
     type PrepareContext = { qpu : QPU }
 
@@ -53,7 +55,7 @@ module kets =
         prepare ctx kets
         ==> fun u ->
             let qpu = ctx.qpu
-            qpu.Measure (u, kets)
+            u.Sample (kets)
 
     let prepare_when ctx (kets: KetValue list, filter: KetValue) : Result<IUniverse, string> =
         prepare ctx (KetValue(Where (filter, Id, [])) :: kets)
@@ -61,8 +63,7 @@ module kets =
     let sample_when ctx (kets: KetValue list, filter: KetValue) : Result<int list, string> =
         prepare_when ctx (kets, filter)
         ==> fun u ->
-            let qpu = ctx.qpu
-            qpu.Measure (u, kets)
+            u.Sample (kets)
 
     type KetValue with
         member this.Width =
