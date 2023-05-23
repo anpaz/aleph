@@ -6,14 +6,14 @@ type Operator with
     member this.Label() =
         match this with
         | Operator.Not -> "not"
-        | Operator.LessThanEquals -> "less than equal"
-        | Operator.Eq -> "eq"
-        | Operator.Add w -> $"add, width={w}"
-        | Operator.Multiply w -> $"multiply, width={w}"
+        | Operator.LessThanEquals -> "<="
+        | Operator.Eq -> "=="
+        | Operator.Add w -> $"+, w={w}"
+        | Operator.Multiply w -> $"*, width={w}"
         | Operator.If -> "if"
         | Operator.Id -> "id"
         | Operator.In values -> "in"
-        | Operator.GreaterThan -> "greater than"
+        | Operator.GreaterThan -> ">"
         | Operator.And -> "and"
         | Operator.Or -> "or"
 

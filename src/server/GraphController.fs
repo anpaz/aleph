@@ -62,6 +62,10 @@ type GraphController (logger : ILogger<GraphController>, graphs: IGraphsService)
     member this.Where(graphId: string, id: int, op: string, arg: int) =
         this.AddWhereExpression(graphId, id, Operator.Parse(op), arg)
 
+    [<Route("{graphId}/where-in")>]
+    member this.WhereIn(graphId: string, id: int, values: string) =
+        this.AddWhereExpression(graphId, id, Operator.In (values.Split(',') |> Array.map int |> Array.toList), id)
+
     [<Route("{graphId}/map/not")>]
     member this.Not(graphId: string, id: int) =
         this.AddMapExpression(graphId, Operator.Not, [ id ])
@@ -69,7 +73,6 @@ type GraphController (logger : ILogger<GraphController>, graphs: IGraphsService)
     [<Route("{graphId}/map/lte")>]
     member this.LessThanEquals(graphId: string, left: int, right: int) =
         this.AddMapExpression(graphId, Operator.LessThanEquals, [ left; right ])
-
 
     [<Route("{graphId}/map/eq")>]
     member this.Eq(graphId: string, left: int, right: int) =

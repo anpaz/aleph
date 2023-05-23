@@ -1,7 +1,7 @@
 import logging
 logging.basicConfig(level=logging.INFO)
 
-from aleph_lang import KetInt, KetBool, sample, prepare
+from aleph_lang import KetInt, KetBool, sample, width_for, prepare, tree
 
 def coin_flip():
     coin = KetBool()
@@ -11,87 +11,63 @@ def random_number():
     random = KetInt()
     return sample(random)
 
+def dice_roll():
+    dice1 = KetInt().where_in(range(1,7))
+    dice2 = KetInt().where_in(range(1,7))
 
-print(coin_flip())
-print(random_number())
+    roll = dice1.add(dice2, width=4)
+    return sample([dice1, dice2, roll])
 
-# k1 = KetInt()
-# k2 = KetInt(width=5)
-# k3 = k1 + k2
-# k4 = k2 <= k1
+def solve_equation():
+    x = KetInt()
+    eq1 = x + 3
+    eq2 = 2 * x
 
-# s1 = sample([k1, k2, k3, k4])
-# s2 = sample([k2, k2])
-# s3 = sample([k2])
-
-# (t1, t2) = s2
-# t3 = s3[0]
-# (a1, a2, a3, a4) = s1
-
-# print(f"{k1}, {k2}, {k3}, {k4}, s1:{s1}, s2:{s2}, s3:{s3}, t1:{t1}")
-
-# if t3 > 3:
-#     print(f"{t3} > 3")
-# else:
-#     print(f"{t3} <= 3")
-
-# print(f"{a1} + {a2} = {a3}")
-# print(f"({a2} <= {a1}) == {a4}")
+    return sample([x, eq1, eq2], when=(eq1 == eq2))
 
 
-# print(prepare([k1, k2, k3], when=(k2 <= k1)))
-# print(sample([k1, k2, k3], when=(k2 <= k1)))
+import math
 
-# k5 = k3.where_less_than_equals(k2)
+def graph_coloring(max_colors, nodes_count, edges):
 
-# u = prepare([k2, k3, k5])
-# print('k2; k3; k5')
-# for r in u['state']['rows']:
-#     print(r)
+    # Each node is encoded as a Ket, we initialize a Ket
+    # with enough width for all colors, but filter
+    # its value accordingly
+    def create_node():
+        w = width_for(max_colors)
+        return KetInt(width=w).where_less_than_equals(max_colors - 1)
 
+    # Recursively compares the nodes in all the edges:
+    def compare(edges):
+        if len(edges) == 1:
+            (left, right) = edges[0] 
+            return left != right
+        else:
+            head, *tail = edges
+            (left, right) = head
+            a = left != right
+            b = compare(tail)
+            return  a & b
 
-# f1 = aleph.filter(k3, k3 <= 2)
-# (a1, a2, a3) = aleph.sample([k1, k2, f1])
+    nodes = [ create_node() for _ in range(nodes_count) ]
+    edges = [ (nodes[x], nodes[y]) for (x, y) in edges ]
+    filter = compare(edges)
 
-# aleph.print_tree(f1)
-# print(f"a1: {a1}, a2:{a2}, a3:{a3}")
+    ## tree(filter)
 
+    return sample(nodes, when=filter)
 
-# # -------------- #
-# # graph coloring #
-# # -------------- #
-# import math
+print("coin flip:", coin_flip())
+print("random number:", random_number())
+print("dice roll:", dice_roll())
+print("solve x + 3 == 2 * x", solve_equation())
 
-# MAX_COLORS = 3
-
-# # Each node is encoded as a Ket, we initialize a Ket
-# # with enough width for all colors, but filter
-# # its value accordingly
-# def create_node():
-#     w = math.ceil(math.log(MAX_COLORS, 2))
-#     ket = aleph.KetInt(w)
-#     return aleph.filter(ket, ket <= MAX_COLORS - 1)
-
-# # Recurisvely compares the nodes in all the edges:
-# def compare(edges):
-#     if len(edges) == 1:
-#         (left, right) = edges[0] 
-#         return left != right
-#     else:
-#         head, *tail = edges
-#         (left, right) = head
-#         a = left != right
-#         b = compare(tail)
-#         return  a & b
-
-# nodes = [ create_node() for _ in range(4) ]
-# edges = [ 
-#     (nodes[0], nodes[1]), 
-#     (nodes[1], nodes[2]), 
-#     (nodes[0], nodes[2]),
-#     (nodes[1], nodes[3])
-# ]
-
-# answers = aleph.filter(nodes, compare(edges))
-# aleph.print_tree(answers)
-# print(aleph.sample(answers))
+max_colors = 3
+total_nodes = 4
+edges = [
+    (0, 1),
+    (1, 2),
+    (0, 2),
+    (1, 3),
+]
+print("graph coloring:", graph_coloring(max_colors, total_nodes, edges))

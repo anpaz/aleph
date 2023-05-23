@@ -26,12 +26,15 @@ def _post(url):
     else:
         raise Exception(f"aleph server returned error: {r.reason}. {r}")
 
+def width_for(value):
+    return int(math.ceil(math.log(value + 1, 2))) if value > 0 else 1
+
 def _make_quantum(other):
     if isinstance(other, bool):
         return KetBool(id=_get(aleph_baseurl + f"/{graph_id}/bool?value={other}"))
     elif isinstance(other, int):
-        width = int(math.ceil(math.log(other + 1, 2))) if other > 0 else 1
-        return KetInt(id=_get(aleph_baseurl + f"/{graph_id}/int?value={other}"), width=width)
+        w = width_for(other)
+        return KetInt(id=_get(aleph_baseurl + f"/{graph_id}/int?value={other}"), width=w)
     else:
         return other
 
@@ -49,7 +52,10 @@ class KetBool():
         else:
             self.id = _post(aleph_baseurl + f"/{graph_id}/literal?width=1")
         self.width = 1
-        
+    
+    def where_true(self):
+        return KetBool(id=_get(aleph_baseurl + f"/{graph_id}/where?id={self.id}&op=id&arg={self.id}"))
+
     def And(self, other):
         other = _make_quantum(other)
         return KetBool(id=_get(aleph_baseurl + f"/{graph_id}/map/and?left={self.id}&right={other.id}"))
@@ -71,6 +77,9 @@ class KetBool():
     def __ror__(self, other):
         other = _make_quantum(other)
         return other.Or(self)
+
+    def __bool__(self):
+        raise Exception("Use the & and | operators for boolean expressions with Kets.")
 
     def __str__(self) -> str:
         return f"|{self.id}⟩"
@@ -96,6 +105,10 @@ class KetInt:
         other = _make_quantum(value)
         return KetInt(id=_get(aleph_baseurl + f"/{graph_id}/where?id={self.id}&op=gt&arg={other.id}"))
         
+    def where_in(self, values):
+        values = ",".join(map(str, values))
+        return KetInt(id=_get(aleph_baseurl + f"/{graph_id}/where-in?id={self.id}&op=in&values={values}"))
+
     def add(self, other, width=None):
         other = _make_quantum(other)
         w = width if width else max(self.width, other.width)
@@ -170,20 +183,20 @@ class KetInt:
 
 
 def sample(kets, when=None):
-    filter= f"filter={when.id}" if when else "filter=-1"
+    filter= "filter=-1" if when is None else  f"filter={when.id}"
 
     ketIds = ",".join(map(lambda ket: ket.id, kets)) if isinstance(kets, list) else kets.id
     result = _post(aleph_baseurl + f"/{graph_id}/~sample/?ids={ketIds}&{filter}")
     return json.loads(result)
 
 def prepare(kets, when=None):
-    filter= f"filter={when.id}" if when else "filter=-1"
+    filter= "filter=-1" if when is None else  f"filter={when.id}"
 
     ketIds = ",".join(map(lambda ket: ket.id, kets)) if isinstance(kets, list) else kets.id
     result = _get(aleph_baseurl + f"/{graph_id}/~prepare/?ids={ketIds}&{filter}")
     return json.loads(result)
 
-def print_tree(ket):
+def tree(ket):
     def label (node):
         return  '"' + str(node['id']) + ': ' + node['label'] + '"'
 

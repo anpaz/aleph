@@ -25,6 +25,9 @@ def test_where():
     assert_universe([k1.where_equals(5)], [[5,5,1]])
     assert_universe([k1.where_greater_than(5)], [[6,5,1], [7,5,1]])
     assert_universe([k1.where_less_than_equals(5)], [[0,5,1],[1,5,1],[2,5,1],[3,5,1],[4,5,1],[5,5,1]])
+    assert_universe([k1, k1.greater_than(5).where_true()], [[6,5,1], [7,5,1]])
+    assert_universe([k1.where_in([1,2,5])], [[1,1], [2,1], [5,1]])
+    assert_universe([k1.where_in(range(1,7))], [[1,1], [2,1], [3,1], [4,1], [5,1], [6,1]])
 
 def test_add():
     k1 = KetInt(width=2)
