@@ -1,6 +1,63 @@
 namespace aleph.server;
 
+using Microsoft.Azure.Functions.Worker.Http;
+using System.Net;
+using System.Text.Json;
+
 using static aleph.kets;
+
+public static class HttpExtensions
+{
+    public static HttpResponseData Ok(this HttpRequestData req, object result)
+    {
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        response.Headers.Add("Content-Type", "application/json; charset=utf-8");
+
+        string msg = JsonSerializer.Serialize(result);
+        response.WriteString(msg);
+        return response;
+    }
+
+    public static HttpResponseData NotFound(this HttpRequestData req)
+    {
+        var response = req.CreateResponse(HttpStatusCode.NotFound);
+        return response;
+    }
+
+    public static HttpResponseData Run(this HttpRequestData req, IGraphsService graphs, string graphId, Func<QuantumGraph, object> lambda)
+    {
+        if (graphs.TryFind(graphId, out var g) && g is not null)
+        {
+            return Ok(req, lambda(g));
+        }
+
+        return NotFound(req);
+    }
+
+    public static PrepareContext GetQuantumContext(this HttpRequestData req)
+    {
+        string? backend = req.Query.AllKeys.FirstOrDefault(key => key == "backend");
+
+        if (backend is null)
+        {
+            return new PrepareContext(new aleph.qpu.classic.Processor());
+        }
+        else
+        {
+            var value = req.Query[backend];
+            if (value == "quantum" || value == "qsharp" || value == "sparsesimulator")
+            {
+                return new PrepareContext(new aleph.qpu.qsharp.Processor(aleph.qpu.qsharp.context.simulator));
+            }
+            else if (value == "classic")
+            {
+                return new PrepareContext(new aleph.qpu.classic.Processor());
+            }
+        }
+
+        throw new ArgumentException("backend");
+    }
+}
 
 public static class KetValueExtensions
 {

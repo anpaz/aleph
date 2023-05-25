@@ -5,8 +5,14 @@ using Microsoft.Extensions.Logging;
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Linq;
 
 using static aleph.kets;
+
+using System.Diagnostics.Metrics;
+using System.Runtime.InteropServices;
+using Azure.Core;
+using Microsoft.FSharp.Collections;
 
 namespace aleph.server
 {
@@ -21,20 +27,6 @@ namespace aleph.server
             _graphs = graphs;
         }
 
-        private HttpResponseData Ok(object result, HttpRequestData req) {
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            response.Headers.Add("Content-Type", "application/json; charset=utf-8");
-
-            string msg = JsonSerializer.Serialize(result);
-            response.WriteString(msg);
-            return response;
-        }
-
-
-        private HttpResponseData NotFound(HttpRequestData req) {
-            var response = req.CreateResponse(HttpStatusCode.NotFound);
-            return response;
-        }
 
         [Function("Create")]
         public HttpResponseData Create([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/~create")] HttpRequestData req)
@@ -45,47 +37,69 @@ namespace aleph.server
 
             _logger.LogInformation($"Created quantum graph: {id}");
             
-            return Ok(id, req);
+            return req.Ok(id);
         }
 
         [Function("GetGraph")]
         public HttpResponseData GetGraph([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}")] HttpRequestData req,
-            string graphId)
-        {
-            var msg = $"Fetch graphid: {graphId}";
-            if (_graphs.TryFind(graphId, out var g) && g is not null)
-            {
-                return Ok(g, req);
-            }
+            string graphId) => req.Run(_graphs, graphId, graph => graph);
 
-            return NotFound(req);
-        }
-        
         [Function("GetNode")]
         public HttpResponseData GetNode([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/node/{ketId}")] HttpRequestData req,
-            string graphId, int ketId)
-        {
-            if (_graphs.TryFind(graphId, out var graph) && graph is not null)
-            {
-                return Ok(new GraphNode(ketId, graph), req);
-            }
-
-            return NotFound(req);
-        }
+            string graphId, int ketId) => req.Run(_graphs, graphId, graph => new GraphNode(ketId, graph));
         
         [Function("Literal")]
         public HttpResponseData Literal([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~literal")] HttpRequestData req,
-            string graphId, int width) =>
-            AddExpression(graphId, Expression.NewLiteral(width), req);
+            string graphId, int width) => req.Run(_graphs, graphId, graph => graph.Add(Expression.NewLiteral(width)));
 
-        private HttpResponseData AddExpression(string graphId, Expression expression, HttpRequestData req)
+
+        [Function("Sample")]
+        public HttpResponseData Sample([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~sample")] HttpRequestData req,
+            string graphId, string ids, int filter) => req.Run(_graphs, graphId, graph =>
         {
-            if (_graphs.TryFind(graphId, out var graph) && graph is not null)
-            {
-                return Ok(graph.Add(expression), req);
-            }
+            var ctx = req.GetQuantumContext();
+            var kets = ListModule.OfArray(GetKets(graph, ids));
 
-            return NotFound(req);
-        }
+            var result = filter > 0
+                    ? sample_when(ctx, kets, graph[filter])
+                    : sample(ctx, kets);
+
+            if (result.IsOk)
+            {
+                return result.ResultValue.ToArray();
+            }
+            else
+            {
+                throw new InvalidOperationException(result.ErrorValue);
+            }
+        });
+
+        [Function("Prepare")]
+        public HttpResponseData Prepare([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~prepare")] HttpRequestData req,
+            string graphId, string ids, int filter) => req.Run(_graphs, graphId, graph =>
+        {
+            var ctx = req.GetQuantumContext();
+            var kets = ListModule.OfArray(GetKets(graph, ids));
+
+            var result = filter > 0
+                    ? prepare_when(ctx, kets, graph[filter])
+                    : prepare(ctx, kets);
+
+            if (result.IsOk)
+            {
+                return result.ResultValue;
+            }
+            else
+            {
+                throw new InvalidOperationException(result.ErrorValue);
+            }
+        });
+
+        private static KetValue[] GetKets(QuantumGraph graph, string ids) =>
+            ids.Split(',')
+            .Select(id => int.Parse(id))
+            .Select(k => graph[k])
+            .ToArray();
+
     }
 }
