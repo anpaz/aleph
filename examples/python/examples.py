@@ -1,5 +1,5 @@
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 from aleph_lang import KetInt, KetBool, sample, width_for, prepare, tree, histogram
 
