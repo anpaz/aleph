@@ -1,5 +1,5 @@
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 from aleph_lang import KetInt, KetBool, sample, width_for, prepare, tree, histogram
 
@@ -27,7 +27,7 @@ def dice_roll_histogram():
     dice2 = KetInt().where_in(range(1,7))
 
     roll = dice1.add(dice2, width=4)
-    return histogram([roll])
+    return histogram([roll], rounds=1000)
 
 # Solve x + 3 == 2x 
 def solve_equation():
@@ -67,6 +67,7 @@ def graph_coloring(max_colors, nodes_count, edges):
 print("coin flip:", coin_flip())
 print("random number:", random_number())
 print("dice roll:", dice_roll())
+print("dice roll histogram: ", dice_roll_histogram())
 print("solve x + 3 == 2 * x", solve_equation())
 
 max_colors = 3
@@ -74,4 +75,3 @@ total_nodes = 4
 edges = [ (0, 1), (1, 2), (0, 2), (1, 3) ]
 print("graph coloring:", graph_coloring(max_colors, total_nodes, edges))
 
-print("dice roll histogram: ", dice_roll_histogram())
