@@ -84,6 +84,21 @@ type Universe(state: QuantumState, allocations: ColumnsMap) =
     let project columns (row: int list) =
         columns |> List.fold (fun result i -> result @ [ row.[i] ]) []
 
+    let sample columns =
+        let pick_world () =
+            match state.Rows.Length with
+            // Universe collapsed:
+            | 1 -> state.Rows.[0]
+            // Empty universe, collapse to a row with random values
+            | 0 -> random_values columns
+            // Select a random row, and collapse to this value:
+            | n ->
+                let i = int (random.NextDouble() * (double (n)))
+                state.Rows.Item i
+
+        pick_world ()
+        |> project columns
+
     member val State = state
 
     member val Allocations = allocations
@@ -98,32 +113,20 @@ type Universe(state: QuantumState, allocations: ColumnsMap) =
             match value with
             | Some v -> v
             | None ->
-                let pick_world () =
-                    match state.Rows.Length with
-                    // Universe collapsed:
-                    | 1 -> state.Rows.[0]
-                    // Empty universe, collapse to a row with random values
-                    | 0 -> random_values columns
-                    // Select a random row, and collapse to this value:
-                    | n ->
-                        let i = int (random.NextDouble() * (double (n)))
-                        state.Rows.Item i
+                value <- sample columns |> Some
+                value.Value
+            |> Ok
 
-                let world = pick_world ()
-                value <- Some world
-                world
-            |> project columns |> Ok
-
-        member this.Histogram(kets: KetValue list) =
+        member this.Histogram(kets: KetValue list, rounds: int) =
             let columns = kets |> List.map (fun k -> allocations.[k.Id])
-            let add_row (map: Map<int list, int>) (r: int list) =
-                let value = r |> project columns
+            let add_sample (map: Map<int list, int>) _ =
+                let value = sample columns
                 if map.ContainsKey(value) then
                     map.Add(value, map.[value] + 1)
                 else
                     map.Add(value, 1)
-            state.Rows
-            |> List.fold add_row Map.empty
+            seq { 1 .. rounds }
+            |> Seq.fold add_sample Map.empty
             |> Ok
 
 

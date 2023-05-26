@@ -31,7 +31,7 @@ type Universe(sim: IOperationFactory, state: QuantumState, allocations: Register
                 value <- sample registers |> Some
                 value.Value |> Ok
 
-        member this.Histogram(kets: KetValue list) =
+        member this.Histogram(kets: KetValue list, rounds: int) =
             let registers = kets |> List.map (fun k -> allocations.[k.Id])
             let add_sample (map: Map<int list, int>) _ =
                 let value = sample registers
@@ -39,7 +39,7 @@ type Universe(sim: IOperationFactory, state: QuantumState, allocations: Register
                     map.Add(value, map.[value] + 1)
                 else
                     map.Add(value, 1)
-            seq { 1 .. 1000 }
+            seq { 1 .. rounds }
             |> Seq.fold add_sample Map.empty
             |> Ok
 

@@ -1,6 +1,7 @@
 namespace aleph.server;
 
 using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.FSharp.Collections;
 using System.Net;
 using System.Text.Json;
 
@@ -11,10 +12,24 @@ public static class HttpExtensions
     public static HttpResponseData Ok(this HttpRequestData req, object result)
     {
         var response = req.CreateResponse(HttpStatusCode.OK);
-        response.Headers.Add("Content-Type", "application/json; charset=utf-8");
 
-        string msg = JsonSerializer.Serialize(result);
-        response.WriteString(msg);
+        if (result is string msg) {
+            response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
+            response.WriteString(msg);
+        } else if (result is int id) {
+            response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
+            response.WriteString(id.ToString());
+        } else {
+            response.Headers.Add("Content-Type", "application/json; charset=utf-8");
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = true
+            };
+            string json = JsonSerializer.Serialize(result, options);
+            response.WriteString(json);
+        }
+
         return response;
     }
 
@@ -119,46 +134,56 @@ public static class OperatorExtensions
             op.IsNot ?
                 "not" :
             op.IsLessThanEquals ?
-                "<=" :
+                "leq" :
             op.IsEq ?
-                "==" :
-            op.IsAdd ?
-                $"+, w={((Operator.Add)op).width}" :
-            op.IsMultiply ?
-                "*, w={((Operator.Multiply) op).width}" :
+                "eq" :
             op.IsIf ?
                 "if" :
             op.IsId ?
                 "id" :
-            op.IsIn ?
-                "in" :
             op.IsGreaterThan ?
                 ">" :
             op.IsAnd ?
                 "and" :
             op.IsOr ?
                 "or" :
+            op.IsAdd ?
+                $"add_{((Operator.Add)op).width}" :
+            op.IsMultiply ?
+                "multiply_{((Operator.Multiply) op).width}" :
+            op.IsIn ?
+                "in:" + String.Join(',', ((Operator.In) op).values) :
             throw new NotImplementedException();
 
-    public static Operator Parse(string label) =>
-        "eq" == label ?
-            Operator.Eq :
-        "not" == label ?
-            Operator.Not :
-        "lte" == label ?
-            Operator.LessThanEquals :
-        "if" == label ?
-            Operator.If :
-        "id" == label ?
-            Operator.Id :
-        "gt" == label ?
-            Operator.GreaterThan :
-        "and" == label ?
-            Operator.And :
-        "or" == label ?
-            Operator.Or :
-        "add" == label || "multiply" == label || "in" == label ?
-            throw new ArgumentException("Invalid operator: " + label)
-        :
-            throw new NotImplementedException();
+    public static Operator Parse(string label)
+    {
+        if ("eq" == label) {
+            return Operator.Eq;
+        } if ("not" == label) {
+            return Operator.Not;
+        } if ("lte" == label) {
+            return Operator.LessThanEquals;
+        } if ("if" == label) {
+            return Operator.If;
+        } if ("id" == label) {
+            return Operator.Id;
+        } if ("gt" == label) {
+            return Operator.GreaterThan;
+        } if ("and" == label) {
+            return Operator.And;
+        } if ("or" == label) {
+            return Operator.Or;
+        } if (label.StartsWith("add_")) {
+            var width = int.Parse(label.Substring("add_".Length));
+            return Operator.NewAdd(width);
+        } if (label.StartsWith("multiply_")) {
+            var width = int.Parse(label.Substring("multiply_".Length));
+            return Operator.NewMultiply(width);
+        } if (label.StartsWith("in:")) {
+            var values = label.Substring("in:".Length).Split(',').Select(i => int.Parse(i));
+            return Operator.NewIn(ListModule.OfSeq(values));
+        }
+
+        throw new NotImplementedException();
+    }
 }

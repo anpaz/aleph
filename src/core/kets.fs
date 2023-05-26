@@ -36,7 +36,7 @@ module kets =
     type IUniverse =
         interface 
             abstract Sample: KetValue list-> Result<int list, string>
-            abstract Histogram: KetValue list-> Result<Map<int list, int>, string>
+            abstract Histogram: KetValue list * int -> Result<Map<int list, int>, string>
         end
 
     type QPU =

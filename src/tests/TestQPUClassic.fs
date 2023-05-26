@@ -2,6 +2,7 @@ namespace aleph.tests
 
 open Microsoft.VisualStudio.TestTools.UnitTesting
 
+open System
 open aleph.kets
 open aleph.qpu.classic
 
@@ -431,18 +432,38 @@ type TestQPUClassic() =
 
     member this.TestHistogram(kets, expected) =
         let ctx = { qpu = this.QPU }
+        let rounds = 10000
 
         let histogram (u: IUniverse) =
-            match u.Histogram(kets) with
+            match u.Histogram(kets, rounds) with
             | Ok value -> value
             | Error msg -> failwith "Error when getting the histogram"
-        
+
+        let to_percent (table: list<int list * int>) =
+            let total = table |> List.sumBy (fun (idx, value) -> value)
+            table |> List.map (fun (idx, value) -> (idx, value * 100 / total))
+
         match prepare ctx kets with
         | Ok actual ->
             let actual = histogram actual |> Map.toSeq |> Seq.sort |> Seq.toList
-            printfn "expected: %A\n" expected
-            printfn "actual: %A\n" actual
-            Assert.AreEqual(expected, actual)
+            printfn "original expected: %A\n" expected
+            printfn "original actual: %A\n" actual
+
+            // Check first that the number of values match the requested rounds
+            let total = actual |> List.sumBy (fun (_, value) -> value)
+            Assert.AreEqual(rounds, total)
+
+            // Check that each value is within 2% of the expected value.
+            // To do this we convert the expected/actual tables such that each item
+            // value is the %, not the actual value
+            let check_one  ((k1, v1: int), (k2, v2: int)) =
+                Assert.AreEqual(k1, k2)
+                Assert.IsTrue(Math.Abs(v1 - v2) < 3)
+            let expected = expected |> List.sort |> to_percent
+            let actual = actual |> to_percent
+            printfn "percent expected: %A\n" expected
+            printfn "percent actual: %A\n" actual
+            List.zip expected actual |> List.iter check_one
         | Error msg ->
             Assert.Fail msg
 
