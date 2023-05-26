@@ -32,7 +32,7 @@ def test_where():
     assert_universe([k1, k1.greater_than(5).where_true()], [[6,5,1], [7,5,1]])
     assert_universe([k1.where_in([1,2,5])], [[1,1], [2,1], [5,1]])
     assert_universe([k1.where_in(range(1,7))], [[1,1], [2,1], [3,1], [4,1], [5,1], [6,1]])
-
+    
     assert_sample([k1.where_equals(5)], [[5]])
     assert_sample([k1.where_greater_than(5)], [[6], [7]])
 
@@ -248,4 +248,18 @@ def test_or():
         [0,1,1,1,1,1,1,1,1],
         [1,1,1,1,1,0,1,1,1],
         [1,1,1,1,1,1,1,1,1],
+    ])
+
+
+def test_not():
+    k1 = KetBool()
+    k2 = KetBool()
+    k3 = k1.Not()
+    assert 1 == k3.width
+
+    assert_universe([k1.Not(), (k1 | k2).Not()], [
+        [0,1,0,0,1],
+        [0,1,1,1,0],
+        [1,0,0,1,0],
+        [1,0,1,1,0],
     ])

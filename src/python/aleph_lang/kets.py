@@ -56,6 +56,9 @@ class KetBool():
     def where_true(self):
         return KetBool(id=_get(aleph_baseurl + f"/{graph_id}/~where?id={self.id}&op=id&args={self.id}"))
 
+    def Not(self):
+        return KetBool(id=_get(aleph_baseurl + f"/{graph_id}/~map/not?id={self.id}"))
+
     def And(self, other):
         other = _make_quantum(other)
         return KetBool(id=_get(aleph_baseurl + f"/{graph_id}/~map/and?left={self.id}&right={other.id}"))
