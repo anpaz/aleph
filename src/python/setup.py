@@ -16,7 +16,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/anpaz/aleph",
-    packages=setuptools.find_namespace_packages(include=["aleph-lang"]),
+    packages=setuptools.find_namespace_packages(include=["aleph_lang"]),
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
