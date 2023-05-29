@@ -68,7 +68,8 @@ jobs:
         run: |
           which python
           which pip
-          which pytestpytest
+          which pytest
+          pytest
 
       - name: Lint examples
         working-directory: examples/python
