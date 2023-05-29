@@ -57,13 +57,13 @@ jobs:
         working-directory: src/python
         run: ruff --format=github  --ignore E501,F401 --target-version=py39 .
 
-      - name: Test with pytest
-        working-directory: src/python
-        run: pytest
-
       - name: Install aleph locally
         working-directory: src/python
         run: pip install -e .
+
+      - name: Test with pytest
+        working-directory: src/python
+        run: pytest
 
       - name: Lint examples
         working-directory: examples/python
