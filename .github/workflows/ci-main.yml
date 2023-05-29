@@ -58,7 +58,7 @@ jobs:
 
       - name: Install aleph locally
         working-directory: src/python
-        run: pip install -e .
+        run: pip install .
 
       - name: Check installed packages
         run: pip freeze
