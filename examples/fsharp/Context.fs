@@ -13,4 +13,4 @@ let sample_when (kets: KetValue list, filter: KetValue) =
 
 let histogram (kets: KetValue list) =
     prepare kets
-    ==> fun u -> u.Histogram(kets)
+    ==> fun u -> u.Histogram(kets, 1000)
