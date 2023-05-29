@@ -45,7 +45,6 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: '3.9'
-          include-prerelease: true
 
       - name: Install Python dependencies
         working-directory: src/python
@@ -59,13 +58,17 @@ jobs:
 
       - name: Install aleph locally
         working-directory: src/python
-        run: |
-          pip install -e .
-          pip freeze
+        run: pip install -e .
+
+      - name: Check installed packages
+        run: pip freeze
 
       - name: Test with pytest
         working-directory: src/python
-        run: pytest
+        run: |
+          which python
+          which pip
+          which pytestpytest
 
       - name: Lint examples
         working-directory: examples/python
