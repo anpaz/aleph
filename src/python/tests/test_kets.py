@@ -1,6 +1,3 @@
-import logging
-logging.basicConfig(level=logging.DEBUG)
-
 from aleph_lang import KetInt, KetBool, sample, prepare
 
 def assert_sample(kets, valid):
