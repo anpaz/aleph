@@ -25,6 +25,12 @@ jobs:
           dotnet-version: '6.x'
           include-prerelease: true
 
+      - name: Install fantomas (linter)
+        run: dotnet tool install -g fantomas
+
+      - name: Lint with fantomas
+        run: fantomas src/core/ src/backends/ src/tests/
+
       - name: Build with dotnet
         run: dotnet build src/aleph.sln
 
