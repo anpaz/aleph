@@ -34,7 +34,7 @@ jobs:
 
   build-python:
     runs-on: ubuntu-latest
-      working-directory: src/python
+    working-directory: src/python
 
     steps:
       - uses: actions/checkout@v2
