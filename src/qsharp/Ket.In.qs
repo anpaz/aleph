@@ -9,13 +9,13 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.value as v;
     open aleph.qsharp.log as log;
 
-    function InSet(values: v.Value[][], registers: r.Register[], old: u.Universe) : (u.Universe, r.Register[])
+    function InSet(values: v.Value[], register: r.Register, old: u.Universe) : (u.Universe, r.Register[])
     {
         let (output, u) = u.AddExpressionOutput(1, old);
-        let expr = _In_eval(values, registers, output, _);
+        let expr = _In_eval(values, register, output, _);
         let universe = u.AddExpression(expr, u);
 
-        log.Info($"Ket.In::Init --> values: {values}, registers: {registers}, output: {output}");
+        log.Info($"Ket.In::Init --> values: {values}, register: {register}, output: {output}");
         return (universe, [output]);
     }
 
@@ -30,33 +30,29 @@ namespace aleph.qsharp.ket {
     }
 
     operation _In_eval(
-        values: v.Value[][],
-        registers: r.Register[],
+        values: v.Value[],
+        register: r.Register,
         answer: r.Register,
         all: Qubit[]) : Unit
     is Adj + Ctl {
-        log.Debug($"Ket.In::eval: registers:{registers}, answer:{answer}");
+        log.Debug($"Ket.In::eval: registers:{register}, answer:{answer}");
 
-        let ctrls = get_controls(registers, all);
+        let qubits = all[r.GetRange(register)];
         let target = all[r.GetRange(answer)][0];
 
         for i in 0..Length(values) - 1 {
             within {
-                let item_i = values[i];
-                for k in 0..Length(item_i)-1 {
-                    let v = v.GetValue(item_i[k]);
-                    let qubits = all[r.GetRange(registers[k])];
-                    let n = Length(qubits);
-                    let bits = IntAsBoolArray(v, n);
-                    for b in 0 .. n - 1 {
-                        if (bits[b] == false) {
-                            X(qubits[b]);
-                        }
+                let v = v.GetValue(values[i]);
+                let n = Length(qubits);
+                let bits = IntAsBoolArray(v, n);
+                for b in 0 .. n - 1 {
+                    if (bits[b] == false) {
+                        X(qubits[b]);
                     }
                 }
             }
             apply {
-                Controlled X (ctrls, target);
+                Controlled X (qubits, target);
             }
         }
     }

@@ -1,0 +1,91 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build aleph lang.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches: 
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-dotnet:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '6.x'
+          include-prerelease: true
+
+      - name: Install fantomas (linter)
+        run: dotnet tool install -g fantomas
+
+      - name: Lint with fantomas
+        run: |
+          echo
+          echo "If fantomas fails, run fantomas without '--check' locally and commit the changes..."
+          echo 
+          fantomas --check src/core/ src/backends/ src/tests/
+
+      - name: Build with dotnet
+        run: dotnet build src/aleph.sln
+
+      - name: Test projects
+        run: dotnet test src/aleph.sln
+
+      - name: Run examples
+        working-directory: examples/fsharp
+        run: dotnet run
+
+  build-python:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set Python 3.9
+        uses: actions/setup-python@v1
+        with:
+          python-version: '3.9'
+
+      - name: Install Python dependencies
+        working-directory: src/python
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff pytest
+
+      - name: Lint with ruff
+        working-directory: src/python
+        run: ruff --format=github  --ignore E501,F401 --target-version=py39 .
+
+      - name: Install aleph locally
+        working-directory: src/python
+        run: pip install -e .
+
+      - name: Check installed packages
+        run: pip freeze
+
+      - name: Test with pytest
+        working-directory: src/python
+        run: |
+          which python
+          which pip
+          which pytest
+          pytest
+
+      - name: Lint examples
+        working-directory: examples/python
+        run: ruff --format=github  --ignore E402 --target-version=py39 .
+
+      - name: Run examples
+        working-directory: examples/python
+        run: python ./examples.py
+

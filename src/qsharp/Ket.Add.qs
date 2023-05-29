@@ -8,9 +8,9 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.universe as u;
     open aleph.qsharp.log as log;
 
-    function Add(left: r.Register, right: r.Register, old: u.Universe) : (u.Universe, r.Register[])
+    function Add(left: r.Register, right: r.Register, width: Int, old: u.Universe) : (u.Universe, r.Register[])
     {
-        let (output, u) = u.AddExpressionOutput(r.GetSize(right), old);
+        let (output, u) = u.AddExpressionOutput(width, old);
         let expr = _Add_eval(left, right, output, _);
         let universe = u.AddExpression(expr, u);
 
