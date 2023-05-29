@@ -56,8 +56,8 @@ module kets =
     let sample ctx (kets: KetValue list) : Result<int list, string> =
         prepare ctx kets
         ==> fun u ->
-                let qpu = ctx.qpu
-                u.Sample(kets)
+            let qpu = ctx.qpu
+            u.Sample(kets)
 
     let prepare_when ctx (kets: KetValue list, filter: KetValue) : Result<IUniverse, string> =
         prepare ctx (KetValue(Where(filter, Id, [])) :: kets)
@@ -70,7 +70,7 @@ module kets =
         member this.Width =
             match this.Expression with
             | Literal w -> w
-            | Map (op, args) ->
+            | Map(op, args) ->
                 match op with
                 | Add w
                 | Multiply w -> w
@@ -84,7 +84,7 @@ module kets =
                 | Eq
                 | In _ -> 1
             | Constant v -> int_width v
-            | Where (target, _, _) -> target.Width
+            | Where(target, _, _) -> target.Width
 
         member this.Where(op: Operator) = KetValue(Where(this, op, []))
 

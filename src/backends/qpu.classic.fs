@@ -141,9 +141,12 @@ type Processor() =
             match ket.Expression with
             | Literal width -> prepare_literal ctx width
             | Constant value -> prepare_constant ctx value
-            | Map (op, args) -> prepare_map ctx (op, args)
-            | Where (target, op, args) -> prepare_where ctx (target, op, args)
-            ==> fun (ctx, column) -> { ctx with allocations = ctx.allocations.Add(ket.Id, column) } |> Ok
+            | Map(op, args) -> prepare_map ctx (op, args)
+            | Where(target, op, args) -> prepare_where ctx (target, op, args)
+            ==> fun (ctx, column) ->
+                { ctx with
+                    allocations = ctx.allocations.Add(ket.Id, column) }
+                |> Ok
 
     and prepare_many ctx kets =
         let init_one previous next =
@@ -168,32 +171,31 @@ type Processor() =
     and prepare_where ctx (target, op, args) =
         prepare_map ctx (op, target :: args)
         ==> fun (ctx, column) ->
-                let ctx = { ctx with state = ctx.state.FilterRows column }
-                (ctx, ctx.allocations.[target.Id]) |> Ok
+            let ctx =
+                { ctx with
+                    state = ctx.state.FilterRows column }
+
+            (ctx, ctx.allocations.[target.Id]) |> Ok
 
     and prepare_map ctx (op, args) =
         prepare_many ctx args
         ==> fun ctx' ->
-                match op with
-                | Operator.Id -> (ctx', ctx'.allocations.[args.[0].Id]) |> Ok
-                | Operator.Not -> map_unary ctx' (args.[0], (fun i -> if i = 0 then 1 else 0))
-                | Operator.In items -> map_unary ctx' (args.[0], (fun i -> if items |> List.contains i then 1 else 0))
-                | Operator.And ->
-                    map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) && (y = 1) then 1 else 0))
-                | Operator.Or ->
-                    map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) || (y = 1) then 1 else 0))
-                | Operator.LessThanEquals ->
-                    map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x <= y then 1 else 0))
-                | Operator.GreaterThan -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x > y then 1 else 0))
-                | Operator.Eq -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x = y then 1 else 0))
-                | Operator.Add w ->
-                    let m = int (2.0 ** w)
-                    map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x + y) % m))
-                | Operator.Multiply w ->
-                    let m = int (2.0 ** w)
-                    map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x * y) % m))
-                | Operator.If ->
-                    map_ternary ctx' (args.[0], args.[1], args.[2], (fun (x, y, z) -> if x = 0 then z else y))
+            match op with
+            | Operator.Id -> (ctx', ctx'.allocations.[args.[0].Id]) |> Ok
+            | Operator.Not -> map_unary ctx' (args.[0], (fun i -> if i = 0 then 1 else 0))
+            | Operator.In items -> map_unary ctx' (args.[0], (fun i -> if items |> List.contains i then 1 else 0))
+            | Operator.And -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) && (y = 1) then 1 else 0))
+            | Operator.Or -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) || (y = 1) then 1 else 0))
+            | Operator.LessThanEquals -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x <= y then 1 else 0))
+            | Operator.GreaterThan -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x > y then 1 else 0))
+            | Operator.Eq -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x = y then 1 else 0))
+            | Operator.Add w ->
+                let m = int (2.0 ** w)
+                map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x + y) % m))
+            | Operator.Multiply w ->
+                let m = int (2.0 ** w)
+                map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x * y) % m))
+            | Operator.If -> map_ternary ctx' (args.[0], args.[1], args.[2], (fun (x, y, z) -> if x = 0 then z else y))
 
     and map_unary ctx (ket: KetValue, lambda: int -> int) =
         let arg = ctx.allocations.[ket.Id]
@@ -206,7 +208,10 @@ type Processor() =
             }
             |> Seq.toList
 
-        ({ ctx with state = new_state |> QuantumState }, new_column) |> Ok
+        ({ ctx with
+            state = new_state |> QuantumState },
+         new_column)
+        |> Ok
 
     and map_binary ctx (left: KetValue, right: KetValue, lambda: int * int -> int) =
         let x = ctx.allocations.[left.Id]
@@ -220,7 +225,10 @@ type Processor() =
             }
             |> Seq.toList
 
-        ({ ctx with state = new_state |> QuantumState }, new_column) |> Ok
+        ({ ctx with
+            state = new_state |> QuantumState },
+         new_column)
+        |> Ok
 
     and map_ternary ctx (a: KetValue, b: KetValue, c: KetValue, lambda: int * int * int -> int) =
         let x = ctx.allocations.[a.Id]
@@ -235,7 +243,10 @@ type Processor() =
             }
             |> Seq.toList
 
-        ({ ctx with state = new_state |> QuantumState }, new_column) |> Ok
+        ({ ctx with
+            state = new_state |> QuantumState },
+         new_column)
+        |> Ok
 
 
     interface QPU with
