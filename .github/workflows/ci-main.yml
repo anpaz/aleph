@@ -58,7 +58,7 @@ jobs:
 
       - name: Install aleph locally
         working-directory: src/python
-        run: pip install .
+        run: pip install -e .
 
       - name: Check installed packages
         run: pip freeze
@@ -73,7 +73,7 @@ jobs:
 
       - name: Lint examples
         working-directory: examples/python
-        run: ruff --format=github  --ignore E501,F401 --target-version=py39 .
+        run: ruff --format=github  --ignore E402 --target-version=py39 .
 
       - name: Run examples
         working-directory: examples/python
