@@ -61,6 +61,10 @@ jobs:
         working-directory: src/python
         run: pytest
 
+      - name: Install aleph locally
+        working-directory: src/python
+        run: pip install -e .
+
       - name: Lint examples
         working-directory: examples/python
         run: ruff --format=github  --ignore E501,F401 --target-version=py39 .
