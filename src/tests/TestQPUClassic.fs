@@ -65,12 +65,9 @@ type TestQPUClassic() =
             [ 3; 1; 2; 1 ]
             [ 3; 2; 2; 1 ] ]
 
-          [ a; ket 1 ],
-          [ [ 0; 0 ]; [ 0; 1 ]; [ 1; 0 ]; [ 1; 1 ]; [ 2; 0 ]; [ 2; 1 ]; [ 3; 0 ]; [ 3; 1 ] ]
+          [ a; ket 1 ], [ [ 0; 0 ]; [ 0; 1 ]; [ 1; 0 ]; [ 1; 1 ]; [ 2; 0 ]; [ 2; 1 ]; [ 3; 0 ]; [ 3; 1 ] ]
 
-          [ ket 1; KetValue(Constant 4) ],
-          [ [ 0; 4 ]; [ 1; 4 ] ]
-        ]
+          [ ket 1; KetValue(Constant 4) ], [ [ 0; 4 ]; [ 1; 4 ] ] ]
         |> List.iter (this.TestExpression)
 
     [<TestMethod>]
@@ -92,20 +89,13 @@ type TestQPUClassic() =
 
         let e = c.Add(a.Where(Not))
 
-        [ [ KetValue(Map(Add(1), [ a; b ])) ],
-          [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ]
+        [ [ KetValue(Map(Add(1), [ a; b ])) ], [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ]
 
-          [ a.Add(b) ],
-          [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ]
+          [ a.Add(b) ], [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ]
 
-          [ KetValue(Map(Add(2), [ a; b ])) ],
-          [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 2 ] ]
+          [ KetValue(Map(Add(2), [ a; b ])) ], [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 2 ] ]
 
-          [ c ],
-          [ [ 0; 3; 0; 3; 1; 0; 0 ]
-            [ 0; 3; 0; 3; 1; 1; 1 ]
-            [ 1; 3; 3; 3; 1; 0; 3 ]
-            [ 1; 3; 3; 3; 1; 1; 4 ] ]
+          [ c ], [ [ 0; 3; 0; 3; 1; 0; 0 ]; [ 0; 3; 0; 3; 1; 1; 1 ]; [ 1; 3; 3; 3; 1; 0; 3 ]; [ 1; 3; 3; 3; 1; 1; 4 ] ]
 
           [ d ],
           [ [ 0; 3; 0; 1; 1; 0; 1 ]
@@ -120,8 +110,7 @@ type TestQPUClassic() =
           [ [ 0; 3; 0; 3; 1; 0; 0; 0; 1; 0 ]
             [ 0; 3; 0; 3; 1; 1; 1; 0; 1; 1 ]
             [ 1; 3; 3; 3; 1; 0; 3; 0; 1; 3 ]
-            [ 1; 3; 3; 3; 1; 1; 4; 0; 1; 4 ] ]
-        ]
+            [ 1; 3; 3; 3; 1; 1; 4; 0; 1; 4 ] ] ]
         |> List.iter (this.TestExpression)
 
 
@@ -139,13 +128,11 @@ type TestQPUClassic() =
         let e = a.LessThanEquals(b).Or(b.LessThanEquals(1))
         let f = e.Not().Where(Eq, 1)
 
-        [ [ a.LessThanEquals(b) ],
-          [ [ 0; 0; 1 ]; [ 0; 1; 1 ]; [ 1; 0; 0 ]; [ 1; 1; 1 ] ]
+        [ [ a.LessThanEquals(b) ], [ [ 0; 0; 1 ]; [ 0; 1; 1 ]; [ 1; 0; 0 ]; [ 1; 1; 1 ] ]
 
           [ b.LessThanEquals(0) ], [ [ 0; 0; 1 ]; [ 1; 0; 0 ] ]
 
-          [ c ],
-          [ [ 0; 0; 0; 1; 1 ]; [ 0; 1; 1; 1; 1 ]; [ 1; 0; 1; 1; 1 ] ]
+          [ c ], [ [ 0; 0; 0; 1; 1 ]; [ 0; 1; 1; 1; 1 ]; [ 1; 0; 1; 1; 1 ] ]
 
           [ d; e ],
           [ [ 0; 0; 1; 1; 1; 1; 1; 1; 1; 1 ]
@@ -153,43 +140,31 @@ type TestQPUClassic() =
             [ 1; 0; 0; 1; 1; 0; 0; 1; 1; 1 ]
             [ 1; 1; 1; 1; 1; 1; 1; 1; 1; 1 ] ]
 
-          [ f ],
-          [ [ -1; -1; -1; -1; -1; -1; -1; -1; -1 ] ]
-        ]
+          [ f ], [ [ -1; -1; -1; -1; -1; -1; -1; -1; -1 ] ] ]
         |> List.iter (this.TestExpression)
 
     [<TestMethod>]
     member this.TestIn() =
         let a = KetValue(Literal 2)
 
-        [ [ a.In [ 0; 2 ] ],
-          [ [ 0; 1 ]; [ 1; 0 ]; [ 2; 1 ]; [ 3; 0 ] ]
+        [ [ a.In [ 0; 2 ] ], [ [ 0; 1 ]; [ 1; 0 ]; [ 2; 1 ]; [ 3; 0 ] ]
 
-          [ a.Where(In [ 0; 2 ]) ],
-          [ [ 0; 1 ]; [ 2; 1 ] ]
+          [ a.Where(In [ 0; 2 ]) ], [ [ 0; 1 ]; [ 2; 1 ] ]
 
-          [ a; a.Where(In []); a.In [ 1; 2; 3; 4 ] ],
-          [ [ -1; -1; 0 ] ]
+          [ a; a.Where(In []); a.In [ 1; 2; 3; 4 ] ], [ [ -1; -1; 0 ] ]
 
           [ a; a.Where(In []); KetValue(Literal 2).In [ 1; 3 ] ],
-          [ [ -1; -1; 0; 0 ]
-            [ -1; -1; 1; 1 ]
-            [ -1; -1; 2; 0 ]
-            [ -1; -1; 3; 1 ] ]
-        ]
+          [ [ -1; -1; 0; 0 ]; [ -1; -1; 1; 1 ]; [ -1; -1; 2; 0 ]; [ -1; -1; 3; 1 ] ] ]
         |> List.iter (this.TestExpression)
 
-        
+
     [<TestMethod>]
     member this.TestId() =
         let a = KetValue(Literal 2)
 
-        [ [ a.Where(Id) ],
-          [ [ 1 ]; [ 2 ]; [ 3 ] ]
+        [ [ a.Where(Id) ], [ [ 1 ]; [ 2 ]; [ 3 ] ]
 
-          [ a; a.GreaterThan(2).Where(Id) ],
-          [ [ 3; 2; 1 ] ]
-        ]
+          [ a; a.GreaterThan(2).Where(Id) ], [ [ 3; 2; 1 ] ] ]
         |> List.iter (this.TestExpression)
 
 
@@ -200,9 +175,7 @@ type TestQPUClassic() =
 
         let c = a.In([ 1; 2 ]).Choose(a, b)
 
-        [ [ c ],
-          [ [ 0; 0; 4; 4; 4 ]; [ 1; 1; 4; 5; 1 ]; [ 2; 1; 4; 6; 2 ]; [ 3; 0; 4; 7; 7 ] ]
-        ]
+        [ [ c ], [ [ 0; 0; 4; 4; 4 ]; [ 1; 1; 4; 5; 1 ]; [ 2; 1; 4; 6; 2 ]; [ 3; 0; 4; 7; 7 ] ] ]
         |> List.iter (this.TestExpression)
 
 
@@ -228,7 +201,8 @@ type TestQPUClassic() =
               [ 3; 0; 2; 1; 0 ]
               [ 3; 1; 2; 1; 0 ]
               [ 3; 2; 2; 0; 0 ]
-              [ 3; 3; 2; 0; 0 ] ] |> QuantumState
+              [ 3; 3; 2; 0; 0 ] ]
+            |> QuantumState
 
         let expected =
             [ [ 0; 0; 2; 1; 0 ]
@@ -238,13 +212,15 @@ type TestQPUClassic() =
               [ 2; 0; 2; 1; 0 ]
               [ 2; 1; 2; 1; 0 ]
               [ 3; 0; 2; 1; 0 ]
-              [ 3; 1; 2; 1; 0 ] ] |> QuantumState
+              [ 3; 1; 2; 1; 0 ] ]
+            |> QuantumState
 
         let actual = state.FilterRows 3
         Assert.AreEqual(expected.Rows, actual.Rows)
 
         let expected =
-            [ [ 0; 1; 2; 1; 0 ]; [ 1; 1; 2; 1; 0 ]; [ 2; 1; 2; 1; 0 ]; [ 3; 1; 2; 1; 0 ] ] |> QuantumState
+            [ [ 0; 1; 2; 1; 0 ]; [ 1; 1; 2; 1; 0 ]; [ 2; 1; 2; 1; 0 ]; [ 3; 1; 2; 1; 0 ] ]
+            |> QuantumState
 
         let actual = (state.FilterRows 3).FilterRows 1
         Assert.AreEqual(expected.Rows, actual.Rows)
@@ -255,13 +231,17 @@ type TestQPUClassic() =
         let actual = (expected.FilterRows 3).FilterRows 1
         Assert.AreEqual(expected.Rows, actual.Rows)
 
-        let expected = [ [ 1; 1; 2; 1; 0 ]; [ 2; 1; 2; 1; 0 ]; [ 3; 1; 2; 1; 0 ] ] |> QuantumState
+        let expected =
+            [ [ 1; 1; 2; 1; 0 ]; [ 2; 1; 2; 1; 0 ]; [ 3; 1; 2; 1; 0 ] ] |> QuantumState
 
         let actual = ((state.FilterRows 0).FilterRows 3).FilterRows 1
         Assert.AreEqual(expected.Rows, actual.Rows)
 
         let expected = [ [ -1; -1; -1; -1; -1 ] ] |> QuantumState
-        let actual = ((((state.FilterRows 0).FilterRows 3).FilterRows 1).FilterRows 2).FilterRows 4
+
+        let actual =
+            ((((state.FilterRows 0).FilterRows 3).FilterRows 1).FilterRows 2).FilterRows 4
+
         Assert.AreEqual(expected.Rows, actual.Rows)
 
         let actual = (state.FilterRows 4)
@@ -372,37 +352,23 @@ type TestQPUClassic() =
 
           [ b ], b.LessThanEquals(2) |> Some, [ [ 0 ]; [ 1 ]; [ 2 ] ]
 
-          [ a; b ], b.LessThanEquals(1) |> Some,
+          [ a; b ],
+          b.LessThanEquals(1) |> Some,
           [ [ 0; 0 ]; [ 0; 1 ]; [ 1; 0 ]; [ 1; 1 ]; [ 2; 0 ]; [ 2; 1 ]; [ 3; 0 ]; [ 3; 1 ] ]
 
-          [ a; b ], a.LessThanEquals(b) |> Some,
-          [ [ 0; 0 ]
-            [ 0; 1 ]
-            [ 0; 2 ]
-            [ 0; 3 ]
-            [ 1; 1 ]
-            [ 1; 2 ]
-            [ 1; 3 ]
-            [ 2; 2 ]
-            [ 2; 3 ]
-            [ 3; 3 ] ]
-
-          [ a; b ], a.LessThanEquals(b) |> Some,
+          [ a; b ],
+          a.LessThanEquals(b) |> Some,
           [ [ 0; 0 ]; [ 0; 1 ]; [ 0; 2 ]; [ 0; 3 ]; [ 1; 1 ]; [ 1; 2 ]; [ 1; 3 ]; [ 2; 2 ]; [ 2; 3 ]; [ 3; 3 ] ]
 
-          [ a; b ], a.GreaterThan(1) |> Some,
-          [ [ 2; 0 ]
-            [ 2; 1 ]
-            [ 2; 2 ]
-            [ 2; 3 ]
-            [ 3; 0 ]
-            [ 3; 1 ]
-            [ 3; 2 ]
-            [ 3; 3 ] ]
+          [ a; b ],
+          a.LessThanEquals(b) |> Some,
+          [ [ 0; 0 ]; [ 0; 1 ]; [ 0; 2 ]; [ 0; 3 ]; [ 1; 1 ]; [ 1; 2 ]; [ 1; 3 ]; [ 2; 2 ]; [ 2; 3 ]; [ 3; 3 ] ]
 
-          [ a; b ], a.GreaterThan(1).And(b.GreaterThan(a)) |> Some,
-          [ [ 2; 3 ] ]
-        ]
+          [ a; b ],
+          a.GreaterThan(1) |> Some,
+          [ [ 2; 0 ]; [ 2; 1 ]; [ 2; 2 ]; [ 2; 3 ]; [ 3; 0 ]; [ 3; 1 ]; [ 3; 2 ]; [ 3; 3 ] ]
+
+          [ a; b ], a.GreaterThan(1).And(b.GreaterThan(a)) |> Some, [ [ 2; 3 ] ] ]
         |> List.iter (AssertSampleWithFilter this.QPU)
 
     [<TestMethod>]
@@ -410,24 +376,12 @@ type TestQPUClassic() =
 
         let k1 = ket 2
         let k2 = ket 2
-        let k3 = k1.Add(k2, width=3)
+        let k3 = k1.Add(k2, width = 3)
 
-        [ [k3], 
-          [ ([0], 1)
-            ([1], 2)
-            ([2], 3)
-            ([3], 4)
-            ([4], 3)
-            ([5], 2)
-            ([6], 1) ]
+        [ [ k3 ], [ ([ 0 ], 1); ([ 1 ], 2); ([ 2 ], 3); ([ 3 ], 4); ([ 4 ], 3); ([ 5 ], 2); ([ 6 ], 1) ]
 
-          [k1.Where(LessThanEquals, 2); k3.Where(GreaterThan, 2)],
-          [ ([0; 3], 1)
-            ([1; 3], 1)
-            ([1; 4], 1)
-            ([2; 3], 1)
-            ([2; 4], 1)
-            ([2; 5], 1) ] ]
+          [ k1.Where(LessThanEquals, 2); k3.Where(GreaterThan, 2) ],
+          [ ([ 0; 3 ], 1); ([ 1; 3 ], 1); ([ 1; 4 ], 1); ([ 2; 3 ], 1); ([ 2; 4 ], 1); ([ 2; 5 ], 1) ] ]
         |> List.iter this.TestHistogram
 
     member this.TestHistogram(kets, expected) =
@@ -456,26 +410,25 @@ type TestQPUClassic() =
             // Check that each value is within 2% of the expected value.
             // To do this we convert the expected/actual tables such that each item
             // value is the %, not the actual value
-            let check_one  ((k1, v1: int), (k2, v2: int)) =
+            let check_one ((k1, v1: int), (k2, v2: int)) =
                 Assert.AreEqual(k1, k2)
                 Assert.IsTrue(Math.Abs(v1 - v2) < 3)
+
             let expected = expected |> List.sort |> to_percent
             let actual = actual |> to_percent
             printfn "percent expected: %A\n" expected
             printfn "percent actual: %A\n" actual
             List.zip expected actual |> List.iter check_one
-        | Error msg ->
-            Assert.Fail msg
+        | Error msg -> Assert.Fail msg
 
     member this.TestExpression(exprs, expected) =
         printfn "expr: %A" exprs
 
         let ctx = { qpu = this.QPU }
-        
+
         match prepare ctx exprs with
         | Ok actual ->
-            let actual = actual :?> Universe 
+            let actual = actual :?> Universe
             printfn "state: %A\n" actual.State.Rows
             Assert.AreEqual(expected, actual.State.Rows)
-        | Error msg ->
-            Assert.Fail msg
+        | Error msg -> Assert.Fail msg

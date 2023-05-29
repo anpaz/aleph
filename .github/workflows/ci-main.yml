@@ -29,7 +29,11 @@ jobs:
         run: dotnet tool install -g fantomas
 
       - name: Lint with fantomas
-        run: fantomas --check src/core/ src/backends/ src/tests/
+        run: |
+          echo
+          echo "If fantomas fails, run fantomas without '--check' locally and commit the changes..."
+          echo 
+          fantomas --check src/core/ src/backends/ src/tests/
 
       - name: Build with dotnet
         run: dotnet build src/aleph.sln

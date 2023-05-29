@@ -59,4 +59,3 @@ type TestSyntax() =
         Assert.AreEqual(1, f.Or(g).Width)
         Assert.AreEqual(3, g.Choose(a, b).Width)
         Assert.AreEqual(1, f.Equals(g).Equals(false).Not().Width)
-

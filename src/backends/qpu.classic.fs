@@ -51,11 +51,11 @@ type QuantumState(rows: int list list) =
                     for j in values do
                         i @ [ j ]
             }
-        |> Seq.toList 
+        |> Seq.toList
         |> QuantumState
 
     member this.FilterRows(filter: ColumnIndex) =
-        if rows.IsEmpty then 
+        if rows.IsEmpty then
             this
         else
             let check_empty (values: int list list) =
@@ -63,10 +63,8 @@ type QuantumState(rows: int list list) =
                     [ List.replicate rows.Head.Length (-1) ]
                 else
                     values
-            rows
-            |> List.filter (fun r -> r.[filter] <> 0)
-            |> check_empty
-            |> QuantumState
+
+            rows |> List.filter (fun r -> r.[filter] <> 0) |> check_empty |> QuantumState
 
     static member empty = [] |> QuantumState
 
@@ -96,20 +94,19 @@ type Universe(state: QuantumState, allocations: ColumnsMap) =
                 let i = int (random.NextDouble() * (double (n)))
                 state.Rows.Item i
 
-        pick_world ()
-        |> project columns
+        pick_world () |> project columns
 
     member val State = state
 
     member val Allocations = allocations
 
-    override this.ToString() =
-        sprintf "%A" state.Rows
+    override this.ToString() = sprintf "%A" state.Rows
 
 
     interface IUniverse with
         member this.Sample(kets: KetValue list) =
             let columns = kets |> List.map (fun k -> allocations.[k.Id])
+
             match value with
             | Some v -> v
             | None ->
@@ -119,15 +116,16 @@ type Universe(state: QuantumState, allocations: ColumnsMap) =
 
         member this.Histogram(kets: KetValue list, rounds: int) =
             let columns = kets |> List.map (fun k -> allocations.[k.Id])
+
             let add_sample (map: Map<int list, int>) _ =
                 let value = sample columns
+
                 if map.ContainsKey(value) then
                     map.Add(value, map.[value] + 1)
                 else
                     map.Add(value, 1)
-            seq { 1 .. rounds }
-            |> Seq.fold add_sample Map.empty
-            |> Ok
+
+            seq { 1..rounds } |> Seq.fold add_sample Map.empty |> Ok
 
 
 type QuantumContext =
@@ -148,7 +146,9 @@ type Processor() =
             ==> fun (ctx, column) -> { ctx with allocations = ctx.allocations.Add(ket.Id, column) } |> Ok
 
     and prepare_many ctx kets =
-        let init_one previous next = previous ==> fun ctx' -> prepare ctx' next
+        let init_one previous next =
+            previous ==> fun ctx' -> prepare ctx' next
+
         kets |> List.fold init_one (Ok ctx)
 
     and prepare_literal ctx width =
@@ -156,7 +156,7 @@ type Processor() =
         | 0 -> "All literals must have a size." |> Error
         | n ->
             let values = seq { 0 .. (int (2.0 ** n)) - 1 } |> Seq.toList
-            let new_state =  ctx.state.AddColumn values
+            let new_state = ctx.state.AddColumn values
             let new_column = new_state.Rows.Head.Length - 1
             ({ ctx with state = new_state }, new_column) |> Ok
 
@@ -168,31 +168,32 @@ type Processor() =
     and prepare_where ctx (target, op, args) =
         prepare_map ctx (op, target :: args)
         ==> fun (ctx, column) ->
-            let ctx = { ctx with state = ctx.state.FilterRows column }
-            (ctx, ctx.allocations.[target.Id]) |> Ok
+                let ctx = { ctx with state = ctx.state.FilterRows column }
+                (ctx, ctx.allocations.[target.Id]) |> Ok
 
     and prepare_map ctx (op, args) =
         prepare_many ctx args
         ==> fun ctx' ->
-            match op with
-            | Operator.Id -> (ctx', ctx'.allocations.[args.[0].Id]) |> Ok
-            | Operator.Not -> map_unary ctx' (args.[0], (fun i -> if i = 0 then 1 else 0))
-            | Operator.In items -> map_unary ctx' (args.[0], (fun i -> if items |> List.contains i then 1 else 0))
-            | Operator.And ->
-                map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) && (y = 1) then 1 else 0))
-            | Operator.Or ->
-                map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) || (y = 1) then 1 else 0))
-            | Operator.LessThanEquals -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x <= y then 1 else 0))
-            | Operator.GreaterThan -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x > y then 1 else 0))
-            | Operator.Eq -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x = y then 1 else 0))
-            | Operator.Add w ->
-                let m = int (2.0 ** w)
-                map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x + y) % m))
-            | Operator.Multiply w ->
-                let m = int (2.0 ** w)
-                map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x * y) % m))
-            | Operator.If ->
-                map_ternary ctx' (args.[0], args.[1], args.[2], (fun (x, y, z) -> if x = 0 then z else y))
+                match op with
+                | Operator.Id -> (ctx', ctx'.allocations.[args.[0].Id]) |> Ok
+                | Operator.Not -> map_unary ctx' (args.[0], (fun i -> if i = 0 then 1 else 0))
+                | Operator.In items -> map_unary ctx' (args.[0], (fun i -> if items |> List.contains i then 1 else 0))
+                | Operator.And ->
+                    map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) && (y = 1) then 1 else 0))
+                | Operator.Or ->
+                    map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if (x = 1) || (y = 1) then 1 else 0))
+                | Operator.LessThanEquals ->
+                    map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x <= y then 1 else 0))
+                | Operator.GreaterThan -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x > y then 1 else 0))
+                | Operator.Eq -> map_binary ctx' (args.[0], args.[1], (fun (x, y) -> if x = y then 1 else 0))
+                | Operator.Add w ->
+                    let m = int (2.0 ** w)
+                    map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x + y) % m))
+                | Operator.Multiply w ->
+                    let m = int (2.0 ** w)
+                    map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x * y) % m))
+                | Operator.If ->
+                    map_ternary ctx' (args.[0], args.[1], args.[2], (fun (x, y, z) -> if x = 0 then z else y))
 
     and map_unary ctx (ket: KetValue, lambda: int -> int) =
         let arg = ctx.allocations.[ket.Id]
@@ -239,22 +240,23 @@ type Processor() =
 
     interface QPU with
         member this.Prepare(kets: KetValue list) =
-            let ctx = { allocations = Map.empty; state = QuantumState.empty }
+            let ctx =
+                { allocations = Map.empty
+                  state = QuantumState.empty }
 
             prepare_many ctx kets
-            ==> fun ctx' ->
-                Universe(ctx'.state, ctx'.allocations) :> IUniverse |> Ok
+            ==> fun ctx' -> Universe(ctx'.state, ctx'.allocations) :> IUniverse |> Ok
 
 
 module context =
     let prepare (kets: KetValue list) =
-        let ctx = { qpu = Processor()}
+        let ctx = { qpu = Processor() }
         prepare ctx kets
 
     let sample (kets: KetValue list) =
-        let ctx = { qpu = Processor()}
+        let ctx = { qpu = Processor() }
         sample ctx kets
 
     let sample_when (kets: KetValue list, filter: KetValue) =
-        let ctx = { qpu = Processor()}
+        let ctx = { qpu = Processor() }
         sample_when ctx (kets, filter)

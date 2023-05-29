@@ -59,15 +59,10 @@ type TestQPUQsharp() =
             [ 3; 1 ]
             [ 3; 2 ] ]
 
-          [ a; b.Where(Eq, 0) ],
-          [ [ 0; 0 ]
-            [ 1; 0 ]
-            [ 2; 0 ]
-            [ 3; 0 ] ]
+          [ a; b.Where(Eq, 0) ], [ [ 0; 0 ]; [ 1; 0 ]; [ 2; 0 ]; [ 3; 0 ] ]
 
 
-          [ a.Where(GreaterThan, 7); b ],
-          [  ]
+          [ a.Where(GreaterThan, 7); b ], []
 
           [ a; ket 1 ], [ [ 0; 0 ]; [ 0; 1 ]; [ 1; 0 ]; [ 1; 1 ]; [ 2; 0 ]; [ 2; 1 ]; [ 3; 0 ]; [ 3; 1 ] ]
 
@@ -121,27 +116,11 @@ type TestQPUQsharp() =
         let e = a.LessThanEquals(b).Or(b.LessThanEquals(1))
         let f = e.Not().Where(Eq, 1)
 
-        [ [ a; b; a.LessThanEquals(b) ], 
-          [ 
-            [ 0; 0; 1 ]
-            [ 0; 1; 1 ]
-            [ 0; 2; 1 ]
-            [ 0; 3; 1 ]
-            [ 1; 0; 0 ]
-            [ 1; 1; 1 ]
-            [ 1; 2; 1 ]
-            [ 1; 3; 1 ] ]
+        [ [ a; b; a.LessThanEquals(b) ],
+          [ [ 0; 0; 1 ]; [ 0; 1; 1 ]; [ 0; 2; 1 ]; [ 0; 3; 1 ]; [ 1; 0; 0 ]; [ 1; 1; 1 ]; [ 1; 2; 1 ]; [ 1; 3; 1 ] ]
 
           [ a; b; b.LessThanEquals(0) ],
-          [ 
-            [ 0; 0; 1 ]
-            [ 0; 1; 0 ]
-            [ 0; 2; 0 ]
-            [ 0; 3; 0 ]
-            [ 1; 0; 1 ]
-            [ 1; 1; 1 ]
-            [ 1; 2; 0 ]
-            [ 1; 3; 0 ] ]
+          [ [ 0; 0; 1 ]; [ 0; 1; 0 ]; [ 0; 2; 0 ]; [ 0; 3; 0 ]; [ 1; 0; 1 ]; [ 1; 1; 1 ]; [ 1; 2; 0 ]; [ 1; 3; 0 ] ]
 
 
           [ c ], [ [ 2 ]; [ 3 ] ]
@@ -287,35 +266,21 @@ type TestQPUQsharp() =
 
           [ b ], b.LessThanEquals(2) |> Some, [ [ 0 ]; [ 1 ]; [ 2 ] ]
 
-          [ a; b ], b.LessThanEquals(1) |> Some,
+          [ a; b ],
+          b.LessThanEquals(1) |> Some,
           [ [ 0; 0 ]; [ 0; 1 ]; [ 1; 0 ]; [ 1; 1 ]; [ 2; 0 ]; [ 2; 1 ]; [ 3; 0 ]; [ 3; 1 ] ]
 
-          [ a; b ], a.LessThanEquals(b) |> Some,
-          [ [ 0; 0 ]
-            [ 0; 1 ]
-            [ 0; 2 ]
-            [ 0; 3 ]
-            [ 1; 1 ]
-            [ 1; 2 ]
-            [ 1; 3 ]
-            [ 2; 2 ]
-            [ 2; 3 ]
-            [ 3; 3 ] ]
-
-          [ a; b ], a.LessThanEquals(b) |> Some,
+          [ a; b ],
+          a.LessThanEquals(b) |> Some,
           [ [ 0; 0 ]; [ 0; 1 ]; [ 0; 2 ]; [ 0; 3 ]; [ 1; 1 ]; [ 1; 2 ]; [ 1; 3 ]; [ 2; 2 ]; [ 2; 3 ]; [ 3; 3 ] ]
 
-          [ a; b ], a.GreaterThan(1) |> Some,
-          [ [ 2; 0 ]
-            [ 2; 1 ]
-            [ 2; 2 ]
-            [ 2; 3 ]
-            [ 3; 0 ]
-            [ 3; 1 ]
-            [ 3; 2 ]
-            [ 3; 3 ] ]
+          [ a; b ],
+          a.LessThanEquals(b) |> Some,
+          [ [ 0; 0 ]; [ 0; 1 ]; [ 0; 2 ]; [ 0; 3 ]; [ 1; 1 ]; [ 1; 2 ]; [ 1; 3 ]; [ 2; 2 ]; [ 2; 3 ]; [ 3; 3 ] ]
 
-          [ a; b ], a.GreaterThan(1).And(b.GreaterThan(a)) |> Some,
-          [ [ 2; 3 ] ]
-        ]
+          [ a; b ],
+          a.GreaterThan(1) |> Some,
+          [ [ 2; 0 ]; [ 2; 1 ]; [ 2; 2 ]; [ 2; 3 ]; [ 3; 0 ]; [ 3; 1 ]; [ 3; 2 ]; [ 3; 3 ] ]
+
+          [ a; b ], a.GreaterThan(1).And(b.GreaterThan(a)) |> Some, [ [ 2; 3 ] ] ]
         |> List.iter (AssertSampleWithFilter this.QPU)
