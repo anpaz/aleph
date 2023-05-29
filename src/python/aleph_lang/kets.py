@@ -211,17 +211,15 @@ def tree(ket):
     def label (node):
         return  '"' + str(node['id']) + ': ' + node['label'] + '"'
 
-    def print_one(node, src, indent):
-        space = " " * indent
+    def print_one(node, src):
         src = label(node)
 
         for d in node['dependencies']:
-            if indent > 0:
-                print("  " + src + " -> " + label(d))
-            print_one(d, src, indent + 2)
+            print("  " + src + " -> " + label(d))
+            print_one(d, src)
 
-    node = _get(aleph_baseurl + f"graph/{graph_id}/{ket.id}")
+    node = _get(aleph_baseurl + f"graph/{graph_id}/node/{ket.id}")
     node = json.loads(node)
     print ("digraph G {")
-    print_one(node, "", 0)
+    print_one(node, "")
     print ("}")

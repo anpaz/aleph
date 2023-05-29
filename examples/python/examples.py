@@ -1,7 +1,7 @@
 import logging
 logging.basicConfig(level=logging.INFO)
 
-from aleph_lang import KetInt, KetBool, sample, width_for, prepare, tree, histogram
+from aleph_lang import KetInt, KetBool, sample, width_for, tree, histogram
 
 # Randomly get a 0 or 1 value
 def coin_flip():
@@ -34,6 +34,8 @@ def solve_equation():
     x = KetInt()
     eq1 = x + 3
     eq2 = 2 * x
+
+    tree(eq1 == eq2)
 
     return sample([x, eq1, eq2], when=(eq1 == eq2))
 

@@ -150,7 +150,7 @@ public static class OperatorExtensions
             op.IsAdd ?
                 $"add_{((Operator.Add)op).width}" :
             op.IsMultiply ?
-                "multiply_{((Operator.Multiply) op).width}" :
+                $"multiply_{((Operator.Multiply) op).width}" :
             op.IsIn ?
                 "in:" + String.Join(',', ((Operator.In) op).values) :
             throw new NotImplementedException();
