@@ -44,7 +44,7 @@ jobs:
       - name: Set Python 3.9
         uses: actions/setup-python@v1
         with:
-          puthon-version: '3.9'
+          python-version: '3.9'
           include-prerelease: true
 
       - name: Install Python dependencies
@@ -59,7 +59,9 @@ jobs:
 
       - name: Install aleph locally
         working-directory: src/python
-        run: pip install -e .
+        run: |
+          pip install -e .
+          pip freeze
 
       - name: Test with pytest
         working-directory: src/python
