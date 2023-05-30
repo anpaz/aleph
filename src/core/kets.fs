@@ -128,7 +128,7 @@ module kets =
         member this.Add(k2: KetValue, width: int) = KetValue(Map(Add width, [ this; k2 ]))
 
         member this.Add(k2: KetValue) =
-            let w = Math.Max(this.Width, k2.Width)
+            let w = Math.Max(this.Width, k2.Width) + 1
             this.Add(k2, w)
 
         member this.Add(c: int) =

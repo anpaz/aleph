@@ -38,10 +38,10 @@ type TestSyntax() =
         let a = KetValue(Literal 2)
         let b = KetValue(Literal 3)
 
-        Assert.AreEqual(2, a.Add(0).Width)
-        Assert.AreEqual(2, a.Add(1).Width)
-        Assert.AreEqual(3, a.Add(b).Width)
-        Assert.AreEqual(4, a.Add(12).Width)
+        Assert.AreEqual(3, a.Add(0).Width)
+        Assert.AreEqual(3, a.Add(1).Width)
+        Assert.AreEqual(4, a.Add(b).Width)
+        Assert.AreEqual(5, a.Add(12).Width)
 
         Assert.AreEqual(5, a.Multiply(b).Width)
         Assert.AreEqual(6, a.Multiply(12).Width)

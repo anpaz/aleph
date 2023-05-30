@@ -118,7 +118,7 @@ class KetInt:
 
     def add(self, other, width=None):
         other = _make_quantum(other)
-        w = width if width else max(self.width, other.width)
+        w = width if width else max(self.width, other.width) + 1
         return KetInt(id=_get(aleph_baseurl + f"graph/{graph_id}/~map/add_{w}?left={self.id}&right={other.id}"),width=w)
 
     def __add__(self, other):

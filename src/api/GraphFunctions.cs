@@ -1,18 +1,9 @@
-using System.Net;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
-
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Linq;
+using Microsoft.FSharp.Collections;
 
 using static aleph.kets;
-
-using System.Diagnostics.Metrics;
-using System.Runtime.InteropServices;
-using Azure.Core;
-using Microsoft.FSharp.Collections;
 
 namespace aleph.server
 {
@@ -86,7 +77,7 @@ namespace aleph.server
             string graphId, int cond, int t, int f) => req.Run(_graphs, graphId, graph => 
         AddMapExpression(graph, Operator.If, new int[] { cond, t, f }));
 
-        [Function("MapRest")]
+        [Function("MapOther")]
         public HttpResponseData Map([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~map/{op}")] HttpRequestData req,
             string graphId, string op, int left, int right) => req.Run(_graphs, graphId, graph => 
         AddMapExpression(graph, OperatorExtensions.Parse(op), new int[] { left, right }));
