@@ -1,6 +1,6 @@
 {
   "recommendations": [
-g    "ms-dotnettools.csharp",
+    "ms-dotnettools.csharp",
     "davidanson.vscode-markdownlint",
     "quantum.quantum-devkit-vscode",
     "ionide.ionide-fsharp",

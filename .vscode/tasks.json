@@ -14,7 +14,8 @@
         "kind": "build",
         "isDefault": true
       }
-    },{
+    },
+    {
       "label": "test",
       "command": "dotnet",
       "type": "process",
@@ -24,7 +25,7 @@
       ],
       "problemMatcher": "$msCompile",
       "group": {
-        "kind": "te=st",
+        "kind": "test",
         "isDefault": true
       }
     }
