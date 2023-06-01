@@ -1,9 +1,9 @@
 {
-    "recommendations": [
-        "DavidAnson.vscode-markdownlint",
-        "ms-dotnettools.csharp",
-        "quantum.quantum-devkit-vscode",
-        "ionide.ionide-fsharp",
-        "ms-python.python"
-    ]
+  "recommendations": [
+g    "ms-dotnettools.csharp",
+    "davidanson.vscode-markdownlint",
+    "quantum.quantum-devkit-vscode",
+    "ionide.ionide-fsharp",
+    "ms-python.python"
+  ]
 }
