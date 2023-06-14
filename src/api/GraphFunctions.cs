@@ -18,7 +18,6 @@ namespace aleph.server
             _graphs = graphs;
         }
 
-
         [Function("Create")]
         public HttpResponseData Create([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/~create")] HttpRequestData req)
         {
@@ -27,7 +26,7 @@ namespace aleph.server
             _graphs.Add(id, g);
 
             _logger.LogInformation($"Created quantum graph: {id}");
-            
+
             return req.Ok(id);
         }
 
@@ -38,7 +37,7 @@ namespace aleph.server
         [Function("GetNode")]
         public HttpResponseData GetNode([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/node/{ketId}")] HttpRequestData req,
             string graphId, int ketId) => req.Run(_graphs, graphId, graph => new GraphNode(ketId, graph));
-        
+
         [Function("Literal")]
         public HttpResponseData Literal([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~literal")] HttpRequestData req,
             string graphId, int width) => req.Run(_graphs, graphId, graph => graph.Add(Expression.NewLiteral(width)));
@@ -64,22 +63,22 @@ namespace aleph.server
 
         [Function("MapNot")]
         public HttpResponseData MapNot([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~map/not")] HttpRequestData req,
-            string graphId, int id) => req.Run(_graphs, graphId, graph => 
+            string graphId, int id) => req.Run(_graphs, graphId, graph =>
         AddMapExpression(graph, Operator.Not, new int[] { id }));
-        
+
         [Function("MapId")]
         public HttpResponseData MapId([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~map/id")] HttpRequestData req,
-            string graphId, int id) => req.Run(_graphs, graphId, graph => 
+            string graphId, int id) => req.Run(_graphs, graphId, graph =>
         AddMapExpression(graph, Operator.Id, new int[] { id }));
 
         [Function("MapIf")]
         public HttpResponseData MapIf([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~map/if")] HttpRequestData req,
-            string graphId, int cond, int t, int f) => req.Run(_graphs, graphId, graph => 
+            string graphId, int cond, int t, int f) => req.Run(_graphs, graphId, graph =>
         AddMapExpression(graph, Operator.If, new int[] { cond, t, f }));
 
         [Function("MapOther")]
         public HttpResponseData Map([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~map/{op}")] HttpRequestData req,
-            string graphId, string op, int left, int right) => req.Run(_graphs, graphId, graph => 
+            string graphId, string op, int left, int right) => req.Run(_graphs, graphId, graph =>
         AddMapExpression(graph, OperatorExtensions.Parse(op), new int[] { left, right }));
 
         [Function("Sample")]
@@ -123,7 +122,7 @@ namespace aleph.server
                 throw new InvalidOperationException(result.ErrorValue);
             }
         });
-        
+
         [Function("Histogram")]
         public HttpResponseData Histogram([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~histogram")] HttpRequestData req,
             string graphId, string ids, int rounds, int filter) => req.Run(_graphs, graphId, graph =>
@@ -139,12 +138,13 @@ namespace aleph.server
             {
                 var histogram = result.ResultValue.Histogram(kets, rounds);
                 var map = new Dictionary<string, int>();
-                foreach (var item in histogram.ResultValue) {
+                foreach (var item in histogram.ResultValue)
+                {
                     var key = "[" + String.Join(',', item.Key.Select(key => key.ToString())) + "]";
                     var count = item.Value;
                     map.Add(key, count);
                 }
-                return  map;
+                return map;
             }
             else
             {
@@ -164,6 +164,5 @@ namespace aleph.server
             .Select(id => int.Parse(id))
             .Where(id => id > 0)
             .Select(k => graph[k]);
-
     }
 }
