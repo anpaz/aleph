@@ -4,15 +4,15 @@ import os
 
 version = os.environ.get('ALEPH_VERSION', '0.9.0')
 
-with open("../../README.md", "r") as fh:
+with open("./README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="aleph-lang",
     version=version,
-    author="Andres Paz",
+    author="Andrés Paz",
     author_email="anpaz@cs.washington.edu",
-    description="A programming model to develope large scale quantum hybrid applications.",
+    description="Python bindings for aleph, a high level programming model that can be embedded into classical languages to develop large scale quantum hybrid applications, without the quantum mechanics.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/anpaz/aleph",

@@ -24,10 +24,8 @@ public class QuantumGraph
     }
 }
 
-
 public class GraphNode
 {
-
     public GraphNode(int id, QuantumGraph graph)
     {
         var ket = graph[id];
