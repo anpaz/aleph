@@ -37,7 +37,7 @@ def solve_equation(a, b):
 
     tree(eq1 == eq2)
 
-    return sample([x, eq1, eq2], when=(eq1 == eq2))
+    return sample(x, when=(eq1 == eq2))
 
 # Solve a graph coloring problem, for the given number of nodes and list of edges.
 def graph_coloring(max_colors, nodes_count, edges):
