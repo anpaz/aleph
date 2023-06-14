@@ -10,7 +10,7 @@ def coin_flip():
 
 # Get a random number
 def random_number():
-    random = KetInt()
+    random = KetInt(width=10)
     return sample(random)
 
 # Roll to dices and return the sum
@@ -18,22 +18,22 @@ def dice_roll():
     dice1 = KetInt().where_in(range(1,7))
     dice2 = KetInt().where_in(range(1,7))
 
-    roll = dice1.add(dice2, width=4)
+    roll = dice1 + dice2
     return sample([dice1, dice2, roll])
 
-# Roll to dices and return the sum
+# Roll to dices and return the histogram of the sum of their outcomes.
 def dice_roll_histogram():
     dice1 = KetInt().where_in(range(1,7))
     dice2 = KetInt().where_in(range(1,7))
 
-    roll = dice1.add(dice2, width=4)
+    roll = dice1 + dice2
     return histogram([roll], rounds=1000)
 
-# Solve x + 3 == 2x 
-def solve_equation():
+# Solve x + a == bx 
+def solve_equation(a, b):
     x = KetInt()
-    eq1 = x + 3
-    eq2 = 2 * x
+    eq1 = x + a
+    eq2 = b * x
 
     tree(eq1 == eq2)
 
@@ -70,7 +70,7 @@ print("coin flip:", coin_flip())
 print("random number:", random_number())
 print("dice roll:", dice_roll())
 print("dice roll histogram: ", dice_roll_histogram())
-print("solve x + 3 == 2 * x", solve_equation())
+print("solve x + 3 == 2 * x", solve_equation(3, 2))
 
 max_colors = 3
 total_nodes = 4

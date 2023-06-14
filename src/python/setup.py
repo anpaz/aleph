@@ -2,7 +2,7 @@
 import setuptools
 import os
 
-version = os.environ.get('ALEPH_VERSION', '0.0.0.1')
+version = os.environ.get('ALEPH_VERSION', '0.9.0')
 
 with open("../../README.md", "r") as fh:
     long_description = fh.read()

@@ -7,8 +7,8 @@ import os
 import logging
 logger = logging.getLogger("aleph")
 
+aleph_baseurl = os.environ.get("ALEPH_BASE_URL", "https://python.aleph-lang.net/")
 # aleph_baseurl = "http://localhost:7071/"
-aleph_baseurl = os.environ.get("ALEPH_BASE_URL", "https://aleph-01.azurewebsites.net/")
 
 session = requests.Session()
 
