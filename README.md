@@ -6,7 +6,7 @@ It leverages quantum programming principles like *superposition*, *entanglement*
 
 ## Getting started
 
-`aleph` is available as a package for both, [F# - aleph.lang](https://www.nuget.org/packages/aleph.lang) and [Python - aleph-lang](https://pypi.org/manage/project/aleph-lang/releases/). Take a look at the documentation of the corresponding packages to get started in that language.
+`aleph` is available as a package for both, [F# - aleph.lang](https://www.nuget.org/packages/aleph.lang) and [Python - aleph-lang](https://pypi.org/project/aleph-lang/). Take a look at the documentation of the corresponding packages to get started in that language.
 
 ## Building from source
 
