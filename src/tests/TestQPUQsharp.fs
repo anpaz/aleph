@@ -77,7 +77,7 @@ type TestQPUQsharp() =
         let c =
             KetValue(Literal 2)
                 .Multiply(3)
-                .Where(LessThanEquals, KetValue(Constant 3))
+                .Where(LessThanEquals, KetValue(Constant 6))
                 .Add(b, width = 4)
 
         let d =
@@ -94,11 +94,11 @@ type TestQPUQsharp() =
 
           [ a; b; KetValue(Map(Add(2), [ a; b ])).Where(GreaterThan, 1) ], [ [ 1; 1; 2 ] ]
 
-          [ b; c ], [ [ 0; 0 ]; [ 0; 3 ]; [ 1; 3 ]; [ 1; 4 ] ]
+          [ b; c ], [ [ 0; 0 ]; [ 0; 3 ]; [ 0; 6 ]; [ 1; 1 ]; [ 1; 4 ]; [ 1; 7 ] ]
 
           [ b; d ], [ [ 0; 3 ]; [ 0; 6 ]; [ 0; 9 ]; [ 1; 1 ]; [ 1; 4 ]; [ 1; 7 ]; [ 1; 10 ] ]
 
-          [ e ], [ [ 0 ]; [ 1 ]; [ 3 ]; [ 4 ]; [ 2 ] ] ]
+          [ e ], [ [ 0 ]; [ 3 ]; [ 6 ]; [ 1 ]; [ 4 ]; [ 7 ] ] ]
         |> List.iter (AssertSample this.QPU)
 
 
