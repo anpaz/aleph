@@ -37,8 +37,7 @@ The Python bindings require an API server to keep track of the quantum graph and
 1. Update package versions in:
       * **.NET**: [Common.props](./Common.props)
       * **Python**: [python/setup.py](./python/setup.py)
-
-2. Merge changes into main. Build from main.
+   Main should always have a beta version. To build a release version use a release branch and build from there.
 
 3. Build .NET packages:
    ```bash
