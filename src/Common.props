@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Version>0.9.0</Version>
+    <Authors>apaz</Authors>
+    <Company>aleph-lang.net</Company>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/anpaz/aleph</PackageProjectUrl>
+  </PropertyGroup>
+</Project>

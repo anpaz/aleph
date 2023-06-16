@@ -1,7 +1,6 @@
 module Examples
 
 open aleph.kets
-open aleph.utils
 open context
 
 // Randomly get a 0 or 1 value
@@ -19,31 +18,31 @@ let dice_roll() =
     let dice1 = (ket 3).Where(In [1..6])
     let dice2 = (ket 3).Where(In [1..6])
 
-    let roll = dice1.Add(dice2, width=4)
+    let roll = dice1.Add(dice2)
     sample [ dice1; dice2; roll ]
     
 
-// Roll to dices and return the sum
+// Roll to dices and return the histogram of the sum
 let dice_roll_histogram() =
     let dice1 = (ket 3).Where(In [1..6])
     let dice2 = (ket 3).Where(In [1..6])
 
-    let roll = dice1.Add(dice2, width=4)
+    let roll = dice1.Add(dice2)
     histogram [ roll ]
 
 // Solve x + 3 == 2x 
-let solve_equation() =
+let solve_equation(a: int, b: int) =
     let x = ket 3
-    let eq1 = x.Add(3)
-    let eq2 = x.Multiply(2)
+    let eq1 = x.Add(a)
+    let eq2 = x.Multiply(b)
     
     sample_when ([x; eq1; eq2], eq1.Equals(eq2))
 
 // Solve a graph coloring problem, for the given number of nodes and list of edges.
 let solve_graph_coloring (max_colors: int) (nodes_count: int) (edges: (int * int) list)  =
     let create_node _ = 
-        let w = int_width (max_colors - 1)
-        KetValue(Literal (width=w)).Where(LessThanEquals, max_colors - 1)
+        let w = aleph.utils.int_width (max_colors - 1)
+        (ket w).Where(LessThanEquals, max_colors - 1)
 
     let compare_all_edges (edges: (KetValue * KetValue) list) =
         let isValid (edge: KetValue * KetValue) =
