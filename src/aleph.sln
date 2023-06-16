@@ -5,9 +5,7 @@ VisualStudioVersion = 17.5.33530.505
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "aleph.qsharp", "qsharp\aleph.qsharp.csproj", "{25CE3C8B-4A84-4ED0-A558-654F978B52A5}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "aleph.backends", "backends\aleph.backends.fsproj", "{6CBDE911-8951-45CF-955D-2380B11F5388}"
-EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "aleph.core", "core\aleph.core.fsproj", "{126B8351-F5E5-4EA2-A57E-242B131E2BD8}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "aleph.lang", "lang\aleph.lang.fsproj", "{6CBDE911-8951-45CF-955D-2380B11F5388}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "tests", "tests\tests.fsproj", "{5E5B8DDE-AB69-47EA-8B48-A3791809D486}"
 EndProject
@@ -31,10 +29,6 @@ Global
 		{6CBDE911-8951-45CF-955D-2380B11F5388}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6CBDE911-8951-45CF-955D-2380B11F5388}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6CBDE911-8951-45CF-955D-2380B11F5388}.Release|Any CPU.Build.0 = Release|Any CPU
-		{126B8351-F5E5-4EA2-A57E-242B131E2BD8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{126B8351-F5E5-4EA2-A57E-242B131E2BD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{126B8351-F5E5-4EA2-A57E-242B131E2BD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{126B8351-F5E5-4EA2-A57E-242B131E2BD8}.Release|Any CPU.Build.0 = Release|Any CPU
 		{5E5B8DDE-AB69-47EA-8B48-A3791809D486}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5E5B8DDE-AB69-47EA-8B48-A3791809D486}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5E5B8DDE-AB69-47EA-8B48-A3791809D486}.Release|Any CPU.ActiveCfg = Release|Any CPU

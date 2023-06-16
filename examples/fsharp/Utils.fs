@@ -9,7 +9,7 @@ let wrapup code =
     code
 
 let simulate program =
-    let result = program()
+    let result = program ()
     printfn "result: %A" result
 
 // let estimate program =

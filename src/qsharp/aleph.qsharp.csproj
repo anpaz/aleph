@@ -1,7 +1,11 @@
 <Project Sdk="Microsoft.Quantum.Sdk/0.25.228311">
+  <Import Project="../Common.props" />
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
+    <Description>
+      This package provides the libraries implementing an aleph backend in Q#.
+    </Description>
   </PropertyGroup>
 
   <ItemGroup>

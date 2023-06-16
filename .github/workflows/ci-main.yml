@@ -7,9 +7,11 @@ on:
   push:
     branches:
       - main
+      - release/*
   pull_request:
     branches: 
       - main
+      - release/*
   workflow_dispatch:
 
 jobs:
@@ -33,13 +35,16 @@ jobs:
           echo
           echo "If fantomas fails, run fantomas without '--check' locally and commit the changes..."
           echo 
-          fantomas --check src/core/ src/backends/ src/tests/
+          fantomas src/lang src/tests/ examples/fsharp 
 
       - name: Build with dotnet
         run: dotnet build src/aleph.sln
 
       - name: Test projects
         run: dotnet test src/aleph.sln
+
+      - name: Pack projects
+        run: dotnet pack src/aleph.sln -c Release -o bin
 
       - name: Run examples
         working-directory: examples/fsharp
