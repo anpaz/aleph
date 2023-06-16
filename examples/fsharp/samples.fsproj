@@ -3,6 +3,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net6</TargetFramework>
     <PlatformTarget>x64</PlatformTarget>
+    <IsPackable>false</IsPackable>
     <RootNamespace>graph_coloring</RootNamespace>
     <WarnOn>3390;$(WarnOn)</WarnOn>
   </PropertyGroup>

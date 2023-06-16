@@ -1,9 +1,9 @@
 module context
 
-open aleph.utils
 open aleph.kets
-open aleph.qpu.qsharp.context
 open aleph.qpu.classic.context
+// Change to qsharp context, by uncommenting this line:
+//open aleph.qpu.qsharp.context
 
 let sample (kets: KetValue list) =
     sample kets

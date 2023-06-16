@@ -6,6 +6,7 @@
     <OutputType>Exe</OutputType>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
     <!-- Pass these during publish:
     func azure functionapp publish aleph-01  - -dotnet-cli-params " -r win-x64 /p:PublishReadyToRun=true"
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>

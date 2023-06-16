@@ -16,7 +16,7 @@ dotnet add package aleph.lang
 
 ## Programming Model
 
-Expressions normally take a single value, for example here  variable $x$ takes value 1:
+Expressions normally take a single value, for example here  variable *x* takes value 1:
 
 ```fsharp
 let x = 1
@@ -27,8 +27,8 @@ let x = 1
 To construct a Ket in F#, use `ket` from the `aleph.kets` module passing the width as argument. `width` controls the number of qubits of the register.
 
 To read a value from a Ket it must be sampled. `aleph` currently provides two different backends to evaluate Kets:
-    * **qsharp**: to evaluate `aleph` Kets using Q#'s quantum simulator
-    * **classic**: to evaluate `aleph` Kets using in-memory classic semantics
+    - **qsharp**: to evaluate `aleph` Kets using Q#'s quantum simulator
+    - **classic**: to evaluate `aleph` Kets using in-memory classic semantics
 
 Select the context you want to program to run to import the corresponding `sample` function:
 
@@ -66,7 +66,7 @@ let dice2 = (ket 3).Where(In [1..6])
 
 let roll = dice1.Add(dice2)
 printfn "%A" (sample [ dice1; dice2; roll ])
-#prints [0,0,0] or [0,1,1] or [0,2,2] or ... [6,6,12]
+// prints [0,0,0] or [0,1,1] or [0,2,2] or ... [6,6,12]
 ```
 
 You can also filter the set of elements `sample` by using the `sample_when` function; it will return only elements from the Universe that satisfy the given expression:
