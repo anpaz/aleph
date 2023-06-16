@@ -29,7 +29,6 @@
     <Using Include="System.Threading.ExecutionContext" Alias="ExecutionContext" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\backends\aleph.backends.fsproj" />
-    <ProjectReference Include="..\core\aleph.core.fsproj" />
+    <ProjectReference Include="..\lang\aleph.lang.fsproj" />
   </ItemGroup>
 </Project>

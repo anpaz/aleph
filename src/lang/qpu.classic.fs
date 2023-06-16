@@ -262,12 +262,24 @@ type Processor() =
 module context =
     let prepare (kets: KetValue list) =
         let ctx = { qpu = Processor() }
-        prepare ctx kets
+        match prepare ctx kets  with
+        | Ok universe -> universe
+        | Error err -> failwith err
 
     let sample (kets: KetValue list) =
         let ctx = { qpu = Processor() }
-        sample ctx kets
+        match sample ctx kets with
+        | Ok values -> values
+        | Error err -> failwith err
 
     let sample_when (kets: KetValue list, filter: KetValue) =
         let ctx = { qpu = Processor() }
-        sample_when ctx (kets, filter)
+        match sample_when ctx (kets, filter) with
+        | Ok values -> values
+        | Error err -> failwith err
+
+    let histogram (kets: KetValue list, rounds: int) =
+        let u = prepare kets
+        match  u.Histogram(kets, rounds) with
+        | Ok values -> values
+        | Error err -> failwith err

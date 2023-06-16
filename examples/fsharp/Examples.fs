@@ -28,13 +28,13 @@ let dice_roll_histogram() =
     let dice2 = (ket 3).Where(In [1..6])
 
     let roll = dice1.Add(dice2)
-    histogram [ roll ]
+    histogram ([ roll ], 1000)
 
 // Solve x + 3 == 2x 
-let solve_equation(a: int, b: int) =
+let solve_equation() =
     let x = ket 3
-    let eq1 = x.Add(a)
-    let eq2 = x.Multiply(b)
+    let eq1 = x.Add(3)
+    let eq2 = x.Multiply(2)
     
     sample_when ([x; eq1; eq2], eq1.Equals(eq2))
 
