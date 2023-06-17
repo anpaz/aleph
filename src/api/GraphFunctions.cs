@@ -18,6 +18,10 @@ namespace aleph.server
             _graphs = graphs;
         }
 
+        [Function("Version")]
+        public HttpResponseData Version([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "/")] HttpRequestData req) =>
+            req.Ok(aleph.utils.signature);
+
         [Function("Create")]
         public HttpResponseData Create([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/~create")] HttpRequestData req)
         {

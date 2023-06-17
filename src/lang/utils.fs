@@ -1,5 +1,7 @@
 namespace aleph
 
+open System.Reflection
+
 module utils =
     open System
 
@@ -15,3 +17,6 @@ module utils =
         match i with
         | 0 -> 1
         | _ -> Math.Ceiling(Math.Log(i + 1 |> float, 2)) |> int
+
+    let signature =
+        sprintf ":ℵ-%s:"  (Assembly.GetExecutingAssembly().GetName().Version.ToString())
