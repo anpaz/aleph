@@ -48,6 +48,15 @@ Functions:
 
 Once the server has started set the `ALEPH_BASE_URL` environment variable to point your API requests to this instance:
 
-```
+```bash
 export ALEPH_BASE_URL=http://localhost:7071/
+```
+
+
+## Deployment
+
+Using Azure Functions CLI tools:
+
+```bash
+func azure functionapp publish aleph-01  --slot ci  --dotnet-cli-params " -r win-x64 /p:PublishReadyToRun=true" 
 ```
