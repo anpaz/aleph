@@ -9,6 +9,8 @@ on:
     branches: 
       - main
       - release/*
+  schedule:
+      - cron: '0 3 * * 0'  # every Sunday at 3 am.
   workflow_dispatch:
 
 jobs:
