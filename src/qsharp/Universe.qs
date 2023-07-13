@@ -22,20 +22,20 @@ namespace aleph.qsharp.universe {
     }
 
     function AddLiteral(size: Int, universe: Universe) : (Register, Universe) {
-        return _addRegister(Literal, size, universe);
+        return _addRegister(NewLiteral, size, universe);
     }
 
     function AddExpressionOutput(size: Int, universe: Universe) : (Register, Universe) {
-        return _addRegister(Expression, size, universe);
+        return _addRegister(NewOutput, size, universe);
     }
 
-    function _addRegister(ctr: Range -> Register, size: Int, old: Universe) : (Register, Universe) {
+    function _addRegister(ctr: (Int, Int) -> Register, size: Int, old: Universe) : (Register, Universe) {
         let (cols, regs, _, _) = old!;
 
         let start = cols;
         let end = start + size - 1;
 
-        let output = ctr(start..end);
+        let output = ctr(start, end);
         let universe = old
                 w/ width <- cols + size
                 w/ registers <- regs + [output];

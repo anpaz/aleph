@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net6</TargetFramework>
@@ -10,6 +10,7 @@
   <ItemGroup>
     <Compile Include="Utils.fs" />
     <Compile Include="Context.fs" />
+    <Compile Include="RandomWalk.fs" />
     <Compile Include="Examples.fs" />
     <Compile Include="Sandbox.fs" />
     <Compile Include="Program.fs" />

@@ -7,12 +7,12 @@ namespace aleph.qsharp.register {
         type: Int
     );
 
-    function Literal(idx: Range) : Register {
-        return Register(idx, 0);
+    function NewLiteral(start: Int, end: Int) : Register {
+        return Register(start..end, 0);
     }
 
-    function Expression(idx: Range) : Register {
-        return Register(idx, 1);
+    function NewOutput(start:Int, end: Int) : Register {
+        return Register(start..end, 1);
     }
 
     function IsLiteral(r: Register) : Bool {
@@ -20,7 +20,7 @@ namespace aleph.qsharp.register {
         return type == 0;
     }
 
-    function IsExpression(r: Register) : Bool {
+    function IsOutput(r: Register) : Bool {
         let (_, type) = r!;
         return type == 1;
     }
