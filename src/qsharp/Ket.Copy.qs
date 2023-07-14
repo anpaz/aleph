@@ -8,10 +8,10 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.universe as u;
     open aleph.qsharp.log as log;
 
-    function Copy(source: r.Register, target: r.Register) : Qubit[] => Unit is Adj + Ctl
+    function Copy(source: r.Register, target: r.Register) : Operator
     {
         log.Info($"Ket.Copy::Init --> source: {source}; target: {target}");
-        return _Copy_eval(source, target, _);
+        return Operator(_Copy_eval(source, target, _));
     }
 
     operation _Copy_eval(

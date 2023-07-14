@@ -8,10 +8,13 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.universe as u;
     open aleph.qsharp.log as log;
 
-    function Add(left: r.Register, right: r.Register, output: r.Register) : (Qubit[] => Unit is Adj + Ctl)
+    newtype Oracle = (Qubit[], Qubit) => Unit is Adj + Ctl;
+    newtype Operator = Qubit[] => Unit is Adj + Ctl;
+
+    function Add(left: r.Register, right: r.Register, output: r.Register) : Operator
     {
         log.Info($"Ket.Add::Init --> left: {left}; right: {right}; output: {output}");
-        return _Add_eval(left, right, output, _);
+        return Operator(_Add_eval(left, right, output, _));
     }
 
     operation _Add_eval(

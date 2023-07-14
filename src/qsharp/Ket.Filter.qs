@@ -9,10 +9,10 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.register as r;
     open aleph.qsharp.log as log;
 
-    function Filter(c: r.Register) : (Qubit[], Qubit) => Unit is Adj + Ctl
+    function Filter(c: r.Register) : Oracle
     {
         log.Info($"Ket.Filter::Init --> cond: {r.GetRange(c)}");
-        return _Filter_oracle(c, _, _);
+        return Oracle(_Filter_oracle(c, _, _));
     }
 
     operation _Filter_oracle(

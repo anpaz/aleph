@@ -8,29 +8,28 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.universe as u;
     open aleph.qsharp.log as log;
 
-    function If(cond: r.Register, onTrue: Qubit[] => Unit is Adj + Ctl, 
-        onFalse: Qubit[] => Unit is Adj + Ctl) : Qubit[] => Unit is Adj + Ctl
+    function If(cond: r.Register, onTrue: Operator, onFalse: Operator) : Operator
     {
         log.Info($"Ket.If::Init --> cond: {cond}; onTrue: {onTrue}; onFalse: {onFalse}");
-        return _If_eval(cond, onTrue, onFalse, _);
+        return Operator(_If_eval(cond, onTrue, onFalse, _));
     }
 
     operation _If_eval(
         c: r.Register,
-        t: Qubit[] => Unit is Adj + Ctl,
-        e: Qubit[] => Unit is Adj + Ctl,
+        t: Operator,
+        e: Operator,
         all: Qubit[]) : Unit
     is Adj + Ctl {
         log.Debug($"Ket.If::eval");
         
         let cond_q = all[r.GetRange(c)];
 
-        Controlled t (cond_q, all);
+        Controlled t! (cond_q, all);
 
         // Negate condition
         ApplyToEachCA(X, cond_q);
 
-        Controlled e (cond_q, all);
+        Controlled e! (cond_q, all);
 
         // Undo condition:
         ApplyToEachCA(X, cond_q);

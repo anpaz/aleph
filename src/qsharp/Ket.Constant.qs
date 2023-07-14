@@ -9,10 +9,10 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.universe as u;
     open aleph.qsharp.value as v;
 
-    function Constant(value: v.Value, output: r.Register) : (Qubit[] => Unit is Adj + Ctl)
+    function Constant(value: v.Value, output: r.Register) : Operator
     {
         log.Info($"Ket.Constant::Init --> value: {value}; output: {output}");
-        return _Constant_eval(value, output, _);
+        return Operator(_Constant_eval(value, output, _));
     }
 
     operation _Constant_eval(

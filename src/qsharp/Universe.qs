@@ -1,31 +1,32 @@
 namespace aleph.qsharp.universe {
 
     open aleph.qsharp.register;
+    open aleph.qsharp.ket;
 
     newtype Universe = (
         width: Int,
         registers: Register[],
-        expressions: (Qubit[] => Unit is Adj + Ctl)[],
-        oracles: ((Qubit[], Qubit) => Unit is Adj + Ctl)[]
+        operators: Operator[],
+        oracles: Oracle[]
     );
 
-    function AddOracle(o: (Qubit[], Qubit) => Unit is Adj + Ctl, universe: Universe) : Universe {
+    function AddOracle(o: Oracle, universe: Universe) : Universe {
         let (_,_,_,orcls) = universe!;
         return universe
             w/ oracles <- orcls + [o];
     }
 
-    function AddExpression(e: Qubit[] => Unit is Adj + Ctl, universe: Universe) : Universe {
-        let (_,_,exprs,_) = universe!;
+    function AddOperator(e: Operator, universe: Universe) : Universe {
+        let (_,_,ops,_) = universe!;
         return universe
-            w/ expressions <- exprs + [e];
+            w/ operators <- ops + [e];
     }
 
     function AddLiteral(size: Int, universe: Universe) : (Register, Universe) {
         return _addRegister(NewLiteral, size, universe);
     }
 
-    function AddExpressionOutput(size: Int, universe: Universe) : (Register, Universe) {
+    function AddOutput(size: Int, universe: Universe) : (Register, Universe) {
         return _addRegister(NewOutput, size, universe);
     }
 
@@ -53,12 +54,12 @@ namespace aleph.qsharp.universe {
         return registers;
     }
     
-    function GetExpressions(universe: Universe) : (Qubit[] => Unit is Adj + Ctl)[] {
+    function GetOperators(universe: Universe) : Operator[] {
         let (_,_,exprs,_) = universe!;
         return exprs;
     }
 
-    function GetOracles(universe: Universe) : ((Qubit[], Qubit) => Unit is Adj + Ctl)[] {
+    function GetOracles(universe: Universe) : Oracle[] {
         let (_,_,_,oracles) = universe!;
         return oracles;
     }

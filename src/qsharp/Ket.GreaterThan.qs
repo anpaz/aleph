@@ -8,14 +8,10 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.universe as u;
     open aleph.qsharp.log as log;
 
-    function GreaterThan(left: r.Register, right: r.Register, old: u.Universe) : (u.Universe, r.Register[])
+    function GreaterThan(left: r.Register, right: r.Register, output: r.Register) : Operator
     {
-        let (output, u) = u.AddExpressionOutput(1, old);
-        let expr = _GreaterThan_eval(left, right, output, _);
-        let universe = u.AddExpression(expr, u);
-
         log.Info($"Ket.GreaterThan::Init --> left: {left}; right: {right}; output: {output}");
-        return (universe, [output]);
+        return Operator(_GreaterThan_eval(left, right, output, _));
     }
 
     operation _GreaterThan_eval(

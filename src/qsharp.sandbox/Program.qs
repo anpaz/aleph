@@ -41,26 +41,29 @@
         let m2 = append(ket.LessThanEqual(r3, r2, r4), m1);
 
         // where y <= 1
-        let o1 = append(ket.Filter(r4), o0);
+        //let o1 = append(ket.Filter(r4), o0);
 
-        // 5
+        // 3
         let (r5, n5) = output(n4, 3);
-        let m3 = append(ket.Constant(Value(5, 3), r5), m2);
+        let m3 = append(ket.Constant(Value(3, 3), r5), m2);
 
-        // x < 5
+        // x <= 3
         let (r6, n6) = output(n5, 1);
-        let m4 = append(ket.LessThanEqual(r1, r3, r6), m3);
+        let m4 = append(ket.LessThanEqual(r1, r5, r6), m3);
 
-        // if x < 5 then x else x + y
+        // if x <= 2 then x else x + y
         let (r7, n7) = output(n6, 4);
         let m5 = append(ket.If(r6, ket.Copy(r1, r7), ket.Add(r1, r3, r7)), m4);
 
 
-        let u = Universe(n7, [r1, r2, r3, r4, r5, r6, r7], m5, o1);
-        Print(u);
-        let final = Sample(u, [r1, r3, r7]);
+        let u = Universe(n7, [r1, r2, r3, r4, r5, r6, r7], m5, o0);
+        
+        //Print(u);
+        for i in 1..15 {
+            let final = Sample(u, [r1, r3, r7]);
+            Message($"result: {final}");
+        }
 
-        Message($"result: {final}");
     }
 }
 
