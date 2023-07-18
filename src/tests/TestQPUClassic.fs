@@ -24,7 +24,7 @@ type TestQPUClassic() =
         let a = ket 2
         let b = ket 2
 
-        [ [ KetValue(Literal 1) ], [ [ 0 ]; [ 1 ] ]
+        [ [ ket 1 ], [ [ 0 ]; [ 1 ] ]
 
           [ a ], [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ]
 
@@ -67,33 +67,25 @@ type TestQPUClassic() =
 
           [ a; ket 1 ], [ [ 0; 0 ]; [ 0; 1 ]; [ 1; 0 ]; [ 1; 1 ]; [ 2; 0 ]; [ 2; 1 ]; [ 3; 0 ]; [ 3; 1 ] ]
 
-          [ ket 1; KetValue(Constant 4) ], [ [ 0; 4 ]; [ 1; 4 ] ] ]
+          [ ket 1; constant 4 ], [ [ 0; 4 ]; [ 1; 4 ] ] ]
         |> List.iter (this.TestExpression)
 
     [<TestMethod>]
     member this.TestAddMultiply() =
-        let a = KetValue(Literal 1)
-        let b = KetValue(Literal 1)
+        let a = ket 1
+        let b = ket 1
 
-        let c =
-            KetValue(Literal 2)
-                .Multiply(3)
-                .Where(LessThanEquals, KetValue(Constant 3))
-                .Add(b, width = 4)
+        let c = (ket 2).Multiply(3).Where(LessThanEquals, constant 3).Add(b, width = 4)
 
-        let d =
-            KetValue(Literal 2)
-                .Multiply(3, width = 3)
-                .Add(b)
-                .Where(GreaterThan, KetValue(Constant 0))
+        let d = (ket 2).Multiply(3, width = 3).Add(b).Where(GreaterThan, constant 0)
 
         let e = c.Add(a.Where(Not))
 
-        [ [ KetValue(Map(Add(1), [ a; b ])) ], [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ]
+        [ [ map (Add 1) [ a; b ] ], [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ]
 
           [ a.Add(b) ], [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 2 ] ]
 
-          [ KetValue(Map(Add(2), [ a; b ])) ], [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 2 ] ]
+          [ map (Add 2) [ a; b ] ], [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 2 ] ]
 
           [ c ], [ [ 0; 3; 0; 3; 1; 0; 0 ]; [ 0; 3; 0; 3; 1; 1; 1 ]; [ 1; 3; 3; 3; 1; 0; 3 ]; [ 1; 3; 3; 3; 1; 1; 4 ] ]
 
@@ -116,8 +108,8 @@ type TestQPUClassic() =
 
     [<TestMethod>]
     member this.TestBoolean() =
-        let a = KetValue(Literal 1)
-        let b = KetValue(Literal 1)
+        let a = ket 1
+        let b = ket 1
         let c = a.Add(b, width = 2).Where(LessThanEquals, 1)
 
         // TODO: The compiler should know that
@@ -145,7 +137,7 @@ type TestQPUClassic() =
 
     [<TestMethod>]
     member this.TestIn() =
-        let a = KetValue(Literal 2)
+        let a = ket 2
 
         [ [ a.In [ 0; 2 ] ], [ [ 0; 1 ]; [ 1; 0 ]; [ 2; 1 ]; [ 3; 0 ] ]
 
@@ -153,14 +145,14 @@ type TestQPUClassic() =
 
           [ a; a.Where(In []); a.In [ 1; 2; 3; 4 ] ], [ [ -1; -1; 0 ] ]
 
-          [ a; a.Where(In []); KetValue(Literal 2).In [ 1; 3 ] ],
+          [ a; a.Where(In []); (ket 2).In [ 1; 3 ] ],
           [ [ -1; -1; 0; 0 ]; [ -1; -1; 1; 1 ]; [ -1; -1; 2; 0 ]; [ -1; -1; 3; 1 ] ] ]
         |> List.iter (this.TestExpression)
 
 
     [<TestMethod>]
     member this.TestId() =
-        let a = KetValue(Literal 2)
+        let a = ket 2
 
         [ [ a.Where(Id) ], [ [ 1 ]; [ 2 ]; [ 3 ] ]
 
@@ -170,7 +162,7 @@ type TestQPUClassic() =
 
     [<TestMethod>]
     member this.TestChoose() =
-        let a = KetValue(Literal 2)
+        let a = ket 2
         let b = a.Add(4, width = 3)
 
         let c = a.In([ 1; 2 ]).Choose(a, b)
@@ -250,8 +242,8 @@ type TestQPUClassic() =
 
     [<TestMethod>]
     member this.TestSample() =
-        let a = KetValue(Literal 2)
-        let b = KetValue(Literal 2)
+        let a = ket 2
+        let b = ket 2
         let c = a.Add(b).Where(LessThanEquals, 1)
 
         // TODO: The compiler should know that
@@ -345,8 +337,8 @@ type TestQPUClassic() =
 
     [<TestMethod>]
     member this.TestSampleWhen() =
-        let a = KetValue(Literal 2)
-        let b = KetValue(Literal 2)
+        let a = ket 2
+        let b = ket 2
 
         [ [ a ], None, [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ]
 

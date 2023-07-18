@@ -65,10 +65,10 @@ type Processor(sim: IOperationFactory) =
         | Some _ -> ctx |> Ok // Already prepared...
         | None ->
             match ket.Expression with
-            | Expression.Literal width -> prepare_literal ctx width
-            | Expression.Constant value -> prepare_constant ctx value
-            | Expression.Map(op, args) -> prepare_map ctx (op, args)
-            | Expression.Where(target, op, args) -> prepare_where ctx (target, op, args)
+            | KetExpression.Literal width -> prepare_literal ctx width
+            | KetExpression.Constant value -> prepare_constant ctx value
+            | KetExpression.Map(op, args) -> prepare_map ctx (op, args)
+            | KetExpression.Where(target, op, args) -> prepare_where ctx (target, op, args)
             ==> fun (ctx', register) ->
                 { ctx' with
                     allocations = ctx'.allocations.Add(ket.Id, register) }
@@ -137,6 +137,7 @@ type Processor(sim: IOperationFactory) =
 
     and qsharp_result ctx value =
         let struct (u, r) = value
+        //aleph.qsharp.universe.AddExpression.Run(sim, u)
         let r = r |> Seq.head
         ({ ctx with state = u }, r) |> Ok
 
@@ -169,14 +170,14 @@ module context =
         | Ok values -> values
         | Error err -> failwith err
 
-    let sample_when (kets: KetValue list, filter: KetValue) =
+    let sample_when (kets: KetValue list) (filter: KetValue) =
         let ctx = { qpu = Processor(simulator) }
 
-        match sample_when ctx (kets, filter) with
+        match sample_when ctx kets filter with
         | Ok values -> values
         | Error err -> failwith err
 
-    let histogram (kets: KetValue list, rounds: int) =
+    let histogram (kets: KetValue list) (rounds: int) =
         let u = prepare kets
 
         match u.Histogram(kets, rounds) with

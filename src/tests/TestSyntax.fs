@@ -12,8 +12,8 @@ type TestSyntax() =
         let plus = (Add 4)
         let times = (Multiply 8)
 
-        let a = KetValue(Literal 3)
-        let b = KetValue(Literal 3)
+        let a = ket 3
+        let b = ket 3
 
         Assert.AreEqual(a, a)
         Assert.AreSame(a, a)
@@ -21,22 +21,39 @@ type TestSyntax() =
         Assert.AreNotSame(a, b)
         Assert.AreNotEqual(a, b)
 
-        let iszero = KetValue(Map(Not, [ a ]))
-        let equals = KetValue(Map(Eq, [ a; iszero ]))
-        let add = KetValue(Map(plus, [ a; b ]))
-        let addi = KetValue(Map(times, [ a; KetValue(Constant 3) ]))
-        let color = KetValue(Where(a, LessThanEquals, [ KetValue(Constant 3) ]))
-        let eq = KetValue(Where(b, Eq, [ a ]))
-        let q = KetValue(Map(If, [ color; add; addi ]))
-        let values = KetValue(Where(KetValue(Literal 3), In [ 0; 2; 4; 6 ], []))
-        let zero = KetValue(Where(values, Not, []))
+        let iszero = map Not [ a ]
+        Assert.AreEqual(typeof<KetValue>, iszero.GetType())
+
+        let equals = map Eq [ a; iszero ]
+        Assert.AreEqual(typeof<KetValue>, equals.GetType())
+
+        let add = map plus [ a; b ]
+        Assert.AreEqual(typeof<KetValue>, add.GetType())
+
+        let addi = map times [ a; constant 3 ]
+        Assert.AreEqual(typeof<KetValue>, addi.GetType())
+
+        let color = where a LessThanEquals [ constant 3 ]
+        Assert.AreEqual(typeof<KetValue>, color.GetType())
+
+        let eq = where b Eq [ a ]
+        Assert.AreEqual(typeof<KetValue>, eq.GetType())
+
+        let q = map If [ color; add; addi ]
+        Assert.AreEqual(typeof<KetValue>, q.GetType())
+
+        let values = where (ket 3) (In [ 0; 2; 4; 6 ]) []
+        Assert.AreEqual(typeof<KetValue>, values.GetType())
+
+        let zero = where values Not []
+        Assert.AreEqual(typeof<KetValue>, zero.GetType())
 
         Assert.AreSame(a, a)
 
     [<TestMethod>]
     member this.TestSyntacticSugar() =
-        let a = KetValue(Literal 2)
-        let b = KetValue(Literal 3)
+        let a = ket 2
+        let b = ket 3
 
         Assert.AreEqual(3, a.Add(0).Width)
         Assert.AreEqual(3, a.Add(1).Width)

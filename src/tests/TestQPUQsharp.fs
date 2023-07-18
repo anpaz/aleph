@@ -18,7 +18,7 @@ type TestQPUQsharp() =
         let a = ket 2
         let b = ket 2
 
-        [ [ KetValue(Literal 1) ], [ [ 0 ]; [ 1 ] ]
+        [ [ ket 1 ], [ [ 0 ]; [ 1 ] ]
 
           [ a ], [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ]
 
@@ -66,33 +66,25 @@ type TestQPUQsharp() =
 
           [ a; ket 1 ], [ [ 0; 0 ]; [ 0; 1 ]; [ 1; 0 ]; [ 1; 1 ]; [ 2; 0 ]; [ 2; 1 ]; [ 3; 0 ]; [ 3; 1 ] ]
 
-          [ ket 1; KetValue(Constant 4) ], [ [ 0; 4 ]; [ 1; 4 ] ] ]
+          [ ket 1; constant 4 ], [ [ 0; 4 ]; [ 1; 4 ] ] ]
         |> List.iter (AssertSample this.QPU)
 
     [<TestMethod>]
     member this.TestAddMultiply() =
-        let a = KetValue(Literal 1)
-        let b = KetValue(Literal 1)
+        let a = ket 1
+        let b = ket 1
 
-        let c =
-            KetValue(Literal 2)
-                .Multiply(3)
-                .Where(LessThanEquals, KetValue(Constant 6))
-                .Add(b, width = 4)
+        let c = (ket 2).Multiply(3).Where(LessThanEquals, constant 6).Add(b, width = 4)
 
-        let d =
-            KetValue(Literal 2)
-                .Multiply(3, width = 4)
-                .Add(b)
-                .Where(GreaterThan, KetValue(Constant 0))
+        let d = (ket 2).Multiply(3, width = 4).Add(b).Where(GreaterThan, constant 0)
 
         let e = c.Add(a.Where(Not))
 
-        [ [ a; b; KetValue(Map(Add(1), [ a; b ])) ], [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ]
+        [ [ a; b; (map (Add 1) [ a; b ]) ], [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 0 ] ]
 
           [ a; b; a.Add(b) ], [ [ 0; 0; 0 ]; [ 0; 1; 1 ]; [ 1; 0; 1 ]; [ 1; 1; 2 ] ]
 
-          [ a; b; KetValue(Map(Add(2), [ a; b ])).Where(GreaterThan, 1) ], [ [ 1; 1; 2 ] ]
+          [ a; b; (map (Add 2) [ a; b ]).Where(GreaterThan, 1) ], [ [ 1; 1; 2 ] ]
 
           [ b; c ], [ [ 0; 0 ]; [ 0; 3 ]; [ 0; 6 ]; [ 1; 1 ]; [ 1; 4 ]; [ 1; 7 ] ]
 
@@ -104,8 +96,8 @@ type TestQPUQsharp() =
 
     [<TestMethod>]
     member this.TestBoolean() =
-        let a = KetValue(Literal 1)
-        let b = KetValue(Literal 2)
+        let a = ket 1
+        let b = ket 2
         let c = a.Add(b).Where(GreaterThan, 1)
 
         // TODO: The compiler should know that
@@ -131,7 +123,7 @@ type TestQPUQsharp() =
 
     [<TestMethod>]
     member this.TestIn() =
-        let a = KetValue(Literal 2)
+        let a = ket 2
 
         [ [ a; a.In [ 0; 2 ] ], [ [ 0; 1 ]; [ 1; 0 ]; [ 2; 1 ]; [ 3; 0 ] ]
 
@@ -139,12 +131,12 @@ type TestQPUQsharp() =
 
           [ a; a.Where(In []); a.In [ 1; 2; 3; 4 ] ], []
 
-          [ a; a.Where(In []); KetValue(Literal 2).In [ 1; 3 ] ], [] ]
+          [ a; a.Where(In []); (ket 2).In [ 1; 3 ] ], [] ]
         |> List.iter (AssertSample this.QPU)
 
     [<TestMethod>]
     member this.TestId() =
-        let a = KetValue(Literal 2)
+        let a = ket 2
 
         [ [ a.Where(Id) ], [ [ 3 ] ]
 
@@ -154,7 +146,7 @@ type TestQPUQsharp() =
 
     [<TestMethod>]
     member this.TestChoose() =
-        let a = KetValue(Literal 2)
+        let a = ket 2
         let b = a.Add(4, width = 3)
 
         let c = a.In([ 1; 2 ]).Choose(a, b)
@@ -164,8 +156,8 @@ type TestQPUQsharp() =
 
     [<TestMethod>]
     member this.TestSample() =
-        let a = KetValue(Literal 2)
-        let b = KetValue(Literal 2)
+        let a = ket 2
+        let b = ket 2
         let c = a.Add(b).Where(LessThanEquals, 1)
 
         // TODO: The compiler should know that
@@ -258,8 +250,8 @@ type TestQPUQsharp() =
 
     [<TestMethod>]
     member this.TestSampleWhen() =
-        let a = KetValue(Literal 2)
-        let b = KetValue(Literal 2)
+        let a = ket 2
+        let b = ket 2
 
         [ [ a ], None, [ [ 0 ]; [ 1 ]; [ 2 ]; [ 3 ] ]
 

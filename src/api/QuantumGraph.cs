@@ -16,10 +16,10 @@ public class QuantumGraph
         }
     }
 
-    public int Add(Expression expression)
+    public int Add(KetExpression expression)
     {
         this.last++;
-        nodes.Add(last, new KetValue(expression, this.last));
+        nodes.Add(last, new KetValue(this.last, expression));
         return this.last;
     }
 }

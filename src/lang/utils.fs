@@ -19,4 +19,4 @@ module utils =
         | _ -> Math.Ceiling(Math.Log(i + 1 |> float, 2)) |> int
 
     let signature =
-        sprintf ":ℵ-%s:"  (Assembly.GetExecutingAssembly().GetName().Version.ToString())
+        sprintf ":ℵ-%s:" (Assembly.GetExecutingAssembly().GetName().Version.ToString())

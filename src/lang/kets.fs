@@ -4,7 +4,10 @@ module kets =
     open System
     open aleph.utils
 
-    type Expression =
+    // ----------------
+    // Data structures
+    // ----------------
+    type KetExpression =
         | Literal of width: int
         | Constant of value: int
         | Map of op: Operator * args: KetValue list
@@ -27,12 +30,7 @@ module kets =
 
     and KetId = int
 
-    and KetValue(expression: Expression, ?id: KetId) =
-        let id =
-            match id with
-            | Some id -> id
-            | None -> next_id ()
-
+    and KetValue(id: KetId, expression: KetExpression) =
         member this.Expression = expression
         member this.Id = id
 
@@ -47,7 +45,18 @@ module kets =
 
     type PrepareContext = { qpu: QPU }
 
-    let ket (width: int) = KetValue(Literal(width = width))
+    // ----------------
+    // Syntax
+    // ----------------
+    let ket (width: int) =
+        KetValue(next_id (), Literal(width = width))
+
+    let constant (v: int) = KetValue(next_id (), Constant(v))
+
+    let map (op: Operator) (args: KetValue list) = KetValue(next_id (), Map(op, args))
+
+    let where (ket: KetValue) (op: Operator) (args: KetValue list) =
+        KetValue(next_id (), Where(ket, op, args))
 
     let prepare ctx (kets: KetValue list) : Result<IUniverse, string> =
         let qpu = ctx.qpu
@@ -59,12 +68,16 @@ module kets =
             let qpu = ctx.qpu
             u.Sample(kets)
 
-    let prepare_when ctx (kets: KetValue list, filter: KetValue) : Result<IUniverse, string> =
-        prepare ctx (KetValue(Where(filter, Id, [])) :: kets)
+    let prepare_when ctx (kets: KetValue list) (filter: KetValue) : Result<IUniverse, string> =
+        let w = where filter Id []
+        prepare ctx (w :: kets)
 
-    let sample_when ctx (kets: KetValue list, filter: KetValue) : Result<int list, string> =
-        prepare_when ctx (kets, filter) ==> fun u -> u.Sample(kets)
+    let sample_when ctx (kets: KetValue list) (filter: KetValue) : Result<int list, string> =
+        prepare_when ctx kets filter ==> fun u -> u.Sample(kets)
 
+    // ----------------
+    // F# Extensions
+    // ----------------
     type KetValue with
 
         member this.Width =
@@ -86,83 +99,79 @@ module kets =
             | Constant v -> int_width v
             | Where(target, _, _) -> target.Width
 
-        member this.Where(op: Operator) = KetValue(Where(this, op, []))
+        member this.Where(op: Operator) = where this op []
 
-        member this.Where(op: Operator, arg: KetValue) = KetValue(Where(this, op, [ arg ]))
+        member this.Where(op: Operator, arg: KetValue) = where this op [ arg ]
 
-        member this.Where(op: Operator, c: int) = this.Where(op, KetValue(Constant c))
+        member this.Where(op: Operator, c: int) = this.Where(op, constant c)
 
         member this.Where(op: Operator, b: bool) =
-            this.Where(op, KetValue(Constant(if b then 1 else 0)))
+            this.Where(op, constant (if b then 1 else 0))
 
-        member this.Not() = KetValue(Map(Not, [ this ]))
+        member this.Not() = map Not [ this ]
 
-        member this.In(items: int list) = KetValue(Map(In items, [ this ]))
+        member this.In(items: int list) = map (In items) [ this ]
 
-        member this.And(k2: KetValue) = KetValue(Map(And, [ this; k2 ]))
+        member this.And(k2: KetValue) = map And [ this; k2 ]
 
         member this.And(c: bool) =
-            let k2 = KetValue(Constant(if c then 1 else 0))
+            let k2 = constant (if c then 1 else 0)
             this.And(k2)
 
-        member this.Or(k2: KetValue) = KetValue(Map(Or, [ this; k2 ]))
+        member this.Or(k2: KetValue) = map Or [ this; k2 ]
 
         member this.Or(c: bool) =
-            let k2 = KetValue(Constant(if c then 1 else 0))
+            let k2 = constant (if c then 1 else 0)
             this.Or(k2)
 
-        member this.LessThanEquals(k2: KetValue) =
-            KetValue(Map(LessThanEquals, [ this; k2 ]))
+        member this.LessThanEquals(k2: KetValue) = map LessThanEquals [ this; k2 ]
 
         member this.LessThanEquals(c: int) =
-            let k2 = KetValue(Constant(c))
+            let k2 = constant (c)
             this.LessThanEquals(k2)
 
-        member this.GreaterThan(k2: KetValue) =
-            KetValue(Map(GreaterThan, [ this; k2 ]))
+        member this.GreaterThan(k2: KetValue) = map GreaterThan [ this; k2 ]
 
         member this.GreaterThan(c: int) =
-            let k2 = KetValue(Constant(c))
+            let k2 = constant c
             this.GreaterThan(k2)
 
-        member this.Add(k2: KetValue, width: int) = KetValue(Map(Add width, [ this; k2 ]))
+        member this.Add(k2: KetValue, width: int) = map (Add width) [ this; k2 ]
 
         member this.Add(k2: KetValue) =
             let w = Math.Max(this.Width, k2.Width) + 1
             this.Add(k2, w)
 
         member this.Add(c: int) =
-            let k2 = KetValue(Constant c)
+            let k2 = constant c
             this.Add(k2)
 
         member this.Add(c: int, width: int) =
-            let k2 = KetValue(Constant c)
+            let k2 = constant c
             this.Add(k2, width)
 
-        member this.Multiply(k2: KetValue, width: int) =
-            KetValue(Map(Multiply width, [ this; k2 ]))
+        member this.Multiply(k2: KetValue, width: int) = map (Multiply width) [ this; k2 ]
 
         member this.Multiply(k2: KetValue) =
             let w = this.Width + k2.Width
             this.Multiply(k2, w)
 
         member this.Multiply(c: int) =
-            let k2 = KetValue(Constant c)
+            let k2 = constant c
             this.Multiply(k2)
 
         member this.Multiply(c: int, width: int) =
-            let k2 = KetValue(Constant c)
+            let k2 = constant c
             this.Multiply(k2, width)
 
-        member this.Equals(k2: KetValue) = KetValue(Map(Eq, [ this; k2 ]))
+        member this.Equals(k2: KetValue) = map Eq [ this; k2 ]
 
         member this.Equals(c: int) =
-            let k2 = KetValue(Constant c)
+            let k2 = constant c
             this.Equals(k2)
 
         member this.Equals(c: bool) =
-            let k2 = KetValue(Constant(if c then 1 else 0))
+            let k2 = constant (if c then 1 else 0)
             this.Equals(k2)
 
-        member this.Choose(onTrue: KetValue, onFalse: KetValue) =
-            KetValue(Map(If, [ this; onTrue; onFalse ]))
+        member this.Choose(onTrue: KetValue, onFalse: KetValue) = map If [ this; onTrue; onFalse ]
