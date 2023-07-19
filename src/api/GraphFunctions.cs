@@ -65,25 +65,34 @@ namespace aleph.server
             return graph.Add(expression);
         });
 
-        [Function("MapNot")]
-        public HttpResponseData MapNot([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~map/not")] HttpRequestData req,
-            string graphId, int id) => req.Run(_graphs, graphId, graph =>
-        AddMapExpression(graph, Operator.Not, new int[] { id }));
-
-        [Function("MapId")]
+        // Routes in functions are matched based on the function name.
+        // we use the :xxx: to indicate the maching order.
+        [Function("Map:001:Id")]
         public HttpResponseData MapId([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~map/id")] HttpRequestData req,
             string graphId, int id) => req.Run(_graphs, graphId, graph =>
         AddMapExpression(graph, Operator.Id, new int[] { id }));
 
-        [Function("MapIf")]
+        // Routes in functions are matched based on the function name.
+        // we use the :xxx: to indicate the maching order.
+        [Function("Map:002:Not")]
+        public HttpResponseData MapNot([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~map/not")] HttpRequestData req,
+            string graphId, int id) => req.Run(_graphs, graphId, graph =>
+        AddMapExpression(graph, Operator.Not, new int[] { id }));
+
+        // Routes in functions are matched based on the function name.
+        // we use the :xxx: to indicate the maching order.
+        [Function("Map:003:If")]
         public HttpResponseData MapIf([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~map/if")] HttpRequestData req,
             string graphId, int cond, int t, int f) => req.Run(_graphs, graphId, graph =>
         AddMapExpression(graph, Operator.If, new int[] { cond, t, f }));
 
-        [Function("MapOther")]
+        // Routes in functions are matched based on the function name.
+        // we use the :xxx: to indicate the maching order.
+        [Function("Map:004:Binary")]
         public HttpResponseData Map([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~map/{op}")] HttpRequestData req,
             string graphId, string op, int left, int right) => req.Run(_graphs, graphId, graph =>
         AddMapExpression(graph, OperatorExtensions.Parse(op), new int[] { left, right }));
+
 
         [Function("Sample")]
         public HttpResponseData Sample([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~sample")] HttpRequestData req,
