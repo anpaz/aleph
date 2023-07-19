@@ -33,7 +33,8 @@ namespace aleph.qsharp.grover {
             }
 
             oracle (all, answer);
-        } until (M(answer) == One or stop < 0)
+        } 
+        until (M(answer) == One or stop < 0)
         fixup {
             set m = m * (8.0 / 7.0);
             set m = m > max ? max | m;
