@@ -8,7 +8,7 @@ module kets =
     // Data structures
     // ----------------
     type KetId = int
-    
+
     and KetExpression =
         | Literal of width: int
         | Constant of value: int
