@@ -7,13 +7,16 @@ module kets =
     // ----------------
     // Data structures
     // ----------------
-    type KetExpression =
+    type KetId = int
+    
+    and KetExpression =
         | Literal of width: int
         | Constant of value: int
         | Map of op: Operator * args: KetValue list
         | Where of target: KetValue * clause: Operator * args: KetValue list
 
     and Operator =
+        | Id
         | Not
         | LessThanEquals
         | Eq
@@ -22,17 +25,14 @@ module kets =
         | If
 
         // These were not in the paper
-        | Id
         | In of values: int list
         | GreaterThan
         | And
         | Or
 
-    and KetId = int
-
     and KetValue(id: KetId, expression: KetExpression) =
-        member this.Expression = expression
         member this.Id = id
+        member this.Expression = expression
 
     type IUniverse =
         interface
