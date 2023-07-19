@@ -80,22 +80,22 @@ public static class KetValueExtensions
     {
         if (ket.Expression.IsLiteral)
         {
-            var literal = (Expression.Literal)ket.Expression;
+            var literal = (KetExpression.Literal)ket.Expression;
             return $"literal (width: {literal.width})";
         }
         else if (ket.Expression.IsConstant)
         {
-            var c = (Expression.Constant)ket.Expression;
+            var c = (KetExpression.Constant)ket.Expression;
             return $"constant ({c.value})";
         }
         else if (ket.Expression.IsMap)
         {
-            var map = (Expression.Map)ket.Expression;
+            var map = (KetExpression.Map)ket.Expression;
             return $"map ({map.op.Label()})";
         }
         else if (ket.Expression.IsWhere)
         {
-            var w = (Expression.Where)ket.Expression;
+            var w = (KetExpression.Where)ket.Expression;
             return $"where (op: {w.clause.Label()})";
         }
 
@@ -110,14 +110,14 @@ public static class KetValueExtensions
         }
         else if (ket.Expression.IsMap)
         {
-            var map = (Expression.Map)ket.Expression;
+            var map = (KetExpression.Map)ket.Expression;
             return map.args
                 .Select((ket, idx) => new GraphNode(ket.Id, graph))
                 .ToArray();
         }
         else if (ket.Expression.IsWhere)
         {
-            var where = (Expression.Where)ket.Expression;
+            var where = (KetExpression.Where)ket.Expression;
             return where.args
                 .Select((ket, idx) => new GraphNode(ket.Id, graph))
                 .Append(new GraphNode(where.target.Id, graph))

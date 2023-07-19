@@ -274,14 +274,14 @@ module context =
         | Ok values -> values
         | Error err -> failwith err
 
-    let sample_when (kets: KetValue list, filter: KetValue) =
+    let sample_when (kets: KetValue list) (filter: KetValue) =
         let ctx = { qpu = Processor() }
 
-        match sample_when ctx (kets, filter) with
+        match sample_when ctx kets filter with
         | Ok values -> values
         | Error err -> failwith err
 
-    let histogram (kets: KetValue list, rounds: int) =
+    let histogram (kets: KetValue list) (rounds: int) =
         let u = prepare kets
 
         match u.Histogram(kets, rounds) with

@@ -44,15 +44,15 @@ namespace aleph.server
 
         [Function("Literal")]
         public HttpResponseData Literal([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~literal")] HttpRequestData req,
-            string graphId, int width) => req.Run(_graphs, graphId, graph => graph.Add(Expression.NewLiteral(width)));
+            string graphId, int width) => req.Run(_graphs, graphId, graph => graph.Add(KetExpression.NewLiteral(width)));
 
         [Function("ConstantBool")]
         public HttpResponseData ConstantBool([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~bool")] HttpRequestData req,
-            string graphId, string value) => req.Run(_graphs, graphId, graph => graph.Add(Expression.NewConstant(bool.Parse(value) ? 1 : 0)));
+            string graphId, string value) => req.Run(_graphs, graphId, graph => graph.Add(KetExpression.NewConstant(bool.Parse(value) ? 1 : 0)));
 
         [Function("ConstantInt")]
         public HttpResponseData ConstantInt([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~int")] HttpRequestData req,
-            string graphId, int value) => req.Run(_graphs, graphId, graph => graph.Add(Expression.NewConstant(value)));
+            string graphId, int value) => req.Run(_graphs, graphId, graph => graph.Add(KetExpression.NewConstant(value)));
 
         [Function("Where")]
         public HttpResponseData Where([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~where")] HttpRequestData req,
@@ -61,29 +61,38 @@ namespace aleph.server
             var target = graph[id];
             var kets = ListModule.OfSeq(GetKets(graph, args));
             var clause = OperatorExtensions.Parse(op);
-            var expression = Expression.NewWhere(target, clause, kets);
+            var expression = KetExpression.NewWhere(target, clause, kets);
             return graph.Add(expression);
         });
 
-        [Function("MapNot")]
-        public HttpResponseData MapNot([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~map/not")] HttpRequestData req,
-            string graphId, int id) => req.Run(_graphs, graphId, graph =>
-        AddMapExpression(graph, Operator.Not, new int[] { id }));
-
-        [Function("MapId")]
+        // Routes in functions are matched based on the function name.
+        // we use the :xxx: to indicate the maching order.
+        [Function("Map:001:Id")]
         public HttpResponseData MapId([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~map/id")] HttpRequestData req,
             string graphId, int id) => req.Run(_graphs, graphId, graph =>
         AddMapExpression(graph, Operator.Id, new int[] { id }));
 
-        [Function("MapIf")]
+        // Routes in functions are matched based on the function name.
+        // we use the :xxx: to indicate the maching order.
+        [Function("Map:002:Not")]
+        public HttpResponseData MapNot([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~map/not")] HttpRequestData req,
+            string graphId, int id) => req.Run(_graphs, graphId, graph =>
+        AddMapExpression(graph, Operator.Not, new int[] { id }));
+
+        // Routes in functions are matched based on the function name.
+        // we use the :xxx: to indicate the maching order.
+        [Function("Map:003:If")]
         public HttpResponseData MapIf([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~map/if")] HttpRequestData req,
             string graphId, int cond, int t, int f) => req.Run(_graphs, graphId, graph =>
         AddMapExpression(graph, Operator.If, new int[] { cond, t, f }));
 
-        [Function("MapOther")]
+        // Routes in functions are matched based on the function name.
+        // we use the :xxx: to indicate the maching order.
+        [Function("Map:004:Binary")]
         public HttpResponseData Map([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~map/{op}")] HttpRequestData req,
             string graphId, string op, int left, int right) => req.Run(_graphs, graphId, graph =>
         AddMapExpression(graph, OperatorExtensions.Parse(op), new int[] { left, right }));
+
 
         [Function("Sample")]
         public HttpResponseData Sample([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~sample")] HttpRequestData req,
@@ -159,7 +168,7 @@ namespace aleph.server
         private static int AddMapExpression(QuantumGraph graph, Operator op, int[] argIds)
         {
             var kets = ListModule.OfSeq(argIds.Select((k, idx) => graph[k]));
-            var expression = Expression.NewMap(op, kets);
+            var expression = KetExpression.NewMap(op, kets);
             return graph.Add(expression);
         }
 

@@ -5,6 +5,7 @@ using static aleph.kets;
 
 public class QuantumGraph
 {
+    private static readonly object lockObject = new object();
     private int last = 0;
     private readonly Dictionary<int, KetValue> nodes = new Dictionary<int, KetValue>();
 
@@ -16,11 +17,16 @@ public class QuantumGraph
         }
     }
 
-    public int Add(Expression expression)
+    public int Add(KetExpression expression)
     {
-        this.last++;
-        nodes.Add(last, new KetValue(expression, this.last));
-        return this.last;
+        var id = 0;
+        lock (lockObject)
+        {
+            id = ++this.last;
+        }
+
+        nodes.Add(id, new KetValue(id, expression));
+        return id;
     }
 }
 

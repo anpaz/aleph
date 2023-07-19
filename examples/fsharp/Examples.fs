@@ -28,7 +28,7 @@ let dice_roll_histogram () =
     let dice2 = (ket 3).Where(In [ 1..6 ])
 
     let roll = dice1.Add(dice2)
-    histogram ([ roll ], 1000)
+    histogram [ roll ] 1000
 
 // Solve x + 3 == 2x
 let solve_equation () =
@@ -36,7 +36,7 @@ let solve_equation () =
     let eq1 = x.Add(3)
     let eq2 = x.Multiply(2)
 
-    sample_when ([ x; eq1; eq2 ], eq1.Equals(eq2))
+    sample_when [ x; eq1; eq2 ] (eq1.Equals(eq2))
 
 // Solve a graph coloring problem, for the given number of nodes and list of edges.
 let solve_graph_coloring (max_colors: int) (nodes_count: int) (edges: (int * int) list) =
@@ -57,7 +57,7 @@ let solve_graph_coloring (max_colors: int) (nodes_count: int) (edges: (int * int
     let edges = edges |> List.map (fun (x, y) -> (nodes.[x], nodes.[y]))
     let filter = edges |> compare_all_edges
 
-    sample_when (nodes, filter)
+    sample_when nodes filter
 
 // Calls graph coloring with a tiny (2 color) graph
 let tiny_graph_coloring () =

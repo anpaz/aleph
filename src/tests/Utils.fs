@@ -23,7 +23,7 @@ module Utils =
 
             let prep_kets =
                 match filter with
-                | Some filter -> KetValue(Where(filter, Id, [])) :: kets
+                | Some filter -> (where filter Id []) :: kets
                 | None -> kets
 
             let u = qpu.Prepare prep_kets |> Result.toList |> Seq.head
@@ -38,7 +38,7 @@ module Utils =
         let regular_sample ctx (k, f) =
             match f with
             | None -> sample ctx k
-            | Some f -> sample_when ctx (k, f)
+            | Some f -> sample_when ctx k f
             |> Result.toList
             |> Seq.head
         // calls a sample method, and makes sure it gets a valid answer.

@@ -7,6 +7,6 @@ open aleph.qpu.classic.context
 
 let sample (kets: KetValue list) = sample kets
 
-let sample_when (kets: KetValue list, filter: KetValue) = sample_when (kets, filter)
+let sample_when (kets: KetValue list) (filter: KetValue) = sample_when kets filter
 
-let histogram (kets: KetValue list, rounds: int) = histogram (kets, rounds)
+let histogram (kets: KetValue list) (rounds: int) = histogram kets rounds
