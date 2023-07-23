@@ -69,19 +69,19 @@ type Processor(sim: IOperationFactory) =
         let w = int_width i |> int64
         new QuantumValue((i |> int64, w))
 
-    let rec prepare ctx (ket: KetValue) =
+    let rec init ctx (ket: KetValue) =
         match ctx.allocations.TryFind ket.Id with
         | Some _ -> ctx // Already prepared...
         | None ->
             match ket.Expression with
-            | KetExpression.Literal width -> prepare_literal ctx ket.Id width
-            | KetExpression.Constant value -> prepare_constant ctx ket.Id value
-            | KetExpression.Map(op, args) -> prepare_map ctx ket.Id (op, args)
-            | KetExpression.Where(target, op, args) -> prepare_where ctx ket.Id (target, op, args)
+            | KetExpression.Literal width -> init_literal ctx ket.Id width
+            | KetExpression.Constant value -> init_constant ctx ket.Id value
+            | KetExpression.Map(op, args) -> init_map ctx ket.Id (op, args)
+            | KetExpression.Where(target, op, args) -> init_where ctx ket.Id (target, op, args)
 
-    and prepare_many ctx kets = kets |> List.fold prepare ctx
+    and init_many ctx kets = kets |> List.fold init ctx
 
-    and prepare_literal ctx ketid size =
+    and init_literal ctx ketid size =
         let register =
             aleph.qsharp.register.NewLiteral.Run(sim, ctx.width, size |> int64).Result
 
@@ -89,7 +89,7 @@ type Processor(sim: IOperationFactory) =
             width = ctx.width + (size |> int64)
             allocations = ctx.allocations.Add(ketid, register) }
 
-    and prepare_constant ctx ketid value =
+    and init_constant ctx ketid value =
         let size = int_width value |> int64
         let value = value |> toQValue
         let register = aleph.qsharp.register.NewOutput.Run(sim, ctx.width, size).Result
@@ -100,8 +100,8 @@ type Processor(sim: IOperationFactory) =
             allocations = ctx.allocations.Add(ketid, register)
             operators = ctx.operators @ [ op ] }
 
-    and prepare_where ctx ketid (target, op, args) =
-        let ctx = prepare_map ctx ketid (op, target :: args)
+    and init_where ctx ketid (target, op, args) =
+        let ctx = init_map ctx ketid (op, target :: args)
         let register = ctx.allocations.[ketid]
         let target = ctx.allocations[target.Id]
         let oracle = aleph.qsharp.ket.Filter.Run(sim, register).Result
@@ -110,8 +110,8 @@ type Processor(sim: IOperationFactory) =
             allocations = ctx.allocations.Add(ketid, target)
             oracles = oracle :: ctx.oracles }
 
-    and prepare_map ctx ketid (op, args) =
-        let ctx = prepare_many ctx args
+    and init_map ctx ketid (op, args) =
+        let ctx = init_many ctx args
 
         match op with
         | Operator.Id ->
@@ -182,7 +182,7 @@ type Processor(sim: IOperationFactory) =
                   operators = []
                   oracles = [] }
 
-            let ctx' = prepare_many ctx kets
+            let ctx' = init_many ctx kets
             Universe(sim, ctx') :> IUniverse |> Ok
 
 
