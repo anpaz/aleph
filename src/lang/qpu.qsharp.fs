@@ -114,9 +114,7 @@ type Processor(sim: IOperationFactory) =
         let ctx = init_many ctx args
 
         match op with
-        | Operator.Id ->
-            { ctx with
-                allocations = ctx.allocations.Add(ketid, ctx.allocations.[args.[0].Id]) }
+        | Operator.Id -> map_id ctx ketid args.[0]
         | Operator.Not -> map_unary ctx ketid (args.[0], aleph.qsharp.ket.Not.Run)
         | Operator.In values -> map_in ctx ketid (args.[0], values)
         | Operator.And -> map_binary ctx ketid (args.[0], args.[1], 1, aleph.qsharp.ket.And.Run)
@@ -127,6 +125,10 @@ type Processor(sim: IOperationFactory) =
         | Operator.Add w -> map_binary ctx ketid (args.[0], args.[1], w, aleph.qsharp.ket.Add.Run)
         | Operator.Multiply w -> map_binary ctx ketid (args.[0], args.[1], w, aleph.qsharp.ket.Multiply.Run)
         | Operator.If -> map_if ctx ketid (args.[0], args.[1], args.[2])
+
+    and map_id ctx ketid src = 
+        { ctx with
+            allocations = ctx.allocations.Add(ketid, ctx.allocations.[src.Id]) }
 
     and map_unary ctx ketid (ket, lambda) =
         let k = ctx.allocations.[ket.Id]
