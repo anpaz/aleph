@@ -8,7 +8,7 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.universe as u;
     open aleph.qsharp.log as log;
 
-    function Multiply(left: r.Register, right: r.Register, width: Int, output: r.Register) : Operator
+    function Multiply(left: r.Register, right: r.Register, output: r.Register) : Operator
     {
         log.Info($"Ket.Multiply::Init --> left: {left}; right: {right}; output: {output}");
         return Operator(_Multiply_eval(left, right, output, _));

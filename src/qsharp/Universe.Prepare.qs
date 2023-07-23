@@ -12,7 +12,7 @@ namespace aleph.qsharp.universe {
     open aleph.qsharp.register as r;
     open aleph.qsharp.universe as u;
 
-    operation Prepare(universe: Universe, qubits: Qubit[]) : Unit {
+    operation Prepare(universe: UniverseInfo, qubits: Qubit[]) : Unit {
         // Identify literal qubits, these are the ones Grover is applied to:
         mutable literals = [];
         for r in u.GetRegisters(universe) {
@@ -67,7 +67,7 @@ namespace aleph.qsharp.universe {
         Controlled X(t, target);
     }
 
-    operation _uber_oracle(universe: Universe, all: Qubit[], target: Qubit) : Unit
+    operation _uber_oracle(universe: UniverseInfo, all: Qubit[], target: Qubit) : Unit
     is Adj + Ctl {
         let oracles = u.GetOracles(universe);
         let n = Length(oracles);

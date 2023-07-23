@@ -19,7 +19,7 @@ namespace aleph.qsharp.ket {
         let l = Max([Length(right) - Length(left), 0]);
         let r = Max([Length(left) - Length(right), 0]);
 
-        log.Debug($"Using padding: left:{left} + {l}, right:{right} + {r}");
+        log.Info($"Using padding: left:{left} + {l}, right:{right} + {r}");
 
         return (l, r);
     }
