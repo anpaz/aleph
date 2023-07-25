@@ -7,11 +7,12 @@ namespace aleph.qsharp.universe {
     open Microsoft.Quantum.Diagnostics;
 
     open aleph.qsharp.grover as grover;
+    open aleph.qsharp.ket as ket;
     open aleph.qsharp.log as log;
     open aleph.qsharp.register as r;
     open aleph.qsharp.universe as u;
 
-    operation Prepare(universe: Universe, qubits: Qubit[]) : Unit {
+    operation Prepare(universe: UniverseInfo, qubits: Qubit[]) : Unit {
         // Identify literal qubits, these are the ones Grover is applied to:
         mutable literals = [];
         for r in u.GetRegisters(universe) {
@@ -33,7 +34,7 @@ namespace aleph.qsharp.universe {
             // we also use it to verify grover returned a valid row
             use tracker = Qubit();
             let (t, u1) = u.AddLiteral(1, universe);
-            let u2 = u.AddOracle(_tracker_oracle(t, _, _), u1);
+            let u2 = u.AddOracle(ket.Oracle(_tracker_oracle(t, _, _)), u1);
 
             let all = qubits + [tracker];
             set literals += [tracker];
@@ -46,8 +47,8 @@ namespace aleph.qsharp.universe {
 
         // Once the oracles have filtered the literals, apply the expressions once more
         // to have their values are reflected correctly in the universe.
-        for e in u.GetExpressions(universe) {
-            e(qubits);
+        for e in u.GetOperators(universe) {
+            e!(qubits);
         }
 
         if (log.DEBUG_ON()) {
@@ -66,7 +67,7 @@ namespace aleph.qsharp.universe {
         Controlled X(t, target);
     }
 
-    operation _uber_oracle(universe: Universe, all: Qubit[], target: Qubit) : Unit
+    operation _uber_oracle(universe: UniverseInfo, all: Qubit[], target: Qubit) : Unit
     is Adj + Ctl {
         let oracles = u.GetOracles(universe);
         let n = Length(oracles);
@@ -74,19 +75,19 @@ namespace aleph.qsharp.universe {
         log.Info($"Universe::uber-oracle --> oracles count: {n}");
 
         if (n == 1) {
-            oracles[0](all, target);
+            oracles[0]!(all, target);
         
         } else {
             use ancillas = Qubit[n];
             let pairs = Zipped(oracles, ancillas);
 
             within {
-                for e in u.GetExpressions(universe) {
-                    e(all);
+                for e in u.GetOperators(universe) {
+                    e!(all);
                 }
 
                 for (o, a) in pairs {
-                    o(all, a);
+                    o!(all, a);
                 }
             }
             apply {

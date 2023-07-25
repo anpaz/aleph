@@ -9,14 +9,10 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.value as v;
     open aleph.qsharp.log as log;
 
-    function InSet(values: v.Value[], register: r.Register, old: u.Universe) : (u.Universe, r.Register[])
+    function InSet(values: v.Value[], register: r.Register, output: r.Register) : Operator
     {
-        let (output, u) = u.AddExpressionOutput(1, old);
-        let expr = _In_eval(values, register, output, _);
-        let universe = u.AddExpression(expr, u);
-
         log.Info($"Ket.In::Init --> values: {values}, register: {register}, output: {output}");
-        return (universe, [output]);
+        return Operator(_In_eval(values, register, output, _));
     }
 
     function get_controls (registers: r.Register[], all: Qubit[]) : Qubit[] {

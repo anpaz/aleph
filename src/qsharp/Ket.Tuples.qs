@@ -8,26 +8,14 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.value as v;
     open aleph.qsharp.log as log;
 
-    function Tuples(values: v.Value[][], old: u.Universe) : (u.Universe, r.Register[])
+    function Tuples(values: v.Value[][], outputs: r.Register[]) : Oracle
     {
-        let width = Length(values[0]);
+        let width = Length(values);
 
-        // Add a literal for every item in the tuple
-        mutable u = old;
-        mutable outputs = [];
-        for i in 0..width-1 {
-            let (r_i, u_i) = u.AddLiteral(v.GetSize(values[0][i]), u);
-            set outputs = outputs + [r_i];
-            set u = u_i;
-        }
-
-        let start = u.GetWidth(old);
-        let end = u.GetWidth(u) - 1;
-        let oracle = _Tuples_oracle(values, outputs, start, end, _, _);
-        let universe = u.AddOracle(oracle, u);
-
+        let start = RangeStart(r.GetRange(outputs[0]));
+        let end = RangeEnd(r.GetRange(outputs[width]));
         log.Info($"Ket.Tuples::Init --> values: {values}, output: {outputs}");
-        return (universe, outputs);
+        return Oracle(_Tuples_oracle(values, outputs, start, end, _, _));
     }
 
     operation _Tuples_oracle(

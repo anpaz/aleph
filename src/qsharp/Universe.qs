@@ -1,41 +1,41 @@
 namespace aleph.qsharp.universe {
 
     open aleph.qsharp.register;
+    open aleph.qsharp.ket;
 
-    newtype Universe = (
+    newtype UniverseInfo = (
         width: Int,
         registers: Register[],
-        expressions: (Qubit[] => Unit is Adj + Ctl)[],
-        oracles: ((Qubit[], Qubit) => Unit is Adj + Ctl)[]
+        operators: Operator[],
+        oracles: Oracle[]
     );
 
-    function AddOracle(o: (Qubit[], Qubit) => Unit is Adj + Ctl, universe: Universe) : Universe {
+    function AddOracle(o: Oracle, universe: UniverseInfo) : UniverseInfo {
         let (_,_,_,orcls) = universe!;
         return universe
             w/ oracles <- orcls + [o];
     }
 
-    function AddExpression(e: Qubit[] => Unit is Adj + Ctl, universe: Universe) : Universe {
-        let (_,_,exprs,_) = universe!;
+    function AddOperator(e: Operator, universe: UniverseInfo) : UniverseInfo {
+        let (_,_,ops,_) = universe!;
         return universe
-            w/ expressions <- exprs + [e];
+            w/ operators <- ops + [e];
     }
 
-    function AddLiteral(size: Int, universe: Universe) : (Register, Universe) {
-        return _addRegister(Literal, size, universe);
+    function AddLiteral(size: Int, universe: UniverseInfo) : (Register, UniverseInfo) {
+        return _addRegister(NewLiteral, size, universe);
     }
 
-    function AddExpressionOutput(size: Int, universe: Universe) : (Register, Universe) {
-        return _addRegister(Expression, size, universe);
+    function AddOutput(size: Int, universe: UniverseInfo) : (Register, UniverseInfo) {
+        return _addRegister(NewOutput, size, universe);
     }
 
-    function _addRegister(ctr: Range -> Register, size: Int, old: Universe) : (Register, Universe) {
+    function _addRegister(ctr: (Int, Int) -> Register, size: Int, old: UniverseInfo) : (Register, UniverseInfo) {
         let (cols, regs, _, _) = old!;
 
         let start = cols;
-        let end = start + size - 1;
 
-        let output = ctr(start..end);
+        let output = ctr(start, size);
         let universe = old
                 w/ width <- cols + size
                 w/ registers <- regs + [output];
@@ -43,22 +43,22 @@ namespace aleph.qsharp.universe {
         return (output, universe);
     }
 
-    function GetWidth(universe: Universe) : Int {
+    function GetWidth(universe: UniverseInfo) : Int {
         let (width,_,_,_) = universe!;
         return width;
     }
 
-    function GetRegisters(universe: Universe) : Register[] {
+    function GetRegisters(universe: UniverseInfo) : Register[] {
         let (_,registers,_,_) = universe!;
         return registers;
     }
     
-    function GetExpressions(universe: Universe) : (Qubit[] => Unit is Adj + Ctl)[] {
+    function GetOperators(universe: UniverseInfo) : Operator[] {
         let (_,_,exprs,_) = universe!;
         return exprs;
     }
 
-    function GetOracles(universe: Universe) : ((Qubit[], Qubit) => Unit is Adj + Ctl)[] {
+    function GetOracles(universe: UniverseInfo) : Oracle[] {
         let (_,_,_,oracles) = universe!;
         return oracles;
     }

@@ -6,14 +6,10 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.universe as u;
     open aleph.qsharp.log as log;
 
-    function And(left: r.Register, right: r.Register, old: u.Universe) : (u.Universe, r.Register[])
+    function And(left: r.Register, right: r.Register, output: r.Register) : Operator
     {
-        let (output, u) = u.AddExpressionOutput(1, old);
-        let expr = _And_eval(left, right, output, _);
-        let universe = u.AddExpression(expr, u);
-
-        log.Info($"Ket.And::Init --> left: {left}; right: {right}; output: {output}");
-        return (universe, [output]);
+        log.Info($"Ket.And::Init --> left: {left}; right: {right}; output: {output}"); 
+        return Operator(_And_eval(left, right, output, _));
     }
 
     operation _And_eval(

@@ -9,21 +9,17 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.universe as u;
     open aleph.qsharp.log as log;
 
-    function LessThanEqual(left: r.Register, right: r.Register, old: u.Universe) : (u.Universe, r.Register[])
+    function LessThanEqual(left: r.Register, right: r.Register, output: r.Register) : Operator
     {
-        let (output, u) = u.AddExpressionOutput(1, old);
-        let expr = _LessThan_eval(left, right, output, _);
-        let universe = u.AddExpression(expr, u);
-
         log.Info($"Ket.LessThanEqual::Init --> left: {left}; right: {right}; output: {output}");
-        return (universe, [output]);
+        return Operator(_LessThan_eval(left, right, output, _));
     }
 
     function _padding(left: Qubit[], right: Qubit[]) : (Int, Int) {
         let l = Max([Length(right) - Length(left), 0]);
         let r = Max([Length(left) - Length(right), 0]);
 
-        log.Debug($"Using padding: left:{left} + {l}, right:{right} + {r}");
+        log.Info($"Using padding: left:{left} + {l}, right:{right} + {r}");
 
         return (l, r);
     }

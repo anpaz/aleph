@@ -9,7 +9,7 @@ namespace aleph.qsharp.universe {
     open aleph.qsharp.value as v;
     open aleph.qsharp.log as log;
 
-    operation Sample(universe: Universe, outputs: r.Register[]) : v.Value[] {
+    operation Sample(universe: UniverseInfo, outputs: r.Register[]) : v.Value[] {
         let width = u.GetWidth(universe);
         use qubits = Qubit[width];
 

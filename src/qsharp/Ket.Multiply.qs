@@ -8,14 +8,10 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.universe as u;
     open aleph.qsharp.log as log;
 
-    function Multiply(left: r.Register, right: r.Register, width: Int, old: u.Universe) : (u.Universe, r.Register[])
+    function Multiply(left: r.Register, right: r.Register, output: r.Register) : Operator
     {
-        let (output, u) = u.AddExpressionOutput(width, old);
-        let expr = _Multiply_eval(left, right, output, _);
-        let universe = u.AddExpression(expr, u);
-
         log.Info($"Ket.Multiply::Init --> left: {left}; right: {right}; output: {output}");
-        return (universe, [output]);
+        return Operator(_Multiply_eval(left, right, output, _));
     }
 
     operation _Multiply_eval(

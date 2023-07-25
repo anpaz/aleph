@@ -8,15 +8,10 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.universe as u;
     open aleph.qsharp.log as log;
 
-    function If(cond: r.Register, onTrue: r.Register, onFalse: r.Register, old: u.Universe) : (u.Universe, r.Register[])
+    function If(cond: r.Register, onTrue: r.Register, onFalse: r.Register, output: r.Register) : Operator
     {
-        let size = Max([r.GetSize(onTrue), r.GetSize(onFalse)]);
-        let (output, u) = u.AddExpressionOutput(size, old);
-        let expr = _If_eval(cond, onTrue, onFalse, output, _);
-        let universe = u.AddExpression(expr, u);
-
         log.Info($"Ket.If::Init --> cond: {cond}; onTrue: {onTrue}; onFalse: {onFalse} output: {output}");
-        return (universe, [output]);
+        return Operator(_If_eval(cond, onTrue, onFalse, output, _));
     }
 
     operation _If_eval(

@@ -6,7 +6,7 @@ namespace aleph.qsharp.universe {
     open aleph.qsharp.register;
     open aleph.qsharp.universe as u;
 
-    operation Print(universe: Universe) : Unit {
+    operation Print(universe: UniverseInfo) : Unit {
         let width = u.GetWidth(universe);
         use qubits = Qubit[width];
 

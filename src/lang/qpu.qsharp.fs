@@ -8,23 +8,37 @@ open aleph.kets
 open Microsoft.Quantum.Simulation.Core
 open aleph.qsharp
 
-type QuantumState = universe.Universe
+type UniverseInfo = universe.UniverseInfo
 type QuantumValue = value.Value
 type QuantumRegister = register.Register
 
 type RegistersMap = Map<KetId, QuantumRegister>
 
-type Universe(sim: IOperationFactory, state: QuantumState, allocations: RegistersMap) =
+type QsharpContext =
+    { width: int64
+      allocations: RegistersMap
+      operators: ket.Operator list
+      oracles: ket.Oracle list }
+
+type Universe(sim: IOperationFactory, ctx: QsharpContext) =
     let mutable value = None
 
+    let info =
+        UniverseInfo(
+            (ctx.width,
+             ctx.allocations.Values |> Seq.distinct |> QArray :> IQArray<register.Register>,
+             ctx.operators |> QArray :> IQArray<ket.Operator>,
+             ctx.oracles |> QArray :> IQArray<ket.Oracle>)
+        )
+
     let sample (registers: QuantumRegister list) =
-        universe.Sample.Run(sim, state, registers |> QArray).Result
+        universe.Sample.Run(sim, info, registers |> QArray).Result
         |> Seq.map (fun i -> i.value |> int)
         |> Seq.toList
 
     interface IUniverse with
         member this.Sample(kets: KetValue list) =
-            let registers = kets |> List.map (fun k -> allocations.[k.Id])
+            let registers = kets |> List.map (fun k -> ctx.allocations.[k.Id])
 
             match value with
             | Some v -> v |> Ok
@@ -33,7 +47,7 @@ type Universe(sim: IOperationFactory, state: QuantumState, allocations: Register
                 value.Value |> Ok
 
         member this.Histogram(kets: KetValue list, rounds: int) =
-            let registers = kets |> List.map (fun k -> allocations.[k.Id])
+            let registers = kets |> List.map (fun k -> ctx.allocations.[k.Id])
 
             let add_sample (map: Map<int list, int>) _ =
                 let value = sample registers
@@ -45,14 +59,9 @@ type Universe(sim: IOperationFactory, state: QuantumState, allocations: Register
 
             seq { 1..rounds } |> Seq.fold add_sample Map.empty |> Ok
 
-
     override this.ToString() =
-        universe.Print.Run(sim, state).Result |> ignore
+        universe.Print.Run(sim, info).Result |> ignore
         "[see above]"
-
-type QsharpContext =
-    { state: QuantumState
-      allocations: RegistersMap }
 
 type Processor(sim: IOperationFactory) =
 
@@ -60,95 +69,123 @@ type Processor(sim: IOperationFactory) =
         let w = int_width i |> int64
         new QuantumValue((i |> int64, w))
 
-    let rec prepare ctx (ket: KetValue) =
+    let rec init ctx (ket: KetValue) =
         match ctx.allocations.TryFind ket.Id with
-        | Some _ -> ctx |> Ok // Already prepared...
+        | Some _ -> ctx // Already prepared...
         | None ->
             match ket.Expression with
-            | KetExpression.Literal width -> prepare_literal ctx width
-            | KetExpression.Constant value -> prepare_constant ctx value
-            | KetExpression.Map(op, args) -> prepare_map ctx (op, args)
-            | KetExpression.Where(target, op, args) -> prepare_where ctx (target, op, args)
-            ==> fun (ctx', register) ->
-                { ctx' with
-                    allocations = ctx'.allocations.Add(ket.Id, register) }
-                |> Ok
+            | KetExpression.Literal width -> init_literal ctx ket.Id width
+            | KetExpression.Constant value -> init_constant ctx ket.Id value
+            | KetExpression.Map(op, args) -> init_map ctx ket.Id (op, args)
+            | KetExpression.Where(target, op, args) -> init_where ctx ket.Id (target, op, args)
 
-    and prepare_many ctx kets =
-        let init_one previous next =
-            previous ==> fun ctx' -> prepare ctx' next
+    and init_many ctx kets = kets |> List.fold init ctx
 
-        kets |> List.fold init_one (Ok ctx)
+    and init_literal ctx ketid size =
+        let register =
+            aleph.qsharp.register.NewLiteral.Run(sim, ctx.width, size |> int64).Result
 
-    and prepare_literal ctx size =
-        aleph.qsharp.ket.All.Run(sim, size |> int64, ctx.state).Result
-        |> qsharp_result ctx
+        { ctx with
+            width = ctx.width + (size |> int64)
+            allocations = ctx.allocations.Add(ketid, register) }
 
-    and prepare_constant ctx value =
+    and init_constant ctx ketid value =
+        let size = int_width value |> int64
         let value = value |> toQValue
-        aleph.qsharp.ket.Constant.Run(sim, value, ctx.state).Result |> qsharp_result ctx
+        let register = aleph.qsharp.register.NewOutput.Run(sim, ctx.width, size).Result
+        let op = aleph.qsharp.ket.Constant.Run(sim, value, register).Result
 
-    and prepare_where ctx (target, op, args) =
-        prepare_map ctx (op, target :: args)
-        ==> fun (ctx, f) ->
-            let u = aleph.qsharp.ket.Filter.Run(sim, f, ctx.state).Result
-            ({ ctx with state = u }, ctx.allocations.[target.Id]) |> Ok
+        { ctx with
+            width = ctx.width + size
+            allocations = ctx.allocations.Add(ketid, register)
+            operators = ctx.operators @ [ op ] }
 
-    and prepare_map ctx (op, args) =
-        prepare_many ctx args
-        ==> fun ctx' ->
-            match op with
-            | Operator.Id -> (ctx', ctx'.allocations.[args.[0].Id]) |> Ok
-            | Operator.Not -> map_unary ctx' (args.[0], aleph.qsharp.ket.Not.Run)
-            | Operator.In values -> map_in ctx' (args.[0], values)
-            | Operator.And -> map_binary ctx' (args.[0], args.[1], aleph.qsharp.ket.And.Run)
-            | Operator.Or -> map_binary ctx' (args.[0], args.[1], aleph.qsharp.ket.Or.Run)
-            | Operator.LessThanEquals -> map_binary ctx' (args.[0], args.[1], aleph.qsharp.ket.LessThanEqual.Run)
-            | Operator.GreaterThan -> map_binary ctx' (args.[0], args.[1], aleph.qsharp.ket.GreaterThan.Run)
-            | Operator.Eq -> map_binary ctx' (args.[0], args.[1], aleph.qsharp.ket.Equals.Run)
-            | Operator.Add w -> map_binary ctx' (args.[0], args.[1], op_width w aleph.qsharp.ket.Add.Run)
-            | Operator.Multiply w -> map_binary ctx' (args.[0], args.[1], op_width w aleph.qsharp.ket.Multiply.Run)
-            | Operator.If -> map_if ctx' (args.[0], args.[1], args.[2])
+    and init_where ctx ketid (target, op, args) =
+        let ctx = init_map ctx ketid (op, target :: args)
+        let register = ctx.allocations.[ketid]
+        let target = ctx.allocations[target.Id]
+        let oracle = aleph.qsharp.ket.Filter.Run(sim, register).Result
 
-    and op_width w lambda (sim, l, r, state) = lambda (sim, l, r, w, state)
+        { ctx with
+            allocations = ctx.allocations.Add(ketid, target)
+            oracles = oracle :: ctx.oracles }
 
-    and map_unary ctx (ket, lambda) =
+    and init_map ctx ketid (op, args) =
+        let ctx = init_many ctx args
+
+        match op with
+        | Operator.Id -> map_id ctx ketid args.[0]
+        | Operator.Not -> map_unary ctx ketid (args.[0], aleph.qsharp.ket.Not.Run)
+        | Operator.In values -> map_in ctx ketid (args.[0], values)
+        | Operator.And -> map_binary ctx ketid (args.[0], args.[1], 1, aleph.qsharp.ket.And.Run)
+        | Operator.Or -> map_binary ctx ketid (args.[0], args.[1], 1, aleph.qsharp.ket.Or.Run)
+        | Operator.LessThanEquals -> map_binary ctx ketid (args.[0], args.[1], 1, aleph.qsharp.ket.LessThanEqual.Run)
+        | Operator.GreaterThan -> map_binary ctx ketid (args.[0], args.[1], 1, aleph.qsharp.ket.GreaterThan.Run)
+        | Operator.Eq -> map_binary ctx ketid (args.[0], args.[1], 1, aleph.qsharp.ket.Equals.Run)
+        | Operator.Add w -> map_binary ctx ketid (args.[0], args.[1], w, aleph.qsharp.ket.Add.Run)
+        | Operator.Multiply w -> map_binary ctx ketid (args.[0], args.[1], w, aleph.qsharp.ket.Multiply.Run)
+        | Operator.If -> map_if ctx ketid (args.[0], args.[1], args.[2])
+
+    and map_id ctx ketid src = 
+        { ctx with
+            allocations = ctx.allocations.Add(ketid, ctx.allocations.[src.Id]) }
+
+    and map_unary ctx ketid (ket, lambda) =
         let k = ctx.allocations.[ket.Id]
-        lambda(sim, k, ctx.state).Result |> qsharp_result ctx
+        let target = aleph.qsharp.register.NewOutput.Run(sim, ctx.width, 1).Result
+        let op = lambda(sim, k, target).Result
 
-    and map_binary ctx (left, right, lambda) =
+        { ctx with
+            width = ctx.width + (1 |> int64)
+            allocations = ctx.allocations.Add(ketid, target)
+            operators = ctx.operators @ [ op ] }
+
+    and map_binary ctx ketid (left, right, size, lambda) =
         let l = ctx.allocations.[left.Id]
         let r = ctx.allocations.[right.Id]
-        lambda(sim, l, r, ctx.state).Result |> qsharp_result ctx
+        let target = aleph.qsharp.register.NewOutput.Run(sim, ctx.width, size).Result
+        let op = lambda(sim, l, r, target).Result
 
-    and map_in ctx (ket, values) =
-        let l = ctx.allocations.[ket.Id]
+        { ctx with
+            width = ctx.width + (size |> int64)
+            allocations = ctx.allocations.Add(ketid, target)
+            operators = ctx.operators @ [ op ] }
+
+    and map_in ctx ketid (ket, values) =
+        let k = ctx.allocations.[ket.Id]
         let values = values |> List.map toQValue |> QArray
-        let register = ctx.allocations.[ket.Id]
+        let width = 1 |> int64
+        let target = aleph.qsharp.register.NewOutput.Run(sim, ctx.width, width).Result
+        let op = aleph.qsharp.ket.InSet.Run(sim, values, k, target).Result
 
-        aleph.qsharp.ket.InSet.Run(sim, values, register, ctx.state).Result
-        |> qsharp_result ctx
+        { ctx with
+            width = ctx.width + width
+            allocations = ctx.allocations.Add(ketid, target)
+            operators = ctx.operators @ [ op ] }
 
-    and map_if ctx (cond, onTrue, onFalse) =
+    and map_if ctx ketid (cond, onTrue, onFalse) =
         let c = ctx.allocations.[cond.Id]
         let t = ctx.allocations.[onTrue.Id]
         let f = ctx.allocations.[onFalse.Id]
-        aleph.qsharp.ket.If.Run(sim, c, t, f, ctx.state).Result |> qsharp_result ctx
+        let width = Math.Max(t.width, f.width)
+        let target = aleph.qsharp.register.NewOutput.Run(sim, ctx.width, width).Result
+        let op = aleph.qsharp.ket.If.Run(sim, c, t, f, target).Result
 
-    and qsharp_result ctx value =
-        let struct (u, r) = value
-        //aleph.qsharp.universe.AddExpression.Run(sim, u)
-        let r = r |> Seq.head
-        ({ ctx with state = u }, r) |> Ok
+        { ctx with
+            width = ctx.width + width
+            allocations = ctx.allocations.Add(ketid, target)
+            operators = ctx.operators @ [ op ] }
 
     interface QPU with
         member this.Prepare(kets: KetValue list) =
             let ctx =
-                { allocations = Map.empty
-                  state = universe.BigBang.Run(sim).Result }
+                { width = 0
+                  allocations = Map.empty
+                  operators = []
+                  oracles = [] }
 
-            prepare_many ctx kets
-            ==> fun ctx' -> Universe(sim, ctx'.state, ctx'.allocations) :> IUniverse |> Ok
+            let ctx' = init_many ctx kets
+            Universe(sim, ctx') :> IUniverse |> Ok
 
 
 module context =

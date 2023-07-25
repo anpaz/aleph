@@ -9,13 +9,10 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.register as r;
     open aleph.qsharp.log as log;
 
-    function Filter(c: r.Register, old: u.Universe) : u.Universe
+    function Filter(c: r.Register) : Oracle
     {
-        let oracle = _Filter_oracle(c, _, _);
-        let universe = u.AddOracle(oracle, old);
-
         log.Info($"Ket.Filter::Init --> cond: {r.GetRange(c)}");
-        return universe;
+        return Oracle(_Filter_oracle(c, _, _));
     }
 
     operation _Filter_oracle(

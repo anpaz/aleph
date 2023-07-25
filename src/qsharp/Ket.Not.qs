@@ -8,14 +8,10 @@ namespace aleph.qsharp.ket {
     open aleph.qsharp.universe as u;
     open aleph.qsharp.register as r;
 
-    function Not(left: r.Register, old: u.Universe) : (u.Universe, r.Register[])
+    function Not(left: r.Register, output: r.Register) : Operator
     {
-        let (output, u) = u.AddExpressionOutput(1, old);
-        let expr = _Not_eval(left, output, _);
-        let universe = u.AddExpression(expr, u);
-
         log.Info($"Ket.Not::Init --> left: {left}; output: {output}");
-        return (universe, [output]);
+        return Operator(_Not_eval(left, output, _));
     }
 
     operation _Not_eval(
