@@ -14,6 +14,7 @@ module kets =
         | Constant of value: int
         | Map of op: Operator * args: KetValue list
         | Where of target: KetValue * clause: Operator * args: KetValue list
+        | If of cond: KetValue * t: KetValue * f: KetValue
 
     and Operator =
         | Id
@@ -22,7 +23,6 @@ module kets =
         | Eq
         | Add of width: int
         | Multiply of width: int
-        | If
 
         // These were not in the paper
         | In of values: int list
@@ -58,6 +58,9 @@ module kets =
     let where (ket: KetValue) (op: Operator) (args: KetValue list) =
         KetValue(next_id (), Where(ket, op, args))
 
+    let choose (cond: KetValue) (onTrue: KetValue) (onFalse: KetValue) =
+        KetValue(next_id (), If(cond, onTrue, onFalse))
+
     let prepare ctx (kets: KetValue list) : Result<IUniverse, string> =
         let qpu = ctx.qpu
         qpu.Prepare kets
@@ -83,11 +86,11 @@ module kets =
         member this.Width =
             match this.Expression with
             | Literal w -> w
+            | If (_, t, f) -> Math.Max(t.Width, f.Width)
             | Map(op, args) ->
                 match op with
                 | Add w
                 | Multiply w -> w
-                | If -> Math.Max(args.[1].Width, args.[2].Width)
                 | Id -> args.[0].Width
                 | Not
                 | And
@@ -174,4 +177,4 @@ module kets =
             let k2 = constant (if c then 1 else 0)
             this.Equals(k2)
 
-        member this.Choose(onTrue: KetValue, onFalse: KetValue) = map If [ this; onTrue; onFalse ]
+        member this.Choose(onTrue: KetValue, onFalse: KetValue) = choose this onTrue onFalse

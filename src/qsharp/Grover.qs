@@ -19,7 +19,7 @@ namespace aleph.qsharp.grover {
         let n = Length(literals); // number of qubits
         let max = PI() * Sqrt(IntAsDouble(1 <<< n)) / 4.0; // max number of grover iterations
         mutable stop = Floor(max) * 2;  // we will eventually stop trying to find an answer (as none might exist)
-        mutable m = 1.0;    // the max number of iteratiosn to try at each round.
+        mutable m = 1.0;    // the max number of iterations to try at each round.
 
         repeat {
             let iterations = DrawRandomInt(0, Floor(m));

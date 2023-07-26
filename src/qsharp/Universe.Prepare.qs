@@ -15,10 +15,8 @@ namespace aleph.qsharp.universe {
     operation Prepare(universe: UniverseInfo, qubits: Qubit[]) : Unit {
         // Identify literal qubits, these are the ones Grover is applied to:
         mutable literals = [];
-        for r in u.GetRegisters(universe) {
-            if (r.IsLiteral(r)) {
-                set literals = literals + qubits[r.GetRange(r)];
-            }
+        for r in u.GetLiterals(universe) {
+            set literals = literals + qubits[r.GetRange(r)];
         }
 
         let oraclesCount = Length(u.GetOracles(universe));

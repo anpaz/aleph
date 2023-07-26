@@ -20,9 +20,9 @@ namespace aleph.qsharp.universe {
         mutable result = [];
         for r in outputs {
             let idx = r.GetRange(r);
-            let size = r.GetSize(r);
+            let w = r.GetWidth(r);
             let value = ResultArrayAsInt(ForEach(M, qubits[idx]));
-            set result += [ v.Value(value, size) ];
+            set result += [ v.Value(value, w) ];
         }
 
         ResetAll(qubits);

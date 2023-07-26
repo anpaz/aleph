@@ -65,6 +65,11 @@ namespace aleph.server
             return graph.Add(expression);
         });
 
+        [Function("If")]
+        public HttpResponseData If([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~if")] HttpRequestData req,
+            string graphId, int cond, int t, int f) => req.Run(_graphs, graphId, graph =>
+        AddIfExpression(graph, cond, t, f));
+
         // Routes in functions are matched based on the function name.
         // we use the :xxx: to indicate the maching order.
         [Function("Map:001:Id")]
@@ -81,10 +86,11 @@ namespace aleph.server
 
         // Routes in functions are matched based on the function name.
         // we use the :xxx: to indicate the maching order.
+        // @DEPRECATED... IF is now a first order expression
         [Function("Map:003:If")]
         public HttpResponseData MapIf([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "graph/{graphId}/~map/if")] HttpRequestData req,
             string graphId, int cond, int t, int f) => req.Run(_graphs, graphId, graph =>
-        AddMapExpression(graph, Operator.If, new int[] { cond, t, f }));
+        AddIfExpression(graph, cond, t, f));
 
         // Routes in functions are matched based on the function name.
         // we use the :xxx: to indicate the maching order.
@@ -164,6 +170,12 @@ namespace aleph.server
                 throw new InvalidOperationException(result.ErrorValue);
             }
         });
+
+        private static int AddIfExpression(QuantumGraph graph, int cond, int onTrue, int onFalse)
+        {
+            var expression = KetExpression.NewIf(graph[cond], graph[onTrue], graph[onFalse]);
+            return graph.Add(expression);
+        }
 
         private static int AddMapExpression(QuantumGraph graph, Operator op, int[] argIds)
         {

@@ -5,7 +5,7 @@ namespace aleph.qsharp.universe {
 
     newtype UniverseInfo = (
         width: Int,
-        registers: Register[],
+        literals: Register[],
         operators: Operator[],
         oracles: Oracle[]
     );
@@ -23,24 +23,16 @@ namespace aleph.qsharp.universe {
     }
 
     function AddLiteral(size: Int, universe: UniverseInfo) : (Register, UniverseInfo) {
-        return _addRegister(NewLiteral, size, universe);
-    }
-
-    function AddOutput(size: Int, universe: UniverseInfo) : (Register, UniverseInfo) {
-        return _addRegister(NewOutput, size, universe);
-    }
-
-    function _addRegister(ctr: (Int, Int) -> Register, size: Int, old: UniverseInfo) : (Register, UniverseInfo) {
-        let (cols, regs, _, _) = old!;
+        let (cols, regs, _, _) = universe!;
 
         let start = cols;
 
-        let output = ctr(start, size);
-        let universe = old
+        let output = NewRegister(start, size);
+        let u = universe
                 w/ width <- cols + size
-                w/ registers <- regs + [output];
+                w/ literals <- regs + [output];
 
-        return (output, universe);
+        return (output, u);
     }
 
     function GetWidth(universe: UniverseInfo) : Int {
@@ -48,14 +40,14 @@ namespace aleph.qsharp.universe {
         return width;
     }
 
-    function GetRegisters(universe: UniverseInfo) : Register[] {
-        let (_,registers,_,_) = universe!;
-        return registers;
+    function GetLiterals(universe: UniverseInfo) : Register[] {
+        let (_,lits,_,_) = universe!;
+        return lits;
     }
-    
+
     function GetOperators(universe: UniverseInfo) : Operator[] {
-        let (_,_,exprs,_) = universe!;
-        return exprs;
+        let (_,_,ops,_) = universe!;
+        return ops;
     }
 
     function GetOracles(universe: UniverseInfo) : Oracle[] {

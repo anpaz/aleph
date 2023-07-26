@@ -4,7 +4,7 @@ namespace aleph.qsharp.value {
 
     newtype Value = (
         value: Int,
-        size: Int
+        width: Int
     );
 
     function GetValue(v: Value) : Int {
@@ -12,8 +12,8 @@ namespace aleph.qsharp.value {
         return value;
     }
 
-    function GetSize(v: Value) : Int {
-        let(_, size) = v!;
-        return size;
+    function GetWidth(v: Value) : Int {
+        let(_, width) = v!;
+        return width;
     }
 }

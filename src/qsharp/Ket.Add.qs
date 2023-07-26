@@ -30,7 +30,7 @@ namespace aleph.qsharp.ket {
         let output = all[r.GetRange(o)];
 
         // AddI is in-place, copy right into output first:
-        for i in 0 .. r.GetSize(r) - 1 {
+        for i in 0 .. r.GetWidth(r) - 1 {
             CNOT(right[i], output[i]);
         }
 

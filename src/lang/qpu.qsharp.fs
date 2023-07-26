@@ -78,6 +78,7 @@ type Processor(sim: IOperationFactory) =
             | KetExpression.Constant value -> init_constant ctx ket.Id value
             | KetExpression.Map(op, args) -> init_map ctx ket.Id (op, args)
             | KetExpression.Where(target, op, args) -> init_where ctx ket.Id (target, op, args)
+            | KetExpression.If(cond, onTrue, onFalse) -> init_if ctx ket.Id (cond, onTrue, onFalse)
 
     and init_many ctx kets = kets |> List.fold init ctx
 
@@ -124,8 +125,7 @@ type Processor(sim: IOperationFactory) =
         | Operator.Eq -> map_binary ctx ketid (args.[0], args.[1], 1, aleph.qsharp.ket.Equals.Run)
         | Operator.Add w -> map_binary ctx ketid (args.[0], args.[1], w, aleph.qsharp.ket.Add.Run)
         | Operator.Multiply w -> map_binary ctx ketid (args.[0], args.[1], w, aleph.qsharp.ket.Multiply.Run)
-        | Operator.If -> map_if ctx ketid (args.[0], args.[1], args.[2])
-
+        
     and map_id ctx ketid src = 
         { ctx with
             allocations = ctx.allocations.Add(ketid, ctx.allocations.[src.Id]) }
@@ -163,11 +163,13 @@ type Processor(sim: IOperationFactory) =
             allocations = ctx.allocations.Add(ketid, target)
             operators = ctx.operators @ [ op ] }
 
-    and map_if ctx ketid (cond, onTrue, onFalse) =
+    and init_if ctx ketid (cond, onTrue, onFalse) =
+        let ctx = init_many ctx [cond; onTrue; onFalse]
+        
         let c = ctx.allocations.[cond.Id]
         let t = ctx.allocations.[onTrue.Id]
         let f = ctx.allocations.[onFalse.Id]
-        let width = Math.Max(t.width, f.width)
+        let width = Math.Max(onTrue.Width, onFalse.Width) |> int64
         let target = aleph.qsharp.register.NewOutput.Run(sim, ctx.width, width).Result
         let op = aleph.qsharp.ket.If.Run(sim, c, t, f, target).Result
 

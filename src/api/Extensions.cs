@@ -98,6 +98,11 @@ public static class KetValueExtensions
             var w = (KetExpression.Where)ket.Expression;
             return $"where (op: {w.clause.Label()})";
         }
+        else if (ket.Expression.IsIf)
+        {
+            var i = (KetExpression.If)ket.Expression;
+            return $"if ({i.cond.Label()}) ? {i.t.Label()} : {i.f.Label()}";
+        }
 
         throw new NotImplementedException();
     }
@@ -137,8 +142,6 @@ public static class OperatorExtensions
                 "leq" :
             op.IsEq ?
                 "eq" :
-            op.IsIf ?
-                "if" :
             op.IsId ?
                 "id" :
             op.IsGreaterThan ?
@@ -163,8 +166,6 @@ public static class OperatorExtensions
             return Operator.Not;
         } if ("lte" == label) {
             return Operator.LessThanEquals;
-        } if ("if" == label) {
-            return Operator.If;
         } if ("id" == label) {
             return Operator.Id;
         } if ("gt" == label) {

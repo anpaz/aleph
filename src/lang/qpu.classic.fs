@@ -143,6 +143,7 @@ type Processor() =
             | Constant value -> prepare_constant ctx value
             | Map(op, args) -> prepare_map ctx (op, args)
             | Where(target, op, args) -> prepare_where ctx (target, op, args)
+            | If (cond, onTrue, onFalse) -> prepare_if ctx (cond, onTrue, onFalse)
             ==> fun (ctx, column) ->
                 { ctx with
                     allocations = ctx.allocations.Add(ket.Id, column) }
@@ -177,6 +178,11 @@ type Processor() =
 
             (ctx, ctx.allocations.[target.Id]) |> Ok
 
+    and prepare_if ctx (cond, onTrue, onFalse) =
+        prepare_many ctx [ cond; onTrue; onFalse ]
+        ==> fun ctx' ->
+            map_ternary ctx' (cond, onTrue, onFalse, (fun (x, y, z) -> if x = 0 then z else y))
+
     and prepare_map ctx (op, args) =
         prepare_many ctx args
         ==> fun ctx' ->
@@ -195,7 +201,6 @@ type Processor() =
             | Operator.Multiply w ->
                 let m = int (2.0 ** w)
                 map_binary ctx' (args.[0], args.[1], (fun (x, y) -> (x * y) % m))
-            | Operator.If -> map_ternary ctx' (args.[0], args.[1], args.[2], (fun (x, y, z) -> if x = 0 then z else y))
 
     and map_unary ctx (ket: KetValue, lambda: int -> int) =
         let arg = ctx.allocations.[ket.Id]

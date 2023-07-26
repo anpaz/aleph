@@ -39,7 +39,7 @@ type TestSyntax() =
         let eq = where b Eq [ a ]
         Assert.AreEqual(typeof<KetValue>, eq.GetType())
 
-        let q = map If [ color; add; addi ]
+        let q = choose color add addi
         Assert.AreEqual(typeof<KetValue>, q.GetType())
 
         let values = where (ket 3) (In [ 0; 2; 4; 6 ]) []
