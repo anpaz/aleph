@@ -68,7 +68,7 @@ jobs:
 
       - name: Lint with ruff
         working-directory: src/python
-        run: ruff --format=github  --ignore E501,F401 --target-version=py39 .
+        run: ruff check --output-format=github  --ignore E501,F401 --target-version=py39 .
 
       - name: Install aleph locally
         working-directory: src/python
@@ -87,7 +87,7 @@ jobs:
 
       - name: Lint examples
         working-directory: examples/python
-        run: ruff --format=github  --ignore E402 --target-version=py39 .
+        run: ruff check --output-format=github  --ignore E402 --target-version=py39 .
 
       - name: Run examples
         working-directory: examples/python
