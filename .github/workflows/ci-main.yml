@@ -18,10 +18,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout
+      - uses: actions/checkout@main
 
       - name: Set up .NET Core
-        uses: actions/setup-dotnet
+        uses: actions/setup-dotnet@main
         with:
           dotnet-version: '6.x'
           include-prerelease: true
@@ -53,10 +53,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout
+      - uses: actions/checkout@main
 
       - name: Set Python 3.9
-        uses: actions/setup-python
+        uses: actions/setup-python@main
         with:
           python-version: '3.9'
 
